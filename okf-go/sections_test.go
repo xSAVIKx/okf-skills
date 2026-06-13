@@ -55,6 +55,40 @@ func TestGetSection(t *testing.T) {
 	}
 }
 
+func TestGetSectionAny_MatchesLevel1Heading(t *testing.T) {
+	// Connectors write the schema as a level-1 "# Columns" heading and then append
+	// "## Data Profile" / "## Sample" subsections. GetSectionAny must isolate the
+	// Columns content and stop at the next heading.
+	body := "# Columns\n\n| Name | Type |\n| --- | --- |\n| id | INTEGER |\n\n## Data Profile\n\n| Stat |\n| --- |\n| x |\n"
+	content, ok := GetSectionAny(body, "Columns")
+	if !ok {
+		t.Fatal("expected to find the level-1 Columns heading")
+	}
+	if !contains(content, "| id | INTEGER |") {
+		t.Fatalf("schema row missing from section:\n%s", content)
+	}
+	if contains(content, "Data Profile") || contains(content, "Stat") {
+		t.Fatalf("section leaked past the next heading:\n%s", content)
+	}
+}
+
+func TestGetSectionAny_MatchesLevel2Heading(t *testing.T) {
+	body := "## Columns\n\nrow\n\n## Next\n\nkeepout\n"
+	content, ok := GetSectionAny(body, "Columns")
+	if !ok || !contains(content, "row") {
+		t.Fatalf("expected level-2 heading to match: ok=%v content=%q", ok, content)
+	}
+	if contains(content, "keepout") {
+		t.Fatalf("section leaked into the next section:\n%s", content)
+	}
+}
+
+func TestGetSectionAny_NotFound(t *testing.T) {
+	if _, ok := GetSectionAny("# Other\n\ntext\n", "Columns"); ok {
+		t.Fatal("expected a missing heading to report not found")
+	}
+}
+
 func contains(haystack, needle string) bool {
 	return len(haystack) >= len(needle) && indexOf(haystack, needle) >= 0
 }

@@ -311,6 +311,13 @@ func runIngest(args []string) {
 
 // parseColumnsFromMarkdown parses the columns markdown table.
 func parseColumnsFromMarkdown(body string) []ColumnSpec {
+	// The schema table lives under the "# Columns" heading. A bundle produced with
+	// --profile/--sample also embeds "## Data Profile" / "## Sample" tables, whose
+	// rows must not be parsed as schema columns. Isolate the Columns section first;
+	// fall back to the whole body for bundles without that heading.
+	if section, ok := okf.GetSectionAny(body, "Columns"); ok {
+		body = section
+	}
 	var cols []ColumnSpec
 	lines := strings.Split(body, "\n")
 	for _, line := range lines {

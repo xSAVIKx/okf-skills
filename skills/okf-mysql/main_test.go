@@ -69,3 +69,38 @@ func TestEscapeString(t *testing.T) {
 		}
 	}
 }
+
+// TestParseColumnsFromMarkdown_IgnoresProfileAndSample guards against the parser
+// reading the "## Data Profile" / "## Sample" tables (present when a bundle is
+// produced with --profile/--sample) as if they were schema columns.
+func TestParseColumnsFromMarkdown_IgnoresProfileAndSample(t *testing.T) {
+	markdown := `
+# Columns
+
+| Name | Type | Key | Nullable | Default | Extra | Comment |
+| --- | --- | --- | --- | --- | --- | --- |
+| id | int | PRI | No |  | auto_increment | Unique identifier |
+| name | varchar(100) |  | Yes |  |  | Customer name |
+
+## Data Profile
+
+| Column | Non-Null | Null | Distinct | Min | Max |
+| --- | --- | --- | --- | --- | --- |
+| id | 5 | 0 | 5 | 1 | 5 |
+| name | 4 | 1 | 4 | Ada | Zed |
+
+## Sample
+
+| id | name |
+| --- | --- |
+| 1 | Ada |
+`
+	expected := []ColumnSpec{
+		{Name: "id", Type: "int", Key: "PRI", Nullable: false, Default: "", Extra: "auto_increment", Comment: "Unique identifier"},
+		{Name: "name", Type: "varchar(100)", Key: "", Nullable: true, Default: "", Extra: "", Comment: "Customer name"},
+	}
+	cols := parseColumnsFromMarkdown(markdown)
+	if !reflect.DeepEqual(cols, expected) {
+		t.Errorf("profile/sample rows leaked into parsed schema columns.\nexpected %+v\ngot      %+v", expected, cols)
+	}
+}

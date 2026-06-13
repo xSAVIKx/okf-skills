@@ -359,6 +359,13 @@ func getTableColumns(db *sql.DB, tableName string) ([]Column, error) {
 
 // parseColumnsFromMarkdown extracts column information from the OKF markdown body table.
 func parseColumnsFromMarkdown(body string) []Column {
+	// The schema table lives under the "# Columns" heading. A bundle produced with
+	// --profile/--sample also embeds "## Data Profile" / "## Sample" tables, whose
+	// rows must not be parsed as schema columns. Isolate the Columns section first;
+	// fall back to the whole body for bundles without that heading.
+	if section, ok := okf.GetSectionAny(body, "Columns"); ok {
+		body = section
+	}
 	var cols []Column
 	lines := strings.Split(body, "\n")
 	for _, line := range lines {
