@@ -81,20 +81,30 @@ If the profile/sample sections are absent, enrich from the schema alone — but 
 
 ### 5. Write back surgically
 - Set **only** the frontmatter `description` field. Preserve `type`, `title`, `resource`, `tags`, `timestamp`, and the **entire** markdown body (including the Columns, Data Profile, and Sample sections) unchanged.
-- For per-column comments (MySQL/PostgreSQL/BigQuery), fill only the **empty** cells in the `Comment`/`Description` column; leave populated cells and every other cell untouched.
+- Where the source carries per-column comments (see the **Source variations** table below), fill only the **empty** cells in that column; leave populated cells and every other cell untouched.
 - Never modify `index.md` or `log.md`.
 
 ### 6. Close the loop (optional)
-To persist enriched descriptions back to the origin system, run the matching connector's ingest with `--sync`:
-- `okf-mysql ingest --sync` / `okf-postgresql ingest --sync` → write table/column comments back to the database.
-- `okf-bigquery ingest --sync` → update dataset/field descriptions.
-- `okf-fs ingest --sync` / `okf-git ingest --sync` → write descriptions to `.okf-metadata.yaml`.
+To persist enriched descriptions back to the origin system, run the matching connector's `ingest --sync`. See the **Source variations** table below for exactly what each connector writes back — and note that SQLite has no comment mechanism, so SQLite enrichment stays in the bundle (the descriptions still serve the catalog and any agent reading it).
 
 The full flow:
 
 ```
 <connector> produce --profile --sample   →   enrich (this skill)   →   <connector> ingest --sync
 ```
+
+## Source variations
+
+Enrichment is the same procedure for every source — only three things differ per connector: where a description can live, what `ingest --sync` persists it to, and what to lean on when writing it. This table is the single place that per-source knowledge lives; the connectors themselves stay deterministic extract/sync tools.
+
+| Connector | Concept `type` | Description target(s) | `ingest --sync` writes to | Grounding signal |
+|---|---|---|---|---|
+| `okf-sqlite` | `SQLite Table` | frontmatter `description` only | schema only — **no** description sync (SQLite has no comments); enrichment stays in the bundle | `# Columns` + `## Data Profile` + `## Sample` |
+| `okf-mysql` | `MySQL Table` | frontmatter `description` + `Comment` column | table & column **comments** (`ALTER TABLE … COMMENT`) | `# Columns` + profile + sample |
+| `okf-postgresql` | `PostgreSQL Table` | frontmatter `description` + `Comment` column | table & column comments (`COMMENT ON …`) | `# Columns` + profile + sample |
+| `okf-bigquery` | `BigQuery Table` | frontmatter `description` + `Description` column | table & field **descriptions** (BigQuery API) | `# Columns` + profile + sample |
+| `okf-fs` | `File` / `Directory` | frontmatter `description` only | `.okf-metadata.yaml` | path, extension, size — infer role from name/type (no data content) |
+| `okf-git` | `Git File` / `Git Directory` | frontmatter `description` only | `.okf-metadata.yaml` | path + last commit author/date/**message** in the body |
 
 ## Quality rules (summary)
 
