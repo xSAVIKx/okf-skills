@@ -30,6 +30,10 @@ func main() {
 		runProduce(os.Args[2:])
 	case "ingest":
 		runIngest(os.Args[2:])
+	case "schema":
+		if err := okf.PrintSchema(os.Stdout, buildSchema()); err != nil {
+			log.Fatalf("Failed to print schema: %v", err)
+		}
 	default:
 		fmt.Printf("Unknown command: %s\n", cmd)
 		printUsage()
