@@ -204,10 +204,7 @@ func runProduce(args []string) {
 
 	indexDoc := okf.ConceptDoc{
 		Frontmatter: okf.Frontmatter{
-			Type:        "Dataset",
-			Title:       *dbName + "." + *schemaName,
-			Description: fmt.Sprintf("PostgreSQL Dataset schema for %s.%s", *dbName, *schemaName),
-			Timestamp:   timestamp,
+			OKFVersion: "0.1",
 		},
 		Body: indexBody.String(),
 	}

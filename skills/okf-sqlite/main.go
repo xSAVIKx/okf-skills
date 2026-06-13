@@ -156,7 +156,7 @@ func runProduce(args []string) {
 
 	// 3. Generate index.md at the bundle root listing all extracted tables
 	var indexBody bytes.Buffer
-	indexBody.WriteString("# E-commerce Database Schema (SQLite)\n\n")
+	fmt.Fprintf(&indexBody, "# Database Schema: %s (SQLite)\n\n", filepath.Base(*dbPath))
 	indexBody.WriteString("This OKF bundle represents the tables extracted from SQLite.\n\n")
 	indexBody.WriteString("## Tables\n\n")
 	for _, table := range tables {
@@ -165,10 +165,7 @@ func runProduce(args []string) {
 
 	indexDoc := okf.ConceptDoc{
 		Frontmatter: okf.Frontmatter{
-			Type:        "Dataset",
-			Title:       filepath.Base(*dbPath),
-			Description: fmt.Sprintf("SQLite Dataset: %s", filepath.Base(*dbPath)),
-			Timestamp:   timestamp,
+			OKFVersion: "0.1",
 		},
 		Body: indexBody.String(),
 	}

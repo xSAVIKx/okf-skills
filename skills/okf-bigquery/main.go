@@ -160,7 +160,11 @@ func runProduce(args []string) {
 	// Produce index.md listing all dataset tables
 	var indexBody bytes.Buffer
 	fmt.Fprintf(&indexBody, "# BigQuery Dataset: %s.%s\n\n", *projectID, *datasetID)
-	indexBody.WriteString("This OKF bundle represents the tables and schema descriptions extracted from BigQuery.\n\n")
+	if dsMeta.Description != "" {
+		fmt.Fprintf(&indexBody, "%s\n\n", dsMeta.Description)
+	} else {
+		indexBody.WriteString("This OKF bundle represents the tables and schema descriptions extracted from BigQuery.\n\n")
+	}
 	indexBody.WriteString("## Tables\n\n")
 	for _, table := range tables {
 		fmt.Fprintf(&indexBody, "- [%s](tables/%s.md) - BigQuery table %s\n", table, table, table)
@@ -168,10 +172,7 @@ func runProduce(args []string) {
 
 	indexDoc := okf.ConceptDoc{
 		Frontmatter: okf.Frontmatter{
-			Type:        "Dataset",
-			Title:       *datasetID,
-			Description: dsMeta.Description,
-			Timestamp:   timestamp,
+			OKFVersion: "0.1",
 		},
 		Body: indexBody.String(),
 	}

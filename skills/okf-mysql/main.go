@@ -207,10 +207,7 @@ func runProduce(args []string) {
 
 	indexDoc := okf.ConceptDoc{
 		Frontmatter: okf.Frontmatter{
-			Type:        "Dataset",
-			Title:       *dbName,
-			Description: fmt.Sprintf("MySQL Dataset schema for %s", *dbName),
-			Timestamp:   timestamp,
+			OKFVersion: "0.1",
 		},
 		Body: indexBody.String(),
 	}
