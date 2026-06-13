@@ -10,4 +10,5 @@ use (
 	./tests
 	./skills/okf-fs
 	./skills/okf-git
+	./skills/okf-mcp
 )
