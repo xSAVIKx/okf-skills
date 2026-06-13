@@ -4,7 +4,6 @@ use (
 	./okf-go
 	./okf-mcp
 	./skills/okf-bigquery
-	./skills/okf-enrich
 	./skills/okf-fs
 	./skills/okf-git
 	./skills/okf-mysql

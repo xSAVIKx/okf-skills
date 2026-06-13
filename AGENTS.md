@@ -27,7 +27,7 @@ okf-skills-registry/
 │   ├── okf-bigquery/              # GCP BigQuery connector
 │   ├── okf-fs/                    # Local filesystem connector
 │   ├── okf-git/                   # Git repository connector
-│   ├── okf-enrich/                # LLM enrichment skill
+│   ├── okf-enrich/                # Enrichment guidance skill (Instructions-only)
 │   └── okf-reader/                # Ingestion guidance skill (Instructions-only)
 └── tests/                         # Central integration testing directory
     ├── docker-compose.yml         # MySQL & PostgreSQL containers
@@ -124,7 +124,7 @@ Or pass an explicit skills directory:
 }
 ```
 
-Once registered, every connector and enrichment command appears as a callable MCP tool.
+Once registered, every connector command (`produce`/`ingest`) appears as a callable MCP tool. The guidance skills (`okf-enrich`, `okf-reader`) are loaded as `SKILL.md` instructions, not exposed as tools.
 
 ### Adding a New Skill to `okf-mcp`
 

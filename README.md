@@ -25,7 +25,7 @@ okf-skills-registry/
 │   ├── okf-bigquery/              # Google Cloud BigQuery metadata connector
 │   ├── okf-fs/                    # Local filesystem connector
 │   ├── okf-git/                   # Git repository connector
-│   ├── okf-enrich/                # LLM enrichment skill
+│   ├── okf-enrich/                # Enrichment guidance skill (Instructions-only)
 │   └── okf-reader/                # Ingestion guidance skill (Instructions-only)
 └── tests/                         # Integration test suite
     ├── docker-compose.yml         # MySQL & PostgreSQL containers
@@ -77,11 +77,11 @@ go build ./...
 
 ---
 
-## 2. LLM Enrichment Skill (`okf-enrich`)
+## 2. Enrichment Guidance Skill (`okf-enrich`)
 
-`okf-enrich` uses an LLM to add or improve descriptions in an OKF bundle. Subcommands:
-- **`enrich`**: Reads an OKF bundle and fills in missing or incomplete descriptions using an LLM.
-- **`schema`**: Emits the skill's JSON schema.
+Located in `skills/okf-enrich/`, this is an instructions-only skill (`SKILL.md`) — no binary, no embedded model. It teaches the agent's *own* LLM how to enrich an OKF bundle: find concepts with weak or missing descriptions, ground new descriptions in the schema plus the `Data Profile`/`Sample` sections, write them back into the concept frontmatter, and (optionally) push them to the source with the matching connector's `ingest --sync`.
+
+Enrichment is a judgment task, so it lives as guidance for whatever LLM is already in the loop rather than as a tool that embeds a second one.
 
 ---
 
@@ -96,7 +96,7 @@ okf-mcp                                    # discovers skills on PATH
 okf-mcp --skills-dir /path/to/skills       # explicit skills directory
 ```
 
-Once registered as an MCP server, every connector and enrichment command appears as a callable tool.
+Once registered as an MCP server, every connector command (`produce`/`ingest`) appears as a callable tool. The guidance skills (`okf-enrich`, `okf-reader`) are not tools — they are `SKILL.md` instructions an agent loads directly.
 
 ---
 

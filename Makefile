@@ -1,6 +1,6 @@
 .PHONY: build clean install test
 
-SKILLS := okf-sqlite okf-mysql okf-postgresql okf-bigquery okf-fs okf-git okf-enrich
+SKILLS := okf-sqlite okf-mysql okf-postgresql okf-bigquery okf-fs okf-git
 
 # Build every skill plus the okf-mcp server (for development).
 build:

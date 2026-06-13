@@ -1,73 +1,104 @@
 ---
 name: okf-enrich
-description: Generate LLM-powered concept descriptions and write them into an OKF bundle's frontmatter in place.
+description: Guidance for an AI agent to enrich an OKF bundle with high-quality concept descriptions using its own LLM — grounded in the bundle's schema, data profile, and samples — then optionally sync them back to the source.
 version: 0.1.0
 author: Yurii Serhiichuk
 tags:
   - okf
   - enrichment
-  - llm
   - documentation
+  - agent-guidance
+  - prompt-engineering
 ---
 
-# OKF Enrich
+# OKF Bundle Enrichment Guidance Skill
 
-`okf-enrich` walks an OKF bundle directory and uses an OpenAI-compatible LLM to generate a one-sentence `description` for every concept document that lacks one, writing the result back into the document's YAML frontmatter.
+This skill teaches an AI agent (Claude Code, Cursor, Gemini CLI, Copilot, …) how to **enrich** an Open Knowledge Format (OKF) bundle — adding or improving the human-readable `description` of each concept (table, dataset, file, directory) — using the agent's **own** LLM.
 
-## How it works
+There is deliberately **no binary and no embedded model** here. Generating a good description is a judgment task, and the harness driving the registry already has a capable LLM in the loop. Embedding a second one would mean a model calling a tool that calls another model: redundant cost, an extra API key to manage, and usually a worse result than the model already doing the work. So enrichment is delivered as guidance — the procedure and the quality bar — for whatever LLM is present, exactly as `okf-reader` is guidance for *reading* a bundle.
 
-1. **Walk** — scans the bundle directory recursively for `.md` files, skipping `index.md` and `log.md`.
-2. **Decide** — by default only concepts with an empty `description` are processed; pass `--overwrite` to regenerate all.
-3. **Prompt** — builds a prompt from the concept's title and body (including the `schema` and Data Profile / Sample sections when present).
-4. **Write back** — stores the returned sentence in the `description` frontmatter field using `okf.WriteConceptDoc`.
+## When to Use
 
-The skill is source-agnostic: it reads whatever markdown the bundle contains, so it works with bundles produced by `okf-sqlite`, `okf-fs`, `okf-git`, or any other OKF skill.
+Load this skill when asked to enrich, document, describe, annotate, or "improve the descriptions in" an OKF bundle — typically after a connector has produced the bundle and before syncing descriptions back to the source.
 
-> **NOTE:** `okf-enrich` currently enriches concept/table-level descriptions only. Column-level (field-level) description enrichment is a documented future enhancement.
+Pairs with:
+- **`okf-reader`** — follow its rules to read and navigate the bundle efficiently (index-first, frontmatter-only when possible, grep for targeted lookups).
+- **the connectors** (`okf-sqlite`, `okf-mysql`, `okf-postgresql`, `okf-bigquery`, `okf-fs`, `okf-git`) — the producers and the sync target. Enrichment is far better when the bundle was produced with `--profile` and `--sample` (the four SQL connectors), and the descriptions you write can be pushed back to the origin with the connector's `ingest --sync`.
 
-## Commands
+## The OKF concept document
 
-### `enrich`
+Each concept is a markdown file with YAML frontmatter:
 
-Generate and write concept descriptions into an OKF bundle.
+```markdown
+---
+type: SQLite Table
+title: orders
+description:                       # <- the field you write
+resource: sqlite:///.../orders
+tags: [sqlite, table]
+timestamp: 2026-06-13T12:00:00Z
+---
+# Columns
 
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-| `--bundle` | string | *(required)* | Path to the OKF bundle directory. |
-| `--base-url` | string | `https://api.openai.com/v1` | OpenAI-compatible API base URL. |
-| `--model` | string | `gpt-4o-mini` | Model name to use for generation. |
-| `--api-key` | string | — | API key (see API key handling below). |
-| `--overwrite` | bool | `false` | Regenerate descriptions even if already present. |
+| Name | Type | Primary Key | Nullable | Default |
+| ---  | ---  | ---         | ---      | ---     |
 
-### `schema`
+## Data Profile                    # present only when produced with --profile
 
-Print this skill's machine-readable JSON self-description (consumed by `okf-mcp` and other harnesses).
+| Column | Non-Null | Null | Distinct | Min | Max |
+| ---    | ---      | ---  | ---      | --- | --- |
 
-```bash
-okf-enrich schema
+## Sample                          # present only when produced with --sample
+
+| id | customer_id | total | status |
+| ...
 ```
 
-## API key handling
+Your enrichment target is the frontmatter **`description`** field. For sources that carry per-column comments (MySQL, PostgreSQL, BigQuery — their `# Columns` table includes a `Comment`/`Description` column), you may also fill the empty cells in that column.
 
-The API key is resolved in order:
+## Procedure
 
-1. `--api-key` flag (explicit, takes precedence).
-2. `OKF_LLM_API_KEY` environment variable.
-3. `OPENAI_API_KEY` environment variable (common fallback).
+### 1. Discover concepts (index-first)
+Follow the `okf-reader` rules: read `index.md` first and use it to locate concept files; route directly to the files you need. Do **not** recursively read the whole bundle.
 
-If none is set, the skill exits with a clear error message. Using an environment variable keeps secrets out of process argument lists.
+### 2. Decide what to enrich
+Enrich a concept when its `description` is empty or a generic placeholder the connector inserted (e.g. `"SQLite table orders"`, `"File config.yaml"`, `"No description available"`, `"Git file main.go"`). Do **not** overwrite a substantive, human- or source-authored description unless the user explicitly asks you to regenerate. This keeps the operation idempotent and safe to re-run.
 
-## Provider-agnostic usage
+### 3. Gather grounding (never guess)
+Base every claim on evidence in the document. Read only what you need:
+- **Schema** (`# Columns`): names, types, keys, nullability → the shape of the concept.
+- **`## Data Profile`** (if present): per-column non-null / null / distinct / min / max. Signals: a 2–3-distinct column is likely a flag, enum, or status; min/max timestamps reveal the time span the data covers; a high null ratio flags optional fields.
+- **`## Sample`** (if present): real example rows — the strongest signal for what the data actually *means*.
+- **Relationships**: links in the body to other concept files → how this concept connects to others.
 
-`okf-enrich` works with any OpenAI-compatible endpoint. Pass `--base-url` to target a different provider:
+If the profile/sample sections are absent, enrich from the schema alone — but prefer to (re)produce the bundle with `--profile --sample` first when you can; it yields markedly better descriptions.
 
-```bash
-# OpenAI (default)
-okf-enrich enrich --bundle ./my-bundle --model gpt-4o-mini
+### 4. Write the description
+- **Grain first**: state what one row / record / file represents, then its purpose — e.g. *"One row per customer order, capturing line-item totals, payment status, and the placing customer."*
+- **Length**: one sentence for a table / dataset / file; a short noun phrase for a column.
+- **Ground every claim** in the schema/profile/sample. Do not invent business meaning the evidence doesn't support. If the purpose is genuinely ambiguous, describe the structure and note what's uncertain rather than fabricating.
+- **Add meaning, don't restate**: don't just list the columns the reader can already see — convey what the schema alone doesn't tell them.
 
-# Local Ollama instance
-okf-enrich enrich --bundle ./my-bundle \
-  --base-url http://localhost:11434/v1 \
-  --model llama3 \
-  --api-key ollama
+### 5. Write back surgically
+- Set **only** the frontmatter `description` field. Preserve `type`, `title`, `resource`, `tags`, `timestamp`, and the **entire** markdown body (including the Columns, Data Profile, and Sample sections) unchanged.
+- For per-column comments (MySQL/PostgreSQL/BigQuery), fill only the **empty** cells in the `Comment`/`Description` column; leave populated cells and every other cell untouched.
+- Never modify `index.md` or `log.md`.
+
+### 6. Close the loop (optional)
+To persist enriched descriptions back to the origin system, run the matching connector's ingest with `--sync`:
+- `okf-mysql ingest --sync` / `okf-postgresql ingest --sync` → write table/column comments back to the database.
+- `okf-bigquery ingest --sync` → update dataset/field descriptions.
+- `okf-fs ingest --sync` / `okf-git ingest --sync` → write descriptions to `.okf-metadata.yaml`.
+
+The full flow:
+
 ```
+<connector> produce --profile --sample   →   enrich (this skill)   →   <connector> ingest --sync
+```
+
+## Quality rules (summary)
+
+1. **Ground, don't guess** — evidence in the document backs every word you write.
+2. **One field, surgical edits** — touch `description` (and empty comment cells); preserve everything else byte-for-byte.
+3. **Concise and purposeful** — grain plus purpose, never a restated schema.
+4. **Idempotent** — don't clobber real descriptions; the procedure is safe to re-run.
