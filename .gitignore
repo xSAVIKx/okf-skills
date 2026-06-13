@@ -7,6 +7,10 @@ skills/okf-postgresql/okf-postgresql
 skills/okf-postgresql/okf-postgresql.exe
 skills/okf-bigquery/okf-bigquery
 skills/okf-bigquery/okf-bigquery.exe
+skills/okf-fs/okf-fs
+skills/okf-fs/okf-fs.exe
+skills/okf-git/okf-git
+skills/okf-git/okf-git.exe
 agent/app/okf-reference-agent
 agent/app/okf-reference-agent.exe
 
