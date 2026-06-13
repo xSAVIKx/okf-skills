@@ -96,6 +96,98 @@ type BigqueryResult struct {
 	Message string `json:"message"`
 }
 
+// FsArgs defines the arguments for the fs_connector tool.
+type FsArgs struct {
+	Action    string `json:"action" description:"The action to perform, either 'produce' (extract directory tree to OKF) or 'ingest' (validate/sync description from OKF)."`
+	DirPath   string `json:"dir_path" description:"The path to the local directory."`
+	OutDir    string `json:"out_dir,omitempty" description:"The output directory where the OKF bundle will be created (required for produce)."`
+	BundleDir string `json:"bundle_dir,omitempty" description:"The directory of the existing OKF bundle (required for ingest)."`
+	Sync      bool   `json:"sync,omitempty" description:"If true, synchronizes descriptions back to .okf-metadata.yaml (optional for ingest)."`
+}
+
+// FsResult defines the structure for tool response payloads.
+type FsResult struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+// GitArgs defines the arguments for the git_connector tool.
+type GitArgs struct {
+	Action    string `json:"action" description:"The action to perform, either 'produce' (extract Git repo tree & history to OKF) or 'ingest' (validate/sync descriptions from OKF)."`
+	RepoPath  string `json:"repo_path" description:"The path to the local Git repository."`
+	OutDir    string `json:"out_dir,omitempty" description:"The output directory where the OKF bundle will be created (required for produce)."`
+	BundleDir string `json:"bundle_dir,omitempty" description:"The directory of the existing OKF bundle (required for ingest)."`
+	Sync      bool   `json:"sync,omitempty" description:"If true, synchronizes descriptions back to .okf-metadata.yaml (optional for ingest)."`
+}
+
+// GitResult defines the structure for tool response payloads.
+type GitResult struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+// runFsTool invokes the compiled 'okf-fs' binary in a subprocess.
+func runFsTool(ctx tool.Context, args FsArgs) (FsResult, error) {
+	binaryName := "okf-fs"
+	if runtime.GOOS == "windows" {
+		binaryName = "okf-fs.exe"
+	}
+	binaryPath := filepath.Join("..", "..", "skills", "okf-fs", binaryName)
+	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
+		binaryPath = filepath.Join("skills", "okf-fs", binaryName)
+	}
+
+	cmdArgs := []string{args.Action, "--dir", args.DirPath}
+	if args.Action == "produce" {
+		cmdArgs = append(cmdArgs, "--out", args.OutDir)
+	} else {
+		cmdArgs = append(cmdArgs, "--bundle", args.BundleDir)
+		if args.Sync {
+			cmdArgs = append(cmdArgs, "--sync")
+		}
+	}
+
+	cmd := exec.Command(binaryPath, cmdArgs...)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return FsResult{Success: false, Message: fmt.Sprintf("Error running fs tool: %v. Stderr: %s", err, stderr.String())}, nil
+	}
+	return FsResult{Success: true, Message: stdout.String()}, nil
+}
+
+// runGitTool invokes the compiled 'okf-git' binary in a subprocess.
+func runGitTool(ctx tool.Context, args GitArgs) (GitResult, error) {
+	binaryName := "okf-git"
+	if runtime.GOOS == "windows" {
+		binaryName = "okf-git.exe"
+	}
+	binaryPath := filepath.Join("..", "..", "skills", "okf-git", binaryName)
+	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
+		binaryPath = filepath.Join("skills", "okf-git", binaryName)
+	}
+
+	cmdArgs := []string{args.Action, "--repo", args.RepoPath}
+	if args.Action == "produce" {
+		cmdArgs = append(cmdArgs, "--out", args.OutDir)
+	} else {
+		cmdArgs = append(cmdArgs, "--bundle", args.BundleDir)
+		if args.Sync {
+			cmdArgs = append(cmdArgs, "--sync")
+		}
+	}
+
+	cmd := exec.Command(binaryPath, cmdArgs...)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return GitResult{Success: false, Message: fmt.Sprintf("Error running git tool: %v. Stderr: %s", err, stderr.String())}, nil
+	}
+	return GitResult{Success: true, Message: stdout.String()}, nil
+}
+
 // runSqliteTool invokes the compiled 'okf-sqlite' binary in a subprocess.
 func runSqliteTool(ctx tool.Context, args SqliteArgs) (SqliteResult, error) {
 	binaryName := "okf-sqlite"
@@ -332,13 +424,37 @@ func main() {
 		log.Fatalf("Failed to create bigquery tool: %v", err)
 	}
 
+	// Initialize individual File System tool definition
+	fsTool, err := functiontool.New(
+		functiontool.Config{
+			Name:        "fs_connector",
+			Description: "Runs produce or ingest actions on a local directory structure. Always use this tool when requested to document or sync descriptions for a file system directory.",
+		},
+		runFsTool,
+	)
+	if err != nil {
+		log.Fatalf("Failed to create fs tool: %v", err)
+	}
+
+	// Initialize individual Git tool definition
+	gitTool, err := functiontool.New(
+		functiontool.Config{
+			Name:        "git_connector",
+			Description: "Runs produce or ingest actions on a Git repository. Always use this tool when requested to document or sync descriptions for a Git repository.",
+		},
+		runGitTool,
+	)
+	if err != nil {
+		log.Fatalf("Failed to create git tool: %v", err)
+	}
+
 	// Instantiate the core ADK LLM agent
 	a, err := llmagent.New(llmagent.Config{
 		Name:        "okf-reference-agent",
 		Model:       model,
-		Description: "An AI agent that creates and ingests Open Knowledge Format (OKF) bundles for databases.",
-		Instruction: "You are a professional database documentation agent utilizing the Open Knowledge Format (OKF). You use database connectors (sqlite_connector, mysql_connector, postgresql_connector, bigquery_connector) to produce OKF bundles (metadata markdown files) from databases or ingest and sync comments/descriptions from OKF bundles back into databases. Always explain what you are about to do before invoking any tool.",
-		Tools:       []tool.Tool{sqliteTool, mysqlTool, postgresqlTool, bigqueryTool},
+		Description: "An AI agent that creates and ingests Open Knowledge Format (OKF) bundles for database schemas, filesystems, and git repositories.",
+		Instruction: "You are a professional documentation agent utilizing the Open Knowledge Format (OKF). You use connectors (sqlite_connector, mysql_connector, postgresql_connector, bigquery_connector, fs_connector, git_connector) to produce OKF bundles (metadata markdown files) or ingest and sync comments/descriptions from OKF bundles back. Always explain what you are about to do before invoking any tool.",
+		Tools:       []tool.Tool{sqliteTool, mysqlTool, postgresqlTool, bigqueryTool, fsTool, gitTool},
 	})
 	if err != nil {
 		log.Fatalf("Failed to create agent: %v", err)

@@ -13,6 +13,8 @@ skills/okf-git/okf-git
 skills/okf-git/okf-git.exe
 agent/app/okf-reference-agent
 agent/app/okf-reference-agent.exe
+agent/okf-reference-agent
+agent/okf-reference-agent.exe
 
 # Databases
 *.db
