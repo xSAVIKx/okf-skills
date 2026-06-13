@@ -1,0 +1,355 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"flag"
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"cloud.google.com/go/bigquery"
+	"google.golang.org/api/iterator"
+	"gopkg.in/yaml.v3"
+)
+
+type Frontmatter struct {
+	Type        string    `yaml:"type"`
+	Title       string    `yaml:"title,omitempty"`
+	Description string    `yaml:"description,omitempty"`
+	Resource    string    `yaml:"resource,omitempty"`
+	Tags        []string  `yaml:"tags,omitempty"`
+	Timestamp   string    `yaml:"timestamp,omitempty"`
+}
+
+type ConceptDoc struct {
+	Frontmatter Frontmatter
+	Body        string
+}
+
+type ColumnSpec struct {
+	Name        string
+	Type        string
+	Required    string
+	Description string
+}
+
+func main() {
+	if len(os.Args) < 2 {
+		printUsage()
+		os.Exit(1)
+	}
+
+	cmd := os.Args[1]
+	switch cmd {
+	case "produce":
+		runProduce(os.Args[2:])
+	case "ingest":
+		runIngest(os.Args[2:])
+	default:
+		fmt.Printf("Unknown command: %s\n", cmd)
+		printUsage()
+		os.Exit(1)
+	}
+}
+
+func printUsage() {
+	fmt.Println("Usage: okf-bigquery <command> [options]")
+	fmt.Println("Commands:")
+	fmt.Println("  produce  - Create OKF bundle from BigQuery dataset")
+	fmt.Println("  ingest   - Sync OKF bundle descriptions back to BigQuery")
+}
+
+func runProduce(args []string) {
+	fs := flag.NewFlagSet("produce", flag.ExitOnError)
+	projectID := fs.String("project", "", "GCP Project ID (required)")
+	datasetID := fs.String("dataset", "", "BigQuery Dataset ID (required)")
+	outDir := fs.String("out", "", "Output bundle directory (required)")
+	tablesStr := fs.String("tables", "", "Filter tables (comma-separated, optional)")
+	fs.Parse(args)
+
+	if *projectID == "" || *datasetID == "" || *outDir == "" {
+		fs.Usage()
+		os.Exit(1)
+	}
+
+	ctx := context.Background()
+	client, err := bigquery.NewClient(ctx, *projectID)
+	if err != nil {
+		log.Fatalf("Failed to initialize BigQuery client: %v", err)
+	}
+	defer client.Close()
+
+	var filterTables map[string]bool
+	if *tablesStr != "" {
+		filterTables = make(map[string]bool)
+		for _, t := range strings.Split(*tablesStr, ",") {
+			filterTables[strings.TrimSpace(t)] = true
+		}
+	}
+
+	tablesDir := filepath.Join(*outDir, "tables")
+	if err := os.MkdirAll(tablesDir, 0755); err != nil {
+		log.Fatalf("Failed to create tables directory: %v", err)
+	}
+
+	ds := client.Dataset(*datasetID)
+	dsMeta, err := ds.Metadata(ctx)
+	if err != nil {
+		log.Fatalf("Failed to query dataset metadata: %v", err)
+	}
+
+	timestamp := time.Now().Format(time.RFC3339)
+	var tables []string
+
+	// List tables in dataset
+	it := ds.Tables(ctx)
+	for {
+		t, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Fatalf("Table list iterator error: %v", err)
+		}
+
+		if filterTables != nil && !filterTables[t.TableID] {
+			continue
+		}
+
+		tMeta, err := t.Metadata(ctx)
+		if err != nil {
+			log.Fatalf("Failed to get table metadata for %s: %v", t.TableID, err)
+		}
+
+		tables = append(tables, t.TableID)
+
+		var body bytes.Buffer
+		body.WriteString("# Columns\n\n")
+		body.WriteString("| Name | Type | Required | Description |\n")
+		body.WriteString("| --- | --- | --- | --- |\n")
+		for _, field := range tMeta.Schema {
+			reqStr := "Nullable"
+			if field.Required {
+				reqStr = "Required"
+			} else if field.Repeated {
+				reqStr = "Repeated"
+			}
+			fmt.Fprintf(&body, "| %s | %s | %s | %s |\n",
+				field.Name, field.Type, reqStr, field.Description)
+		}
+
+		doc := ConceptDoc{
+			Frontmatter: Frontmatter{
+				Type:        "BigQuery Table",
+				Title:       t.TableID,
+				Description: tMeta.Description,
+				Resource:    fmt.Sprintf("bigquery://%s/%s/%s", *projectID, *datasetID, t.TableID),
+				Tags:        []string{"bigquery", "table"},
+				Timestamp:   timestamp,
+			},
+			Body: body.String(),
+		}
+
+		filePath := filepath.Join(tablesDir, t.TableID+".md")
+		if err := writeConceptDoc(filePath, doc); err != nil {
+			log.Fatalf("Failed to write table %s document: %v", t.TableID, err)
+		}
+		fmt.Printf("Produced concept doc: %s\n", filePath)
+	}
+
+	// Produce index.md
+	var indexBody bytes.Buffer
+	fmt.Fprintf(&indexBody, "# BigQuery Dataset: %s.%s\n\n", *projectID, *datasetID)
+	indexBody.WriteString("This OKF bundle represents the tables and schema descriptions extracted from BigQuery.\n\n")
+	indexBody.WriteString("## Tables\n\n")
+	for _, table := range tables {
+		fmt.Fprintf(&indexBody, "- [%s](tables/%s.md) - BigQuery table %s\n", table, table, table)
+	}
+
+	indexDoc := ConceptDoc{
+		Frontmatter: Frontmatter{
+			Type:        "Dataset",
+			Title:       *datasetID,
+			Description: dsMeta.Description,
+			Timestamp:   timestamp,
+		},
+		Body: indexBody.String(),
+	}
+	if err := writeConceptDoc(filepath.Join(*outDir, "index.md"), indexDoc); err != nil {
+		log.Fatalf("Failed to write index.md: %v", err)
+	}
+	fmt.Println("Produced index.md successfully.")
+}
+
+func runIngest(args []string) {
+	fs := flag.NewFlagSet("ingest", flag.ExitOnError)
+	projectID := fs.String("project", "", "GCP Project ID (required)")
+	datasetID := fs.String("dataset", "", "BigQuery Dataset ID (required)")
+	bundleDir := fs.String("bundle", "", "OKF bundle path (required)")
+	sync := flag.Bool("sync", false, "Write descriptions back to BigQuery (optional)")
+	fs.Parse(args)
+
+	if *projectID == "" || *datasetID == "" || *bundleDir == "" {
+		fs.Usage()
+		os.Exit(1)
+	}
+
+	ctx := context.Background()
+	client, err := bigquery.NewClient(ctx, *projectID)
+	if err != nil {
+		log.Fatalf("Failed to initialize BigQuery client: %v", err)
+	}
+	defer client.Close()
+
+	tablesDir := filepath.Join(*bundleDir, "tables")
+	if _, err := os.Stat(tablesDir); os.IsNotExist(err) {
+		log.Fatalf("Tables directory not found in bundle: %s", tablesDir)
+	}
+
+	files, err := os.ReadDir(tablesDir)
+	if err != nil {
+		log.Fatalf("Failed to read tables: %v", err)
+	}
+
+	ds := client.Dataset(*datasetID)
+
+	for _, file := range files {
+		if file.IsDir() || !strings.HasSuffix(file.Name(), ".md") {
+			continue
+		}
+
+		filePath := filepath.Join(tablesDir, file.Name())
+		doc, err := readConceptDoc(filePath)
+		if err != nil {
+			log.Fatalf("Failed to read concept doc %s: %v", filePath, err)
+		}
+
+		tableName := doc.Frontmatter.Title
+		if tableName == "" {
+			tableName = strings.TrimSuffix(file.Name(), ".md")
+		}
+
+		t := ds.Table(tableName)
+		tMeta, err := t.Metadata(ctx)
+		if err != nil {
+			fmt.Printf("Table '%s' does not exist in BigQuery dataset.\n", tableName)
+			continue
+		}
+
+		var update bigquery.TableMetadataToUpdate
+		var newSchema bigquery.Schema
+		metadataUpdated := false
+		schemaUpdated := false
+
+		// 1. Sync Table Description
+		okfTableDesc := strings.TrimSpace(doc.Frontmatter.Description)
+		if okfTableDesc != tMeta.Description {
+			fmt.Printf("Table '%s' description mismatch:\n  OKF: %q\n  BQ:  %q\n", tableName, okfTableDesc, tMeta.Description)
+			update.Description = okfTableDesc
+			metadataUpdated = true
+		}
+
+		// 2. Sync Field Descriptions
+		parsedCols := parseColumnsFromMarkdown(doc.Body)
+		parsedColsMap := make(map[string]string)
+		for _, col := range parsedCols {
+			parsedColsMap[strings.ToLower(col.Name)] = col.Description
+		}
+
+		for _, field := range tMeta.Schema {
+			okfDesc, found := parsedColsMap[strings.ToLower(field.Name)]
+			if found && okfDesc != field.Description {
+				fmt.Printf("Table '%s' field '%s' description mismatch:\n  OKF: %q\n  BQ:  %q\n", tableName, field.Name, okfDesc, field.Description)
+				field.Description = okfDesc
+				schemaUpdated = true
+			}
+			newSchema = append(newSchema, field)
+		}
+
+		if schemaUpdated {
+			update.Schema = newSchema
+			metadataUpdated = true
+		}
+
+		if metadataUpdated {
+			if *sync {
+				_, err := t.Update(ctx, update, tMeta.ETag)
+				if err != nil {
+					log.Fatalf("Failed to update BigQuery table %s metadata: %v", tableName, err)
+				}
+				fmt.Printf("  -> Successfully updated metadata in BigQuery for table '%s'.\n", tableName)
+			}
+		}
+	}
+	fmt.Println("OKF bundle ingestion / BigQuery sync finished.")
+}
+
+func parseColumnsFromMarkdown(body string) []ColumnSpec {
+	var cols []ColumnSpec
+	lines := strings.Split(body, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "|") || !strings.HasSuffix(line, "|") {
+			continue
+		}
+		if strings.Contains(line, "---") || strings.Contains(strings.ToLower(line), "type") {
+			continue
+		}
+
+		parts := strings.Split(line, "|")
+		if len(parts) < 5 {
+			continue
+		}
+
+		// Format: | Name | Type | Required | Description |
+		cols = append(cols, ColumnSpec{
+			Name:        strings.TrimSpace(parts[1]),
+			Type:        strings.TrimSpace(parts[2]),
+			Required:    strings.TrimSpace(parts[3]),
+			Description: strings.TrimSpace(parts[4]),
+		})
+	}
+	return cols
+}
+
+func writeConceptDoc(filePath string, doc ConceptDoc) error {
+	var buf bytes.Buffer
+	buf.WriteString("---\n")
+	fmBytes, err := yaml.Marshal(doc.Frontmatter)
+	if err != nil {
+		return err
+	}
+	buf.Write(fmBytes)
+	buf.WriteString("---\n")
+	buf.WriteString(doc.Body)
+	return os.WriteFile(filePath, buf.Bytes(), 0644)
+}
+
+func readConceptDoc(filePath string) (*ConceptDoc, error) {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	parts := bytes.SplitN(content, []byte("---\n"), 3)
+	if len(parts) < 3 {
+		parts = bytes.SplitN(content, []byte("---\r\n"), 3)
+		if len(parts) < 3 {
+			return nil, fmt.Errorf("invalid OKF concept file format: missing frontmatter boundaries")
+		}
+	}
+
+	var fm Frontmatter
+	if err := yaml.Unmarshal(parts[1], &fm); err != nil {
+		return nil, err
+	}
+
+	return &ConceptDoc{
+		Frontmatter: fm,
+		Body:        string(parts[2]),
+	}, nil
+}
