@@ -33,6 +33,9 @@ func RenderProfileSection(profiles []ColumnProfile) string {
 // RenderSampleSection renders sample rows as a markdown table suitable for
 // embedding via UpsertSection(body, "Sample", RenderSampleSection(...)).
 func RenderSampleSection(headers []string, rows [][]string) string {
+	if len(headers) == 0 {
+		return ""
+	}
 	var b strings.Builder
 	sani := make([]string, len(headers))
 	seps := make([]string, len(headers))
@@ -43,9 +46,11 @@ func RenderSampleSection(headers []string, rows [][]string) string {
 	b.WriteString("| " + strings.Join(sani, " | ") + " |\n")
 	b.WriteString("| " + strings.Join(seps, " | ") + " |\n")
 	for _, r := range rows {
-		cells := make([]string, len(r))
-		for i, c := range r {
-			cells[i] = SanitizeCell(c)
+		cells := make([]string, len(headers))
+		for i := range headers {
+			if i < len(r) {
+				cells[i] = SanitizeCell(r[i])
+			}
 		}
 		b.WriteString("| " + strings.Join(cells, " | ") + " |\n")
 	}
@@ -55,6 +60,7 @@ func RenderSampleSection(headers []string, rows [][]string) string {
 // SanitizeCell makes a value safe for a single markdown table cell by escaping
 // pipes and flattening newlines.
 func SanitizeCell(s string) string {
+	s = strings.ReplaceAll(s, "\r\n", " ")
 	s = strings.ReplaceAll(s, "\r", " ")
 	s = strings.ReplaceAll(s, "\n", " ")
 	s = strings.ReplaceAll(s, "|", "\\|")
