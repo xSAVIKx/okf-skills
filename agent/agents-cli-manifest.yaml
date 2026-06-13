@@ -1,4 +1,0 @@
-name: okf-agent
-agent_directory: app
-create_params:
-  agent: adk

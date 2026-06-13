@@ -2,14 +2,13 @@ go 1.26
 
 use (
 	./okf-go
-	./skills/okf-sqlite
-	./skills/okf-mysql
-	./skills/okf-postgresql
 	./skills/okf-bigquery
-	./agent/app
-	./tests
+	./skills/okf-enrich
 	./skills/okf-fs
 	./skills/okf-git
 	./skills/okf-mcp
-	./skills/okf-enrich
+	./skills/okf-mysql
+	./skills/okf-postgresql
+	./skills/okf-sqlite
+	./tests
 )

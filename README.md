@@ -1,8 +1,8 @@
 # Open Knowledge Format (OKF) Skills Registry
 
-This repository acts as a central registry of agent skills for producing and ingesting Open Knowledge Format (OKF) bundles. OKF is a simple, human- and agent-friendly specification for documenting data assets (schemas, comments, constraints, and metrics) as a directory of Markdown files with YAML frontmatter.
+This repository is a central registry of standalone CLI skills for producing and ingesting Open Knowledge Format (OKF) bundles. OKF is a simple, human- and agent-friendly specification for documenting data assets (schemas, comments, constraints, and metrics) as a directory of Markdown files with YAML frontmatter.
 
-Each skill in this repository serves as a connector to a specific data source.
+Each skill is a self-contained Go module that compiles to a single portable binary.
 
 ## Registry Structure
 
@@ -11,6 +11,8 @@ okf-skills-registry/
 ├── AGENTS.md                      # Developer agent guide
 ├── README.md                      # This documentation
 ├── go.work                        # Go workspace mapping all sub-modules
+├── Makefile                       # Build, test, install shortcuts
+├── skills.sh                      # Build and install all skills to a directory
 ├── okf-go/                        # Shared Go library (OKF spec, YAML/MD serialization)
 │   ├── okf.go                     # Core types & helpers (Frontmatter, ConceptDoc)
 │   ├── okf_test.go                # Unit tests
@@ -22,14 +24,9 @@ okf-skills-registry/
 │   ├── okf-bigquery/              # Google Cloud BigQuery metadata connector
 │   ├── okf-fs/                    # Local filesystem connector
 │   ├── okf-git/                   # Git repository connector
+│   ├── okf-enrich/                # LLM enrichment skill
+│   ├── okf-mcp/                   # Generic MCP server (exposes all installed skills as MCP tools)
 │   └── okf-reader/                # Ingestion guidance skill (Instructions-only)
-├── agent/                         # OKF Agent — LLM-powered orchestrator
-│   ├── agents-cli-manifest.yaml   # Google Agents CLI project descriptor
-│   ├── Makefile                   # Agent build, run, and clean scripts
-│   └── app/                       # Go ADK agent source code
-│       ├── main.go                # Entrypoint, CLI chat loop, session management
-│       ├── agent.go               # LLM agent config, prompts, tool registration
-│       └── tools.go               # Subprocess runner wrappers for each skill
 └── tests/                         # Integration test suite
     ├── docker-compose.yml         # MySQL & PostgreSQL containers
     ├── helpers_test.go            # Shared test utilities
@@ -51,6 +48,8 @@ Each folder under `skills/` is a self-contained Go module containing:
 - `SKILL.md`: Instructs any coding agent (like Claude Code, Cursor, Copilot) how to execute the connector.
 - Go source code (`main.go` and `go.mod`): Compiles into a single portable binary.
 
+Every skill is self-describing via a `schema` subcommand that emits JSON describing its commands, flags, and parameters.
+
 ### Available Connectors
 
 | Skill | Data Source | Key Feature |
@@ -62,26 +61,52 @@ Each folder under `skills/` is a self-contained Go module containing:
 | `okf-fs` | Local filesystem | `.okfignore` & `.okf-metadata.yaml` support |
 | `okf-git` | Git repositories | Commit history & file-level metadata |
 
+### Commands
+
+All connectors support three subcommands:
+- **`produce`**: Extracts metadata from the data source and generates an OKF bundle. The four SQL connectors (`okf-sqlite`, `okf-mysql`, `okf-postgresql`, `okf-bigquery`) also support `--sample` and `--profile` flags on `produce`.
+- **`ingest`**: Reads an OKF bundle and compares/synchronizes descriptions back to the source.
+- **`schema`**: Emits a JSON description of the skill's commands, flags, and parameters.
+
 ### How to Build a Skill
+
 Navigate to the skill directory and run:
 ```bash
-go build -o okf-<connector> main.go
+go build ./...
 ```
-
-### Commands
-All connectors support two subcommands:
-- **`produce`**: Extracts metadata from the data source and generates an OKF bundle.
-- **`ingest`**: Reads an OKF bundle and compares/synchronizes descriptions back to the source.
 
 ---
 
-## 2. Ingestion Guidance Skill (`okf-reader`)
+## 2. LLM Enrichment Skill (`okf-enrich`)
+
+`okf-enrich` uses an LLM to add or improve descriptions in an OKF bundle. Subcommands:
+- **`enrich`**: Reads an OKF bundle and fills in missing or incomplete descriptions using an LLM.
+- **`schema`**: Emits the skill's JSON schema.
+
+---
+
+## 3. MCP Server (`okf-mcp`)
+
+`okf-mcp` is a generic MCP (Model Context Protocol) server that discovers all installed `okf-*` skill binaries and exposes their commands as MCP tools to any MCP-capable harness (Claude Code, Gemini CLI, etc.).
+
+No bespoke agent is required. Point any MCP-capable harness at `okf-mcp`:
+
+```bash
+okf-mcp                                    # discovers skills on PATH
+okf-mcp --skills-dir /path/to/skills       # explicit skills directory
+```
+
+Once registered as an MCP server, every connector and enrichment command appears as a callable tool.
+
+---
+
+## 4. Ingestion Guidance Skill (`okf-reader`)
 
 Located in `skills/okf-reader/`, this is an instructions-only skill (`SKILL.md`). It teaches AI agents how to read and navigate OKF bundles efficiently, minimizing context token overhead and preventing slow, recursive directory reads.
 
 ---
 
-## 3. Shared Library (`okf-go/`)
+## 5. Shared Library (`okf-go/`)
 
 The `okf-go` module provides shared Go types and helpers used by all skills:
 - `Frontmatter` / `ConceptDoc` structs for OKF YAML+Markdown serialization
@@ -93,32 +118,26 @@ All skills import this module via a local `replace` directive in their `go.mod`.
 
 ---
 
-## 4. OKF Agent (`agent/`)
+## 6. Installing Skills
 
-The OKF Agent under `agent/` is built using the **Google Agent Development Kit (ADK) for Go** (`google.golang.org/adk`) and is fully compatible with the **Google Agents CLI** (`agents-cli`).
+Use `skills.sh` (or `make install`) to build all skills and install them into a directory:
 
-It registers all connector skills as function tools (`sqlite_connector`, `mysql_connector`, `postgresql_connector`, `bigquery_connector`, `fs_connector`, `git_connector`) and accepts natural language instructions to automatically perform OKF extraction and synchronization.
+```bash
+# Install to $HOME/.local/bin (default)
+./skills.sh
 
-### How to Run
-Ensure you have set your `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) and run:
-```bash
-cd agent
-make run
+# Install to a custom directory
+./skills.sh /usr/local/bin
+
+# Or via make
+make install
 ```
-Or build the binary and run directly:
-```bash
-cd agent
-make build
-./okf-agent.exe
-```
-Or start the Agents CLI playground:
-```bash
-agents-cli playground
-```
+
+After installation, ensure the directory is on your `PATH`. Then either invoke skills directly (`okf-sqlite produce ...`) or run `okf-mcp` to expose all skills as MCP tools to your coding agent.
 
 ---
 
-## 5. Local Testing Environment
+## 7. Local Testing Environment
 
 Integration tests live in `tests/` and cover all connectors. A `docker-compose.yml` is provided to spin up MySQL and PostgreSQL instances with pre-loaded mock databases:
 
@@ -128,11 +147,10 @@ cd tests
 docker-compose up -d
 
 # Build all skill binaries (required by integration tests)
-cd ../agent
-make skills-build
+make build
 
 # Run the full integration test suite
-cd ../tests
+cd tests
 go test -v .
 ```
 
