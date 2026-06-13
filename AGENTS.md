@@ -87,6 +87,11 @@ The reference agent under `agent/` exposes all database, filesystem, and Git con
 - **Function Tools**: Exposes `sqlite_connector`, `mysql_connector`, `postgresql_connector`, `bigquery_connector`, `fs_connector`, and `git_connector`.
 - **Subprocess Execution**: The agent wraps the compiled binaries under `skills/` using `exec.Command`, passing structured JSON parameters received from Gemini tool calls to the underlying executables.
 - **Manifest Integration**: The agent is designed to work with `agents-cli`. Ensure any new commands or tool parameters align with [agents-cli-manifest.yaml](file:///d:/AntigravityProjects/okf-skills-registry/agent/agents-cli-manifest.yaml).
+- **Code Modularization**: As the agent grows, keep `agent/app/` structured and modular rather than putting everything in `main.go`:
+  - `main.go`: Application entrypoint, CLI scanner/chat loop, session initialization, and runtime config.
+  - `agent.go`: LLM agent build definitions, core prompts, model specifications, and tool list registration.
+  - `tools.go`: Go argument/result structs and subprocess runner execution wrappers.
+  - `web_tools.go`: Dedicated handlers for web crawling and search API integrations.
 
 ---
 
