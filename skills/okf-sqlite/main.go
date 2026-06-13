@@ -67,6 +67,8 @@ func runProduce(args []string) {
 	dbPath := fs.String("db", "", "Path to SQLite database file (required)")
 	outDir := fs.String("out", "", "Path to output OKF bundle directory (required)")
 	tablesStr := fs.String("tables", "", "Comma-separated list of tables to extract (optional)")
+	sample := fs.Int("sample", 0, "Number of sample rows to embed per table (0 = none)")
+	profile := fs.Bool("profile", false, "Compute per-column statistics and embed a Data Profile section")
 	fs.Parse(args)
 
 	if *dbPath == "" || *outDir == "" {
@@ -139,6 +141,22 @@ func runProduce(args []string) {
 			fmt.Fprintf(&body, "| %s | %s | %s | %s | %s |\n", col.Name, col.Type, pkStr, nullStr, col.Default)
 		}
 
+		bodyStr := body.String()
+		if *profile {
+			profiles, err := profileTable(db, table, cols)
+			if err != nil {
+				log.Fatalf("Failed to profile table %s: %v", table, err)
+			}
+			bodyStr = okf.UpsertSection(bodyStr, "Data Profile", okf.RenderProfileSection(profiles))
+		}
+		if *sample > 0 {
+			headers, sampleRows, err := sampleTable(db, table, *sample)
+			if err != nil {
+				log.Fatalf("Failed to sample table %s: %v", table, err)
+			}
+			bodyStr = okf.UpsertSection(bodyStr, "Sample", okf.RenderSampleSection(headers, sampleRows))
+		}
+
 		doc := okf.ConceptDoc{
 			Frontmatter: okf.Frontmatter{
 				Type:        "SQLite Table",
@@ -148,7 +166,7 @@ func runProduce(args []string) {
 				Tags:        []string{"sqlite", "table"},
 				Timestamp:   timestamp,
 			},
-			Body: body.String(),
+			Body: bodyStr,
 		}
 
 		filePath := filepath.Join(tablesDir, table+".md")
