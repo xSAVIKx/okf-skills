@@ -8,4 +8,5 @@ use (
 	./skills/okf-bigquery
 	./agent/app
 	./tests
+	./skills/okf-fs
 )
