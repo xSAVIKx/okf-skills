@@ -288,10 +288,10 @@ func runIngest(args []string) {
 		if okfTableComment != dbTableComment {
 			fmt.Printf("Table '%s' comment mismatch:\n  OKF: %q\n  DB:  %q\n", tableName, okfTableComment, dbTableComment)
 			if *sync {
-				query := fmt.Sprintf("COMMENT ON TABLE %s.%s IS $1", *schemaName, tableName)
-				_, err := db.Exec(query, okfTableComment)
+				query := fmt.Sprintf("COMMENT ON TABLE %s.%s IS '%s'", *schemaName, tableName, escapeString(okfTableComment))
+				_, err := db.Exec(query)
 				if err != nil {
-					log.Fatalf("Failed to update comment on table %s: %v", tableName, err)
+					log.Fatalf("Failed to update comment on table %s: %v. Query: %s", tableName, err, query)
 				}
 				fmt.Printf("  -> Successfully updated comment on table '%s'.\n", tableName)
 			}
@@ -322,10 +322,10 @@ func runIngest(args []string) {
 			if okfComment != dbComment {
 				fmt.Printf("Table '%s' column '%s' comment mismatch:\n  OKF: %q\n  DB:  %q\n", tableName, col.Name, okfComment, dbComment)
 				if *sync {
-					query := fmt.Sprintf("COMMENT ON COLUMN %s.%s.%s IS $1", *schemaName, tableName, col.Name)
-					_, err := db.Exec(query, okfComment)
+					query := fmt.Sprintf("COMMENT ON COLUMN %s.%s.%s IS '%s'", *schemaName, tableName, col.Name, escapeString(okfComment))
+					_, err := db.Exec(query)
 					if err != nil {
-						log.Fatalf("Failed to update column comment for %s.%s: %v", tableName, col.Name, err)
+						log.Fatalf("Failed to update column comment for %s.%s: %v. Query: %s", tableName, col.Name, err, query)
 					}
 					fmt.Printf("  -> Successfully updated comment on column '%s.%s'.\n", tableName, col.Name)
 				}
@@ -364,4 +364,7 @@ func parseColumnsFromMarkdown(body string) []ColumnSpec {
 	return cols
 }
 
-
+// escapeString escapes single quotes for safe inclusion in PostgreSQL comments.
+func escapeString(val string) string {
+	return strings.ReplaceAll(val, "'", "''")
+}

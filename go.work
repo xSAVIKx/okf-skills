@@ -7,4 +7,5 @@ use (
 	./skills/okf-postgresql
 	./skills/okf-bigquery
 	./agent/app
+	./tests
 )
