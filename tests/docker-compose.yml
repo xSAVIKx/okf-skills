@@ -10,7 +10,7 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      - ./init_mysql.sql:/docker-entrypoint-initdb.d/init_mysql.sql
+      - ./mysql/init_mysql.sql:/docker-entrypoint-initdb.d/init_mysql.sql
     restart: always
 
   postgres:
@@ -23,5 +23,5 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./init_postgres.sql:/docker-entrypoint-initdb.d/init_postgres.sql
+      - ./postgres/init_postgres.sql:/docker-entrypoint-initdb.d/init_postgres.sql
     restart: always
