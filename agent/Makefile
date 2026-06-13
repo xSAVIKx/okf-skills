@@ -14,6 +14,7 @@ clean:
 	cd ../skills/okf-bigquery && del /q okf-bigquery.exe 2>nul || true
 	cd ../skills/okf-fs && del /q okf-fs.exe 2>nul || true
 	cd ../skills/okf-git && del /q okf-git.exe 2>nul || true
+	cd ../skills/okf-mcp && del /q okf-mcp.exe 2>nul || true
 
 skills-build:
 	cd ../skills/okf-sqlite && go build -o okf-sqlite.exe main.go
@@ -22,3 +23,4 @@ skills-build:
 	cd ../skills/okf-bigquery && go build -o okf-bigquery.exe main.go
 	cd ../skills/okf-fs && go build -o okf-fs.exe main.go
 	cd ../skills/okf-git && go build -o okf-git.exe main.go
+	cd ../skills/okf-mcp && go build -o okf-mcp.exe .
