@@ -18,6 +18,7 @@ agent/app/okf-reference-agent.exe
 # Test outputs
 test-bundle/
 test-bundle-check/
+scratch/
 tmp/
 .env
 
