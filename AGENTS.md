@@ -13,7 +13,6 @@ okf-skills-registry/
 ├── AGENTS.md                      # This guide
 ├── README.md                      # General user-facing overview
 ├── go.work                        # Go workspace defining monorepo modules
-├── docker-compose.yml             # MySQL & PostgreSQL containers for local testing
 ├── okf-go/                        # Shared Go library (YAML/MD serialization, types)
 ├── skills/                        # Standalone Go-based CLI skills
 │   ├── okf-sqlite/                # SQLite connector (CGO-free)
@@ -21,10 +20,16 @@ okf-skills-registry/
 │   ├── okf-postgresql/            # PostgreSQL connector
 │   ├── okf-bigquery/              # GCP BigQuery connector
 │   └── okf-reader/                # Ingestion guidance skill (Instructions-only)
-└── agent/                         # Reference agent wrapping skills as tools
-    ├── agents-cli-manifest.yaml   # Google Agents CLI manifest
-    ├── Makefile                   # Agent runner and compilation scripts
-    └── app/                       # Go ADK agent source code
+├── agent/                         # Reference agent wrapping skills as tools
+│   ├── agents-cli-manifest.yaml   # Google Agents CLI manifest
+│   ├── Makefile                   # Agent runner and compilation scripts
+│   └── app/                       # Go ADK agent source code
+└── tests/                         # Integration test configurations and fixtures
+    ├── docker-compose.yml         # MySQL & PostgreSQL containers
+    ├── mysql/
+    │   └── init_mysql.sql         # Sample MySQL schema with comments
+    └── postgres/
+        └── init_postgres.sql      # Sample PostgreSQL schema with comments
 ```
 
 ---
@@ -81,8 +86,8 @@ The reference agent under `agent/` exposes the database skills as function tools
 When adding a new database connector or modifying an existing one, follow these steps:
 1. **Initialize Module**: Create `skills/okf-<name>/go.mod` and add it to `go.work` at the root.
 2. **Update Workspace Dependencies**: Run `go mod tidy` in the new skill directory, ensuring it links to `okf-go` locally.
-3. **Local Testing**: Run `docker-compose up -d` to launch test databases. Test the extraction (`produce`) and ingestion/synchronization (`ingest -sync`) against the live container.
+3. **Local Testing**: Run `cd tests && docker-compose up -d` to launch test databases. Test the extraction (`produce`) and ingestion/synchronization (`ingest -sync`) against the live container.
 4. **Compile Binaries**: Recompile all binaries. Verify they compile without errors.
 5. **Agent Integration**: Expose the new skill as a tool in the reference agent `app/main.go` and test it in the Agents CLI playground.
-6. **Code Clean-up**: Shut down database containers via `docker-compose down`.
+6. **Code Clean-up**: Shut down database containers via `cd tests && docker-compose down`.
 7. **Commit Conventions**: Use conventional commit messages (`feat: ...`, `fix: ...`, `refactor: ...`, `docs: ...`) and commit modularly.

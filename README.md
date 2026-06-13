@@ -9,25 +9,30 @@ Each skill in this repository serves as a connector to a specific data source.
 ```
 okf-skills-registry/
 ├── README.md                      # This documentation
-├── docker-compose.yml             # Local MySQL & PostgreSQL containers for testing
-├── init_mysql.sql                 # Sample MySQL schema with comments
-├── init_postgres.sql              # Sample PostgreSQL schema with comments
+├── go.work                        # Go workspace mapping all sub-modules
 ├── skills/
 │   ├── okf-sqlite/                # SQLite connector (Go-native, zero setup)
 │   ├── okf-mysql/                 # MySQL schema & comment connector (Go)
 │   ├── okf-postgresql/            # PostgreSQL schema & comment connector (Go)
 │   ├── okf-bigquery/              # Google Cloud BigQuery metadata connector (Go)
 │   └── okf-reader/                # Ingestion guidance skill (Instructions-only)
-└── agent/
-    ├── agents-cli-manifest.yaml   # Google Agents CLI project descriptor
-    ├── Makefile                   # Agent runner and builder commands
-    └── app/
-        └── main.go                # Reference agent code using Go ADK (google/adk-go)
+├── agent/
+│   ├── agents-cli-manifest.yaml   # Google Agents CLI project descriptor
+│   ├── Makefile                   # Agent runner and builder commands
+│   └── app/
+│       └── main.go                # Reference agent code using Go ADK (google/adk-go)
+└── tests/                         # Integration test configurations and fixtures
+    ├── docker-compose.yml         # MySQL & PostgreSQL containers
+    ├── mysql/
+    │   └── init_mysql.sql         # Sample MySQL schema with comments
+    └── postgres/
+        └── init_postgres.sql      # Sample PostgreSQL schema with comments
 ```
 
 ---
 
 ## 1. Standalone Skills (`skills/`)
+
 
 Each folder under `skills/` is a self-contained module containing:
 - `SKILL.md`: Instructs any coding agent (like Claude Code, Cursor, Copilot) how to execute the connector.
@@ -73,8 +78,9 @@ agents-cli playground
 
 ## 4. Local Testing Environment
 
-A `docker-compose.yml` is provided at the root to spin up MySQL and PostgreSQL instances with pre-loaded mock databases:
+A `docker-compose.yml` is provided in the `tests/` directory to spin up MySQL and PostgreSQL instances with pre-loaded mock databases:
 ```bash
+cd tests
 docker-compose up -d
 ```
 You can then compile and run `okf-mysql` or `okf-postgresql` against these containers to test extracting and updating database metadata.
