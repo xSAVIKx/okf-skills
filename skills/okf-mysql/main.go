@@ -230,7 +230,7 @@ func runIngest(args []string) {
 	password := fs.String("password", "", "MySQL password (required)")
 	dbName := fs.String("db", "", "MySQL database schema (required)")
 	bundleDir := fs.String("bundle", "", "OKF bundle path (required)")
-	sync := flag.Bool("sync", false, "Write modifications back to MySQL (optional)")
+	sync := fs.Bool("sync", false, "Write modifications back to MySQL (optional)")
 	fs.Parse(args)
 
 	if *user == "" || *password == "" || *dbName == "" || *bundleDir == "" {
@@ -296,9 +296,10 @@ func runIngest(args []string) {
 		if okfTableComment != dbTableComment {
 			fmt.Printf("Table '%s' comment mismatch:\n  OKF: %q\n  DB:  %q\n", tableName, okfTableComment, dbTableComment)
 			if *sync {
-				_, err := db.Exec(fmt.Sprintf("ALTER TABLE `%s` COMMENT = ?", tableName), okfTableComment)
+				query := fmt.Sprintf("ALTER TABLE `%s` COMMENT = '%s'", tableName, escapeString(okfTableComment))
+				_, err := db.Exec(query)
 				if err != nil {
-					log.Fatalf("Failed to update comment on table %s: %v", tableName, err)
+					log.Fatalf("Failed to update comment on table %s: %v. Query: %s", tableName, err, query)
 				}
 				fmt.Printf("  -> Successfully updated comment on table '%s'.\n", tableName)
 			}
@@ -336,10 +337,10 @@ func runIngest(args []string) {
 					if dbDflt != "" && dbDflt != "NULL" {
 						dfltSpec = "DEFAULT " + dbDflt
 					}
-					query := fmt.Sprintf("ALTER TABLE `%s` MODIFY COLUMN `%s` %s %s %s %s COMMENT ?",
-						tableName, col.Name, dbColType, nullSpec, dfltSpec, dbExtra)
+					query := fmt.Sprintf("ALTER TABLE `%s` MODIFY COLUMN `%s` %s %s %s %s COMMENT '%s'",
+						tableName, col.Name, dbColType, nullSpec, dfltSpec, dbExtra, escapeString(okfComment))
 
-					_, err := db.Exec(query, okfComment)
+					_, err := db.Exec(query)
 					if err != nil {
 						log.Fatalf("Failed to update column comment for %s.%s: %v. Query: %s", tableName, col.Name, err, query)
 					}
@@ -383,4 +384,9 @@ func parseColumnsFromMarkdown(body string) []ColumnSpec {
 	return cols
 }
 
-
+// escapeString escapes single quotes and backslashes for safe inclusion in SQL queries.
+func escapeString(val string) string {
+	val = strings.ReplaceAll(val, "\\", "\\\\")
+	val = strings.ReplaceAll(val, "'", "''")
+	return val
+}
