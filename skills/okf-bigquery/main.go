@@ -1,3 +1,6 @@
+// Package main implements the Google Cloud BigQuery OKF (Open Knowledge Format) connector.
+// It retrieves dataset schemas and table/field descriptions from BigQuery,
+// generating OKF bundles, and syncs OKF edits back into BigQuery metadata.
 package main
 
 import (
@@ -16,27 +19,31 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Frontmatter represents the YAML metadata block at the top of an OKF concept document.
 type Frontmatter struct {
-	Type        string    `yaml:"type"`
-	Title       string    `yaml:"title,omitempty"`
-	Description string    `yaml:"description,omitempty"`
-	Resource    string    `yaml:"resource,omitempty"`
-	Tags        []string  `yaml:"tags,omitempty"`
-	Timestamp   string    `yaml:"timestamp,omitempty"`
+	Type        string    `yaml:"type"`                  // Concept kind (e.g. BigQuery Table)
+	Title       string    `yaml:"title,omitempty"`       // Table ID
+	Description string    `yaml:"description,omitempty"` // Table description
+	Resource    string    `yaml:"resource,omitempty"`    // Canonical database URI for the table
+	Tags        []string  `yaml:"tags,omitempty"`        // Tags for classification
+	Timestamp   string    `yaml:"timestamp,omitempty"`   // Timestamp of extraction
 }
 
+// ConceptDoc represents a parsed or constructed OKF markdown document.
 type ConceptDoc struct {
 	Frontmatter Frontmatter
 	Body        string
 }
 
+// ColumnSpec represents the schema properties of a BigQuery table column/field.
 type ColumnSpec struct {
-	Name        string
-	Type        string
-	Required    string
-	Description string
+	Name        string // Field name
+	Type        string // Field data type
+	Required    string // Field mode (Required, Nullable, or Repeated)
+	Description string // Field description/comment
 }
 
+// main is the CLI entrypoint for BigQuery connector.
 func main() {
 	if len(os.Args) < 2 {
 		printUsage()
@@ -56,6 +63,7 @@ func main() {
 	}
 }
 
+// printUsage outputs the available CLI commands.
 func printUsage() {
 	fmt.Println("Usage: okf-bigquery <command> [options]")
 	fmt.Println("Commands:")
@@ -63,6 +71,8 @@ func printUsage() {
 	fmt.Println("  ingest   - Sync OKF bundle descriptions back to BigQuery")
 }
 
+// runProduce implements the 'produce' subcommand, querying BigQuery tables and schemas
+// using the Google Cloud Client API and exporting them into OKF Markdown files.
 func runProduce(args []string) {
 	fs := flag.NewFlagSet("produce", flag.ExitOnError)
 	projectID := fs.String("project", "", "GCP Project ID (required)")
@@ -161,7 +171,7 @@ func runProduce(args []string) {
 		fmt.Printf("Produced concept doc: %s\n", filePath)
 	}
 
-	// Produce index.md
+	// Produce index.md listing all dataset tables
 	var indexBody bytes.Buffer
 	fmt.Fprintf(&indexBody, "# BigQuery Dataset: %s.%s\n\n", *projectID, *datasetID)
 	indexBody.WriteString("This OKF bundle represents the tables and schema descriptions extracted from BigQuery.\n\n")
@@ -185,6 +195,8 @@ func runProduce(args []string) {
 	fmt.Println("Produced index.md successfully.")
 }
 
+// runIngest implements the 'ingest' subcommand, parsing OKF bundles,
+// comparing descriptions, and calling the BigQuery update_table APIs to sync comments.
 func runIngest(args []string) {
 	fs := flag.NewFlagSet("ingest", flag.ExitOnError)
 	projectID := fs.String("project", "", "GCP Project ID (required)")
@@ -288,6 +300,7 @@ func runIngest(args []string) {
 	fmt.Println("OKF bundle ingestion / BigQuery sync finished.")
 }
 
+// parseColumnsFromMarkdown parses the columns markdown table.
 func parseColumnsFromMarkdown(body string) []ColumnSpec {
 	var cols []ColumnSpec
 	lines := strings.Split(body, "\n")
@@ -305,7 +318,7 @@ func parseColumnsFromMarkdown(body string) []ColumnSpec {
 			continue
 		}
 
-		// Format: | Name | Type | Required | Description |
+		// Parse row: | Name | Type | Required | Description |
 		cols = append(cols, ColumnSpec{
 			Name:        strings.TrimSpace(parts[1]),
 			Type:        strings.TrimSpace(parts[2]),
@@ -316,6 +329,7 @@ func parseColumnsFromMarkdown(body string) []ColumnSpec {
 	return cols
 }
 
+// writeConceptDoc writes the ConceptDoc structure as a markdown file with YAML frontmatter.
 func writeConceptDoc(filePath string, doc ConceptDoc) error {
 	var buf bytes.Buffer
 	buf.WriteString("---\n")
@@ -329,6 +343,7 @@ func writeConceptDoc(filePath string, doc ConceptDoc) error {
 	return os.WriteFile(filePath, buf.Bytes(), 0644)
 }
 
+// readConceptDoc parses an OKF Markdown file.
 func readConceptDoc(filePath string) (*ConceptDoc, error) {
 	content, err := os.ReadFile(filePath)
 	if err != nil {

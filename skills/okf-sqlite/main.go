@@ -1,3 +1,6 @@
+// Package main implements the SQLite OKF (Open Knowledge Format) connector.
+// It provides commands to produce OKF bundles from local SQLite databases
+// and ingest/verify existing databases against OKF specifications.
 package main
 
 import (
@@ -15,28 +18,32 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Frontmatter represents the YAML metadata block at the top of an OKF concept document.
 type Frontmatter struct {
-	Type        string    `yaml:"type"`
-	Title       string    `yaml:"title,omitempty"`
-	Description string    `yaml:"description,omitempty"`
-	Resource    string    `yaml:"resource,omitempty"`
-	Tags        []string  `yaml:"tags,omitempty"`
-	Timestamp   string    `yaml:"timestamp,omitempty"`
+	Type        string    `yaml:"type"`                  // The kind of concept (e.g. SQLite Table)
+	Title       string    `yaml:"title,omitempty"`       // Display name of the table
+	Description string    `yaml:"description,omitempty"` // High-level documentation summary
+	Resource    string    `yaml:"resource,omitempty"`    // Canonical URI referencing the underlying asset
+	Tags        []string  `yaml:"tags,omitempty"`        // Classification labels
+	Timestamp   string    `yaml:"timestamp,omitempty"`   // ISO 8601 modification timestamp
 }
 
+// ConceptDoc represents a parsed or constructed OKF markdown document.
 type ConceptDoc struct {
-	Frontmatter Frontmatter
-	Body        string
+	Frontmatter Frontmatter // YAML metadata
+	Body        string      // Markdown documentation body
 }
 
+// Column represents the properties of a database table column.
 type Column struct {
-	Name       string
-	Type       string
-	PrimaryKey bool
-	Nullable   bool
-	Default    string
+	Name       string // Name of the column
+	Type       string // Column database type (e.g., INTEGER, TEXT)
+	PrimaryKey bool   // True if the column is part of the primary key
+	Nullable   bool   // True if the column is nullable
+	Default    string // Default value of the column
 }
 
+// main is the CLI entrypoint. It routes commands to produce or ingest subcommands.
 func main() {
 	if len(os.Args) < 2 {
 		printUsage()
@@ -56,6 +63,7 @@ func main() {
 	}
 }
 
+// printUsage outputs the available CLI commands and formatting options.
 func printUsage() {
 	fmt.Println("Usage: okf-sqlite <command> [options]")
 	fmt.Println("Commands:")
@@ -64,6 +72,8 @@ func printUsage() {
 	fmt.Println("\nRun 'okf-sqlite <command> -h' for command-specific options.")
 }
 
+// runProduce implements the 'produce' subcommand, extracting SQLite tables and schemas
+// into a set of OKF Markdown concept documents.
 func runProduce(args []string) {
 	fs := flag.NewFlagSet("produce", flag.ExitOnError)
 	dbPath := fs.String("db", "", "Path to SQLite database file (required)")
@@ -91,7 +101,7 @@ func runProduce(args []string) {
 		}
 	}
 
-	// 1. Get all tables
+	// 1. Get all tables from the sqlite schema
 	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
 	if err != nil {
 		log.Fatalf("Failed to query tables: %v", err)
@@ -109,7 +119,7 @@ func runProduce(args []string) {
 		}
 	}
 
-	// Create output directories
+	// Create output directory for tables
 	tablesDir := filepath.Join(*outDir, "tables")
 	if err := os.MkdirAll(tablesDir, 0755); err != nil {
 		log.Fatalf("Failed to create tables directory: %v", err)
@@ -118,7 +128,7 @@ func runProduce(args []string) {
 	absDbPath, _ := filepath.Abs(*dbPath)
 	timestamp := time.Now().Format(time.RFC3339)
 
-	// 2. Generate concept docs for each table
+	// 2. Generate concept documents for each table
 	for _, table := range tables {
 		cols, err := getTableColumns(db, table)
 		if err != nil {
@@ -160,7 +170,7 @@ func runProduce(args []string) {
 		fmt.Printf("Produced concept doc: %s\n", filePath)
 	}
 
-	// 3. Generate index.md at root
+	// 3. Generate index.md at the bundle root listing all extracted tables
 	var indexBody bytes.Buffer
 	indexBody.WriteString("# E-commerce Database Schema (SQLite)\n\n")
 	indexBody.WriteString("This OKF bundle represents the tables extracted from SQLite.\n\n")
@@ -185,6 +195,8 @@ func runProduce(args []string) {
 	fmt.Println("OKF bundle production completed successfully.")
 }
 
+// runIngest implements the 'ingest' subcommand, parsing OKF bundles,
+// validating existing SQLite tables, or optionally syncing schema DDL.
 func runIngest(args []string) {
 	fs := flag.NewFlagSet("ingest", flag.ExitOnError)
 	dbPath := fs.String("db", "", "Path to SQLite database file (required)")
@@ -208,7 +220,7 @@ func runIngest(args []string) {
 		log.Fatalf("Tables directory not found in bundle: %s", tablesDir)
 	}
 
-	// Read all files in tables/
+	// Read all table files inside the OKF bundle
 	files, err := os.ReadDir(tablesDir)
 	if err != nil {
 		log.Fatalf("Failed to read tables directory: %v", err)
@@ -242,7 +254,7 @@ func runIngest(args []string) {
 		if err == sql.ErrNoRows {
 			fmt.Printf("Table '%s' is missing in the database.\n", tableName)
 			if *sync {
-				// Recreate table
+				// Recreate the table from parsed columns definition
 				var colDefs []string
 				for _, col := range parsedCols {
 					def := fmt.Sprintf("`%s` %s", col.Name, col.Type)
@@ -273,7 +285,7 @@ func runIngest(args []string) {
 				log.Fatalf("Failed to query columns for table %s: %v", tableName, err)
 			}
 
-			// Map existing columns
+			// Map existing columns for comparison
 			existingMap := make(map[string]Column)
 			for _, col := range existingCols {
 				existingMap[strings.ToLower(col.Name)] = col
@@ -299,7 +311,7 @@ func runIngest(args []string) {
 						fmt.Printf("  -> Successfully added column '%s' to table '%s'.\n", col.Name, tableName)
 					}
 				} else {
-					// Validate types (case-insensitive compare)
+					// Validate types (case-insensitive comparison)
 					if !strings.EqualFold(existCol.Type, col.Type) {
 						fmt.Printf("Table '%s' column '%s' type mismatch: DB has '%s', OKF has '%s'\n", tableName, col.Name, existCol.Type, col.Type)
 					}
@@ -310,6 +322,7 @@ func runIngest(args []string) {
 	fmt.Println("OKF bundle ingestion / verification finished.")
 }
 
+// getTableColumns queries PRAGMA table_info to retrieve SQLite column definitions.
 func getTableColumns(db *sql.DB, tableName string) ([]Column, error) {
 	rows, err := db.Query(fmt.Sprintf("PRAGMA table_info(`%s`)", tableName))
 	if err != nil {
@@ -341,6 +354,7 @@ func getTableColumns(db *sql.DB, tableName string) ([]Column, error) {
 	return cols, nil
 }
 
+// parseColumnsFromMarkdown extracts column information from the OKF markdown body table.
 func parseColumnsFromMarkdown(body string) []Column {
 	var cols []Column
 	lines := strings.Split(body, "\n")
@@ -359,7 +373,7 @@ func parseColumnsFromMarkdown(body string) []Column {
 			continue
 		}
 
-		// Format: | Name | Type | Primary Key | Nullable | Default |
+		// Parse row: | Name | Type | Primary Key | Nullable | Default |
 		name := strings.TrimSpace(parts[1])
 		colType := strings.TrimSpace(parts[2])
 		pk := strings.TrimSpace(strings.ToLower(parts[3])) == "yes"
@@ -377,6 +391,7 @@ func parseColumnsFromMarkdown(body string) []Column {
 	return cols
 }
 
+// writeConceptDoc serializes an OKF ConceptDoc struct to a Markdown file with YAML frontmatter.
 func writeConceptDoc(filePath string, doc ConceptDoc) error {
 	var buf bytes.Buffer
 	buf.WriteString("---\n")
@@ -390,6 +405,7 @@ func writeConceptDoc(filePath string, doc ConceptDoc) error {
 	return os.WriteFile(filePath, buf.Bytes(), 0644)
 }
 
+// readConceptDoc parses an OKF Markdown file into a ConceptDoc struct.
 func readConceptDoc(filePath string) (*ConceptDoc, error) {
 	content, err := os.ReadFile(filePath)
 	if err != nil {

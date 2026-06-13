@@ -1,3 +1,6 @@
+// Package main implements the MySQL OKF (Open Knowledge Format) connector.
+// It retrieves schemas and table/column comments from a MySQL database,
+// generating OKF bundles, and syncs OKF edits back into database comments.
 package main
 
 import (
@@ -15,30 +18,34 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Frontmatter represents the YAML metadata block at the top of an OKF concept document.
 type Frontmatter struct {
-	Type        string    `yaml:"type"`
-	Title       string    `yaml:"title,omitempty"`
-	Description string    `yaml:"description,omitempty"`
-	Resource    string    `yaml:"resource,omitempty"`
-	Tags        []string  `yaml:"tags,omitempty"`
-	Timestamp   string    `yaml:"timestamp,omitempty"`
+	Type        string    `yaml:"type"`                  // Concept kind (e.g. MySQL Table)
+	Title       string    `yaml:"title,omitempty"`       // Table name
+	Description string    `yaml:"description,omitempty"` // Table description (stored as table comment in MySQL)
+	Resource    string    `yaml:"resource,omitempty"`    // Canonical database URI for the table
+	Tags        []string  `yaml:"tags,omitempty"`        // Tags for classification
+	Timestamp   string    `yaml:"timestamp,omitempty"`   // Timestamp of extraction
 }
 
+// ConceptDoc represents a parsed or constructed OKF markdown document.
 type ConceptDoc struct {
 	Frontmatter Frontmatter
 	Body        string
 }
 
+// ColumnSpec represents the schema properties of a MySQL table column.
 type ColumnSpec struct {
-	Name     string
-	Type     string
-	Key      string
-	Nullable bool
-	Default  string
-	Extra    string
-	Comment  string
+	Name     string // Column name
+	Type     string // Column data type
+	Key      string // Column key index type (e.g., PRI, MUL, UNI)
+	Nullable bool   // Is column nullable
+	Default  string // Column default value
+	Extra    string // Extra column specifiers (e.g., auto_increment)
+	Comment  string // Column comment/description
 }
 
+// main is the CLI entrypoint for MySQL connector.
 func main() {
 	if len(os.Args) < 2 {
 		printUsage()
@@ -58,6 +65,7 @@ func main() {
 	}
 }
 
+// printUsage outputs the available CLI commands.
 func printUsage() {
 	fmt.Println("Usage: okf-mysql <command> [options]")
 	fmt.Println("Commands:")
@@ -65,6 +73,8 @@ func printUsage() {
 	fmt.Println("  ingest   - Sync OKF bundle comments back into MySQL database")
 }
 
+// runProduce implements the 'produce' subcommand, querying database metadata and comments
+// from INFORMATION_SCHEMA tables and producing the OKF bundle.
 func runProduce(args []string) {
 	fs := flag.NewFlagSet("produce", flag.ExitOnError)
 	host := fs.String("host", "localhost", "MySQL host")
@@ -96,7 +106,7 @@ func runProduce(args []string) {
 		}
 	}
 
-	// 1. Get base tables
+	// 1. Get base tables in schema
 	rows, err := db.Query("SELECT TABLE_NAME, COALESCE(TABLE_COMMENT, '') FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE'", *dbName)
 	if err != nil {
 		log.Fatalf("Failed to query tables: %v", err)
@@ -121,13 +131,12 @@ func runProduce(args []string) {
 		if err := rows.Scan(&name, &comment); err != nil {
 			log.Fatalf("Failed to scan table info: %v", err)
 		}
-		// In MySQL, system tables might have partition info in comments. Clean comments that are too technical.
-		if strings.HasPrefix(comment, "InnoDB free:") {
-			comment = ""
-		}
-		// Strip partition comments from MySQL
+		// Strip InnoDB partition comments from MySQL
 		if idx := strings.Index(comment, "; InnoDB free:"); idx != -1 {
 			comment = comment[:idx]
+		}
+		if strings.HasPrefix(comment, "InnoDB free:") {
+			comment = ""
 		}
 		comment = strings.TrimSpace(comment)
 
@@ -137,7 +146,7 @@ func runProduce(args []string) {
 	}
 
 	for _, tInfo := range tables {
-		// 2. Query columns
+		// 2. Query columns and comments
 		colRows, err := db.Query(`
 			SELECT COLUMN_NAME, COLUMN_TYPE, COLUMN_KEY, IS_NULLABLE, COALESCE(COLUMN_DEFAULT, ''), EXTRA, COALESCE(COLUMN_COMMENT, '')
 			FROM INFORMATION_SCHEMA.COLUMNS
@@ -197,7 +206,7 @@ func runProduce(args []string) {
 		fmt.Printf("Produced concept doc: %s\n", filePath)
 	}
 
-	// Produce index.md
+	// Produce index.md listing all tables
 	var indexBody bytes.Buffer
 	fmt.Fprintf(&indexBody, "# Database Schema: %s\n\n", *dbName)
 	indexBody.WriteString("This OKF bundle represents the tables and comments extracted from MySQL.\n\n")
@@ -225,6 +234,8 @@ func runProduce(args []string) {
 	fmt.Println("Produced index.md successfully.")
 }
 
+// runIngest implements the 'ingest' subcommand, parsing OKF bundles,
+// comparing comments, and executing MODIFY COLUMN queries to sync descriptions back to MySQL.
 func runIngest(args []string) {
 	fs := flag.NewFlagSet("ingest", flag.ExitOnError)
 	host := fs.String("host", "localhost", "MySQL host")
@@ -339,7 +350,6 @@ func runIngest(args []string) {
 					if dbDflt != "" && dbDflt != "NULL" {
 						dfltSpec = "DEFAULT " + dbDflt
 					}
-					// Note: Modify Column DDL
 					query := fmt.Sprintf("ALTER TABLE `%s` MODIFY COLUMN `%s` %s %s %s %s COMMENT ?",
 						tableName, col.Name, dbColType, nullSpec, dfltSpec, dbExtra)
 
@@ -355,6 +365,7 @@ func runIngest(args []string) {
 	fmt.Println("OKF bundle ingestion / comment sync finished.")
 }
 
+// parseColumnsFromMarkdown parses the columns markdown table.
 func parseColumnsFromMarkdown(body string) []ColumnSpec {
 	var cols []ColumnSpec
 	lines := strings.Split(body, "\n")
@@ -372,7 +383,7 @@ func parseColumnsFromMarkdown(body string) []ColumnSpec {
 			continue
 		}
 
-		// Format: | Name | Type | Key | Nullable | Default | Extra | Comment |
+		// Parse row: | Name | Type | Key | Nullable | Default | Extra | Comment |
 		cols = append(cols, ColumnSpec{
 			Name:     strings.TrimSpace(parts[1]),
 			Type:     strings.TrimSpace(parts[2]),
@@ -386,6 +397,7 @@ func parseColumnsFromMarkdown(body string) []ColumnSpec {
 	return cols
 }
 
+// writeConceptDoc writes the ConceptDoc structure as a markdown file with YAML frontmatter.
 func writeConceptDoc(filePath string, doc ConceptDoc) error {
 	var buf bytes.Buffer
 	buf.WriteString("---\n")
@@ -399,6 +411,7 @@ func writeConceptDoc(filePath string, doc ConceptDoc) error {
 	return os.WriteFile(filePath, buf.Bytes(), 0644)
 }
 
+// readConceptDoc parses an OKF Markdown file.
 func readConceptDoc(filePath string) (*ConceptDoc, error) {
 	content, err := os.ReadFile(filePath)
 	if err != nil {

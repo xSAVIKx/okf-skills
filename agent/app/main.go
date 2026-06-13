@@ -1,3 +1,7 @@
+// Package main implements the OKF (Open Knowledge Format) Reference Agent.
+// It uses the Google Agent Development Kit (ADK) for Go to initialize an LLM agent
+// that wraps our database skills (sqlite, mysql, postgresql, bigquery) as tools
+// and drives them via natural language.
 package main
 
 import (
@@ -22,7 +26,7 @@ import (
 	"google.golang.org/genai"
 )
 
-// SQLite connection arguments
+// SqliteArgs defines the arguments for the sqlite_connector tool.
 type SqliteArgs struct {
 	Action    string `json:"action" description:"The action to perform, either 'produce' (extract schema to OKF) or 'ingest' (validate/sync schema from OKF)."`
 	DbPath    string `json:"db_path" description:"The relative or absolute path to the SQLite database file."`
@@ -31,12 +35,13 @@ type SqliteArgs struct {
 	Sync      bool   `json:"sync,omitempty" description:"If true, synchronizes the database schema (optional for ingest)."`
 }
 
+// SqliteResult defines the structure for tool response payloads.
 type SqliteResult struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
 }
 
-// MySQL connection arguments
+// MysqlArgs defines the arguments for the mysql_connector tool.
 type MysqlArgs struct {
 	Action    string `json:"action" description:"The action to perform, either 'produce' (extract schema to OKF) or 'ingest' (sync comments from OKF)."`
 	Host      string `json:"host,omitempty" description:"The MySQL host (default: localhost)."`
@@ -49,12 +54,13 @@ type MysqlArgs struct {
 	Sync      bool   `json:"sync,omitempty" description:"If true, executes DDL statements to synchronize descriptions (optional for ingest)."`
 }
 
+// MysqlResult defines the structure for tool response payloads.
 type MysqlResult struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
 }
 
-// PostgreSQL connection arguments
+// PostgresqlArgs defines the arguments for the postgresql_connector tool.
 type PostgresqlArgs struct {
 	Action    string `json:"action" description:"The action to perform, either 'produce' (extract schema to OKF) or 'ingest' (sync comments from OKF)."`
 	Host      string `json:"host,omitempty" description:"The PostgreSQL host (default: localhost)."`
@@ -68,12 +74,13 @@ type PostgresqlArgs struct {
 	Sync      bool   `json:"sync,omitempty" description:"If true, executes COMMENT ON statements to synchronize comments (optional for ingest)."`
 }
 
+// PostgresqlResult defines the structure for tool response payloads.
 type PostgresqlResult struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
 }
 
-// BigQuery connection arguments
+// BigqueryArgs defines the arguments for the bigquery_connector tool.
 type BigqueryArgs struct {
 	Action    string `json:"action" description:"The action to perform, either 'produce' (extract schema to OKF) or 'ingest' (sync descriptions from OKF)."`
 	Project   string `json:"project" description:"The Google Cloud Project ID."`
@@ -83,11 +90,13 @@ type BigqueryArgs struct {
 	Sync      bool   `json:"sync,omitempty" description:"If true, calls BigQuery API to update schema descriptions (optional for ingest)."`
 }
 
+// BigqueryResult defines the structure for tool response payloads.
 type BigqueryResult struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
 }
 
+// runSqliteTool invokes the compiled 'okf-sqlite' binary in a subprocess.
 func runSqliteTool(ctx tool.Context, args SqliteArgs) (SqliteResult, error) {
 	binaryName := "okf-sqlite"
 	if runtime.GOOS == "windows" {
@@ -118,6 +127,7 @@ func runSqliteTool(ctx tool.Context, args SqliteArgs) (SqliteResult, error) {
 	return SqliteResult{Success: true, Message: stdout.String()}, nil
 }
 
+// runMysqlTool invokes the compiled 'okf-mysql' binary in a subprocess.
 func runMysqlTool(ctx tool.Context, args MysqlArgs) (MysqlResult, error) {
 	binaryName := "okf-mysql"
 	if runtime.GOOS == "windows" {
@@ -165,6 +175,7 @@ func runMysqlTool(ctx tool.Context, args MysqlArgs) (MysqlResult, error) {
 	return MysqlResult{Success: true, Message: stdout.String()}, nil
 }
 
+// runPostgresqlTool invokes the compiled 'okf-postgresql' binary in a subprocess.
 func runPostgresqlTool(ctx tool.Context, args PostgresqlArgs) (PostgresqlResult, error) {
 	binaryName := "okf-postgresql"
 	if runtime.GOOS == "windows" {
@@ -217,6 +228,7 @@ func runPostgresqlTool(ctx tool.Context, args PostgresqlArgs) (PostgresqlResult,
 	return PostgresqlResult{Success: true, Message: stdout.String()}, nil
 }
 
+// runBigqueryTool invokes the compiled 'okf-bigquery' binary in a subprocess.
 func runBigqueryTool(ctx tool.Context, args BigqueryArgs) (BigqueryResult, error) {
 	binaryName := "okf-bigquery"
 	if runtime.GOOS == "windows" {
@@ -252,6 +264,8 @@ func runBigqueryTool(ctx tool.Context, args BigqueryArgs) (BigqueryResult, error
 	return BigqueryResult{Success: true, Message: stdout.String()}, nil
 }
 
+// main is the reference agent entrypoint. It initializes Gemini, configures tools,
+// creates the session storage service, and spins up a local command-line chat session loop.
 func main() {
 	ctx := context.Background()
 	apiKey := os.Getenv("GEMINI_API_KEY")
@@ -262,6 +276,7 @@ func main() {
 		log.Fatal("GEMINI_API_KEY or GOOGLE_API_KEY environment variable is required")
 	}
 
+	// Initialize the Gemini 2.5 Flash model via Go GenAI SDK
 	model, err := gemini.NewModel(ctx, "gemini-2.5-flash", &genai.ClientConfig{
 		APIKey: apiKey,
 	})
@@ -269,7 +284,7 @@ func main() {
 		log.Fatalf("Failed to initialize Gemini model: %v", err)
 	}
 
-	// Create ADK tools
+	// Initialize individual SQLite tool definition
 	sqliteTool, err := functiontool.New(
 		functiontool.Config{
 			Name:        "sqlite_connector",
@@ -281,6 +296,7 @@ func main() {
 		log.Fatalf("Failed to create sqlite tool: %v", err)
 	}
 
+	// Initialize individual MySQL tool definition
 	mysqlTool, err := functiontool.New(
 		functiontool.Config{
 			Name:        "mysql_connector",
@@ -292,6 +308,7 @@ func main() {
 		log.Fatalf("Failed to create mysql tool: %v", err)
 	}
 
+	// Initialize individual PostgreSQL tool definition
 	postgresqlTool, err := functiontool.New(
 		functiontool.Config{
 			Name:        "postgresql_connector",
@@ -303,6 +320,7 @@ func main() {
 		log.Fatalf("Failed to create postgresql tool: %v", err)
 	}
 
+	// Initialize individual BigQuery tool definition
 	bigqueryTool, err := functiontool.New(
 		functiontool.Config{
 			Name:        "bigquery_connector",
@@ -314,7 +332,7 @@ func main() {
 		log.Fatalf("Failed to create bigquery tool: %v", err)
 	}
 
-	// Create ADK agent
+	// Instantiate the core ADK LLM agent
 	a, err := llmagent.New(llmagent.Config{
 		Name:        "okf-reference-agent",
 		Model:       model,
@@ -326,7 +344,7 @@ func main() {
 		log.Fatalf("Failed to create agent: %v", err)
 	}
 
-	// Create ADK runner
+	// Initialize session storage service (In-Memory implementation)
 	sessSvc := session.InMemoryService()
 	r, err := runner.New(runner.Config{
 		AppName:        "okf-reference-agent",
@@ -365,7 +383,7 @@ func main() {
 			},
 		}
 
-		// Ensure session exists in storage
+		// Ensure session exists in storage before running the session
 		_, err = sessSvc.Get(ctx, &session.GetRequest{
 			AppName:   "okf-reference-agent",
 			UserID:    userID,
@@ -379,7 +397,7 @@ func main() {
 			})
 		}
 
-		// Run session
+		// Run session and stream response events
 		for event, err := range r.Run(ctx, userID, sessionID, userMsg, agent.RunConfig{}) {
 			if err != nil {
 				fmt.Printf("\nError encountered: %v\n", err)

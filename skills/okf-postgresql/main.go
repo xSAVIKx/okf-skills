@@ -1,3 +1,6 @@
+// Package main implements the PostgreSQL OKF (Open Knowledge Format) connector.
+// It retrieves schemas and table/column descriptions from a PostgreSQL database,
+// generating OKF bundles, and syncs OKF edits back into database comments.
 package main
 
 import (
@@ -15,27 +18,31 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Frontmatter represents the YAML metadata block at the top of an OKF concept document.
 type Frontmatter struct {
-	Type        string    `yaml:"type"`
-	Title       string    `yaml:"title,omitempty"`
-	Description string    `yaml:"description,omitempty"`
-	Resource    string    `yaml:"resource,omitempty"`
-	Tags        []string  `yaml:"tags,omitempty"`
-	Timestamp   string    `yaml:"timestamp,omitempty"`
+	Type        string    `yaml:"type"`                  // Concept kind (e.g. PostgreSQL Table)
+	Title       string    `yaml:"title,omitempty"`       // Table name
+	Description string    `yaml:"description,omitempty"` // Table comment description
+	Resource    string    `yaml:"resource,omitempty"`    // Canonical database URI for the table
+	Tags        []string  `yaml:"tags,omitempty"`        // Tags for classification
+	Timestamp   string    `yaml:"timestamp,omitempty"`   // Timestamp of extraction
 }
 
+// ConceptDoc represents a parsed or constructed OKF markdown document.
 type ConceptDoc struct {
 	Frontmatter Frontmatter
 	Body        string
 }
 
+// ColumnSpec represents the schema properties of a PostgreSQL table column.
 type ColumnSpec struct {
-	Name     string
-	Type     string
-	Nullable bool
-	Comment  string
+	Name     string // Column name
+	Type     string // Column data type
+	Nullable bool   // Is column nullable
+	Comment  string // Column comment/description
 }
 
+// main is the CLI entrypoint for PostgreSQL connector.
 func main() {
 	if len(os.Args) < 2 {
 		printUsage()
@@ -55,6 +62,7 @@ func main() {
 	}
 }
 
+// printUsage outputs the available CLI commands.
 func printUsage() {
 	fmt.Println("Usage: okf-postgresql <command> [options]")
 	fmt.Println("Commands:")
@@ -62,6 +70,8 @@ func printUsage() {
 	fmt.Println("  ingest   - Sync OKF bundle comments back into PostgreSQL database")
 }
 
+// runProduce implements the 'produce' subcommand, querying database schemas and descriptions
+// using PostgreSQL system catalog queries.
 func runProduce(args []string) {
 	fs := flag.NewFlagSet("produce", flag.ExitOnError)
 	host := fs.String("host", "localhost", "PostgreSQL host")
@@ -94,7 +104,7 @@ func runProduce(args []string) {
 		}
 	}
 
-	// 1. Get base tables
+	// 1. Get base tables in PostgreSQL schema and their comments
 	rows, err := db.Query(`
 		SELECT
 			c.relname AS table_name,
@@ -131,7 +141,7 @@ func runProduce(args []string) {
 	}
 
 	for _, tInfo := range tables {
-		// 2. Query columns
+		// 2. Query columns and comments
 		colRows, err := db.Query(`
 			SELECT
 				a.attname AS column_name,
@@ -193,7 +203,7 @@ func runProduce(args []string) {
 		fmt.Printf("Produced concept doc: %s\n", filePath)
 	}
 
-	// Produce index.md
+	// Produce index.md listing all tables
 	var indexBody bytes.Buffer
 	fmt.Fprintf(&indexBody, "# Database Schema: %s.%s\n\n", *dbName, *schemaName)
 	indexBody.WriteString("This OKF bundle represents the tables and comments extracted from PostgreSQL.\n\n")
@@ -221,6 +231,8 @@ func runProduce(args []string) {
 	fmt.Println("Produced index.md successfully.")
 }
 
+// runIngest implements the 'ingest' subcommand, parsing OKF bundles,
+// comparing comments, and executing COMMENT ON statements to sync comments back into PostgreSQL.
 func runIngest(args []string) {
 	fs := flag.NewFlagSet("ingest", flag.ExitOnError)
 	host := fs.String("host", "localhost", "PostgreSQL host")
@@ -340,6 +352,7 @@ func runIngest(args []string) {
 	fmt.Println("OKF bundle ingestion / comment sync finished.")
 }
 
+// parseColumnsFromMarkdown parses the columns markdown table.
 func parseColumnsFromMarkdown(body string) []ColumnSpec {
 	var cols []ColumnSpec
 	lines := strings.Split(body, "\n")
@@ -357,7 +370,7 @@ func parseColumnsFromMarkdown(body string) []ColumnSpec {
 			continue
 		}
 
-		// Format: | Name | Type | Nullable | Comment |
+		// Parse row: | Name | Type | Nullable | Comment |
 		cols = append(cols, ColumnSpec{
 			Name:     strings.TrimSpace(parts[1]),
 			Type:     strings.TrimSpace(parts[2]),
@@ -368,6 +381,7 @@ func parseColumnsFromMarkdown(body string) []ColumnSpec {
 	return cols
 }
 
+// writeConceptDoc writes the ConceptDoc structure as a markdown file with YAML frontmatter.
 func writeConceptDoc(filePath string, doc ConceptDoc) error {
 	var buf bytes.Buffer
 	buf.WriteString("---\n")
@@ -381,6 +395,7 @@ func writeConceptDoc(filePath string, doc ConceptDoc) error {
 	return os.WriteFile(filePath, buf.Bytes(), 0644)
 }
 
+// readConceptDoc parses an OKF Markdown file.
 func readConceptDoc(filePath string) (*ConceptDoc, error) {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
