@@ -44,6 +44,10 @@ func main() {
 		runProduce(os.Args[2:])
 	case "ingest":
 		runIngest(os.Args[2:])
+	case "schema":
+		if err := okf.PrintSchema(os.Stdout, buildSchema()); err != nil {
+			log.Fatalf("Failed to print schema: %v", err)
+		}
 	default:
 		fmt.Printf("Unknown command: %s\n", cmd)
 		printUsage()
@@ -71,6 +75,7 @@ func runProduce(args []string) {
 	outDir := fs.String("out", "", "Output bundle directory (required)")
 	tablesStr := fs.String("tables", "", "Filter tables (comma-separated, optional)")
 	fs.Parse(args)
+	*password = resolvePassword(*password)
 
 	if *user == "" || *password == "" || *dbName == "" || *outDir == "" {
 		fs.Usage()
@@ -229,6 +234,7 @@ func runIngest(args []string) {
 	bundleDir := fs.String("bundle", "", "OKF bundle path (required)")
 	sync := fs.Bool("sync", false, "Write modifications back to MySQL (optional)")
 	fs.Parse(args)
+	*password = resolvePassword(*password)
 
 	if *user == "" || *password == "" || *dbName == "" || *bundleDir == "" {
 		fs.Usage()
