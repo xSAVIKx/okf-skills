@@ -72,6 +72,8 @@ func runProduce(args []string) {
 	schemaName := fs.String("schema", "public", "PostgreSQL schema name")
 	outDir := fs.String("out", "", "Output bundle directory (required)")
 	tablesStr := fs.String("tables", "", "Filter tables (comma-separated, optional)")
+	sample := fs.Int("sample", 0, "Number of sample rows to embed per table (0 = none)")
+	profile := fs.Bool("profile", false, "Compute per-column statistics and embed a Data Profile section")
 	fs.Parse(args)
 	*password = resolvePassword(*password)
 
@@ -175,6 +177,22 @@ func runProduce(args []string) {
 			fmt.Fprintf(&body, "| %s | %s | %s | %s |\n", col.Name, col.Type, nullStr, col.Comment)
 		}
 
+		bodyStr := body.String()
+		if *profile {
+			profiles, err := profileTable(db, *schemaName, tInfo.Name, cols)
+			if err != nil {
+				log.Fatalf("Failed to profile table %s: %v", tInfo.Name, err)
+			}
+			bodyStr = okf.UpsertSection(bodyStr, "Data Profile", okf.RenderProfileSection(profiles))
+		}
+		if *sample > 0 {
+			headers, sampleRows, err := sampleTable(db, *schemaName, tInfo.Name, *sample)
+			if err != nil {
+				log.Fatalf("Failed to sample table %s: %v", tInfo.Name, err)
+			}
+			bodyStr = okf.UpsertSection(bodyStr, "Sample", okf.RenderSampleSection(headers, sampleRows))
+		}
+
 		doc := okf.ConceptDoc{
 			Frontmatter: okf.Frontmatter{
 				Type:        "PostgreSQL Table",
@@ -184,7 +202,7 @@ func runProduce(args []string) {
 				Tags:        []string{"postgres", "table"},
 				Timestamp:   timestamp,
 			},
-			Body: body.String(),
+			Body: bodyStr,
 		}
 
 		filePath := filepath.Join(tablesDir, tInfo.Name+".md")
