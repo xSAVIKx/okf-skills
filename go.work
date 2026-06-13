@@ -9,4 +9,5 @@ use (
 	./agent/app
 	./tests
 	./skills/okf-fs
+	./skills/okf-git
 )
