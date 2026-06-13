@@ -15,24 +15,8 @@ import (
 	"time"
 
 	_ "modernc.org/sqlite"
-	"gopkg.in/yaml.v3"
+	"github.com/savikne/okf-skills-registry/okf-go"
 )
-
-// Frontmatter represents the YAML metadata block at the top of an OKF concept document.
-type Frontmatter struct {
-	Type        string    `yaml:"type"`                  // The kind of concept (e.g. SQLite Table)
-	Title       string    `yaml:"title,omitempty"`       // Display name of the table
-	Description string    `yaml:"description,omitempty"` // High-level documentation summary
-	Resource    string    `yaml:"resource,omitempty"`    // Canonical URI referencing the underlying asset
-	Tags        []string  `yaml:"tags,omitempty"`        // Classification labels
-	Timestamp   string    `yaml:"timestamp,omitempty"`   // ISO 8601 modification timestamp
-}
-
-// ConceptDoc represents a parsed or constructed OKF markdown document.
-type ConceptDoc struct {
-	Frontmatter Frontmatter // YAML metadata
-	Body        string      // Markdown documentation body
-}
 
 // Column represents the properties of a database table column.
 type Column struct {
@@ -151,8 +135,8 @@ func runProduce(args []string) {
 			fmt.Fprintf(&body, "| %s | %s | %s | %s | %s |\n", col.Name, col.Type, pkStr, nullStr, col.Default)
 		}
 
-		doc := ConceptDoc{
-			Frontmatter: Frontmatter{
+		doc := okf.ConceptDoc{
+			Frontmatter: okf.Frontmatter{
 				Type:        "SQLite Table",
 				Title:       table,
 				Description: fmt.Sprintf("SQLite table %s", table),
@@ -164,7 +148,7 @@ func runProduce(args []string) {
 		}
 
 		filePath := filepath.Join(tablesDir, table+".md")
-		if err := writeConceptDoc(filePath, doc); err != nil {
+		if err := okf.WriteConceptDoc(filePath, doc); err != nil {
 			log.Fatalf("Failed to write concept doc for %s: %v", table, err)
 		}
 		fmt.Printf("Produced concept doc: %s\n", filePath)
@@ -179,8 +163,8 @@ func runProduce(args []string) {
 		fmt.Fprintf(&indexBody, "- [%s](tables/%s.md) - SQLite table %s\n", table, table, table)
 	}
 
-	indexDoc := ConceptDoc{
-		Frontmatter: Frontmatter{
+	indexDoc := okf.ConceptDoc{
+		Frontmatter: okf.Frontmatter{
 			Type:        "Dataset",
 			Title:       filepath.Base(*dbPath),
 			Description: fmt.Sprintf("SQLite Dataset: %s", filepath.Base(*dbPath)),
@@ -188,7 +172,7 @@ func runProduce(args []string) {
 		},
 		Body: indexBody.String(),
 	}
-	if err := writeConceptDoc(filepath.Join(*outDir, "index.md"), indexDoc); err != nil {
+	if err := okf.WriteConceptDoc(filepath.Join(*outDir, "index.md"), indexDoc); err != nil {
 		log.Fatalf("Failed to write index.md: %v", err)
 	}
 	fmt.Println("Produced index.md")
@@ -232,7 +216,7 @@ func runIngest(args []string) {
 		}
 
 		filePath := filepath.Join(tablesDir, file.Name())
-		doc, err := readConceptDoc(filePath)
+		doc, err := okf.ReadConceptDoc(filePath)
 		if err != nil {
 			log.Fatalf("Failed to read concept doc %s: %v", filePath, err)
 		}
@@ -391,43 +375,4 @@ func parseColumnsFromMarkdown(body string) []Column {
 	return cols
 }
 
-// writeConceptDoc serializes an OKF ConceptDoc struct to a Markdown file with YAML frontmatter.
-func writeConceptDoc(filePath string, doc ConceptDoc) error {
-	var buf bytes.Buffer
-	buf.WriteString("---\n")
-	fmBytes, err := yaml.Marshal(doc.Frontmatter)
-	if err != nil {
-		return err
-	}
-	buf.Write(fmBytes)
-	buf.WriteString("---\n")
-	buf.WriteString(doc.Body)
-	return os.WriteFile(filePath, buf.Bytes(), 0644)
-}
-
-// readConceptDoc parses an OKF Markdown file into a ConceptDoc struct.
-func readConceptDoc(filePath string) (*ConceptDoc, error) {
-	content, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, err
-	}
-
-	parts := bytes.SplitN(content, []byte("---\n"), 3)
-	if len(parts) < 3 {
-		// try with CRLF
-		parts = bytes.SplitN(content, []byte("---\r\n"), 3)
-		if len(parts) < 3 {
-			return nil, fmt.Errorf("invalid OKF concept file format: missing frontmatter boundaries")
-		}
-	}
-
-	var fm Frontmatter
-	if err := yaml.Unmarshal(parts[1], &fm); err != nil {
-		return nil, err
-	}
-
-	return &ConceptDoc{
-		Frontmatter: fm,
-		Body:        string(parts[2]),
-	}, nil
-}
+// writeConceptDoc and readConceptDoc deleted because they are now part of the okf-go library.
