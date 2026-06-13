@@ -1,13 +1,12 @@
 ---
 name: okf-fs
-description: Local filesystem connector for producing and ingesting Open Knowledge Format (OKF) bundles.
-version: 0.1.0
-author: Yurii Serhiichuk
-tags:
-  - okf
-  - knowledge-catalog
-  - filesystem
-  - documentation
+description: Local filesystem connector that produces and ingests Open Knowledge Format (OKF) bundles documenting directory trees and file metadata, honoring .okfignore and .okf-metadata.yaml. Use when documenting or cataloging a local folder structure, or capturing filesystem metadata as an OKF bundle.
+license: Apache-2.0
+compatibility: Requires the Go toolchain (1.24+) to build the connector binary.
+metadata:
+  version: "0.1.0"
+  author: Yurii Serhiichuk
+  tags: "okf, knowledge-catalog, filesystem, documentation"
 ---
 
 # Skill: okf-fs (Local Filesystem OKF Connector)

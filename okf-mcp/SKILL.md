@@ -1,13 +1,12 @@
 ---
 name: okf-mcp
-description: Generic MCP server that discovers installed okf-* skills and exposes their produce/ingest commands as MCP tools for any MCP-capable harness.
-version: 0.1.0
-author: Yurii Serhiichuk
-tags:
-  - okf
-  - mcp
-  - registry
-  - tools
+description: Generic Model Context Protocol (MCP) server that discovers installed okf-* skill binaries and exposes their produce/ingest commands as MCP tools for any MCP-capable harness (Claude Code, Gemini CLI, etc.). Use when wiring the OKF skills registry into an agent over MCP instead of invoking each connector binary directly.
+license: Apache-2.0
+compatibility: Requires the Go toolchain (1.24+) to build the server binary, plus installed okf-* skill binaries to discover and expose.
+metadata:
+  version: "0.1.0"
+  author: Yurii Serhiichuk
+  tags: "okf, mcp, registry, tools"
 ---
 
 # OKF MCP Server

@@ -1,14 +1,12 @@
 ---
 name: okf-sqlite
-description: SQLite connector for producing and ingesting Open Knowledge Format (OKF) bundles.
-version: 0.1.0
-author: Yurii Serhiichuk
-tags:
-  - okf
-  - knowledge-catalog
-  - sqlite
-  - database
-  - schema
+description: SQLite connector that produces and ingests Open Knowledge Format (OKF) bundles from database schemas and comments, CGO-free via modernc.org/sqlite. Use when documenting or cataloging a SQLite database, extracting its schema into OKF, or comparing/validating a database against an OKF bundle.
+license: Apache-2.0
+compatibility: Requires the Go toolchain (1.24+) to build the connector binary. No CGO or system SQLite library needed.
+metadata:
+  version: "0.1.0"
+  author: Yurii Serhiichuk
+  tags: "okf, knowledge-catalog, sqlite, database, schema"
 ---
 
 # SQLite OKF Connector

@@ -1,16 +1,12 @@
 ---
 name: okf-bigquery
-description: Google Cloud BigQuery connector for producing and ingesting Open Knowledge Format (OKF) bundles.
-version: 0.1.0
-author: Yurii Serhiichuk
-tags:
-  - okf
-  - knowledge-catalog
-  - bigquery
-  - google-cloud
-  - database
-  - schema
-  - documentation
+description: Google Cloud BigQuery connector that produces and ingests Open Knowledge Format (OKF) bundles from dataset schemas, table/field descriptions, and metadata. Use when documenting or cataloging BigQuery datasets, extracting schema metadata into OKF, or syncing descriptions back to BigQuery tables and fields.
+license: Apache-2.0
+compatibility: Requires the Go toolchain (1.24+) to build the connector binary, plus Google Cloud credentials or an API key to reach BigQuery.
+metadata:
+  version: "0.1.0"
+  author: Yurii Serhiichuk
+  tags: "okf, knowledge-catalog, bigquery, google-cloud, database, schema, documentation"
 ---
 
 # BigQuery OKF Connector

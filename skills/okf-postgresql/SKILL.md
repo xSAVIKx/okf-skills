@@ -1,15 +1,12 @@
 ---
 name: okf-postgresql
-description: PostgreSQL connector for producing and ingesting Open Knowledge Format (OKF) bundles.
-version: 0.1.0
-author: Yurii Serhiichuk
-tags:
-  - okf
-  - knowledge-catalog
-  - postgresql
-  - database
-  - schema
-  - documentation
+description: PostgreSQL connector that produces and ingests Open Knowledge Format (OKF) bundles from database schemas and table/column descriptions. Use when documenting or cataloging a PostgreSQL database, extracting its schema and comments into OKF, or syncing descriptions back with COMMENT ON statements.
+license: Apache-2.0
+compatibility: Requires the Go toolchain (1.24+) to build the connector binary, plus network access and credentials for the target PostgreSQL database.
+metadata:
+  version: "0.1.0"
+  author: Yurii Serhiichuk
+  tags: "okf, knowledge-catalog, postgresql, database, schema, documentation"
 ---
 
 # PostgreSQL OKF Connector

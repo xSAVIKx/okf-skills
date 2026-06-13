@@ -1,15 +1,12 @@
 ---
 name: okf-mysql
-description: MySQL connector for producing and ingesting Open Knowledge Format (OKF) bundles.
-version: 0.1.0
-author: Yurii Serhiichuk
-tags:
-  - okf
-  - knowledge-catalog
-  - mysql
-  - database
-  - schema
-  - documentation
+description: MySQL connector that produces and ingests Open Knowledge Format (OKF) bundles from database schemas and table/column comments. Use when documenting or cataloging a MySQL database, extracting its schema and comments into OKF, or syncing descriptions back to MySQL via DDL.
+license: Apache-2.0
+compatibility: Requires the Go toolchain (1.24+) to build the connector binary, plus network access and credentials for the target MySQL database.
+metadata:
+  version: "0.1.0"
+  author: Yurii Serhiichuk
+  tags: "okf, knowledge-catalog, mysql, database, schema, documentation"
 ---
 
 # MySQL OKF Connector

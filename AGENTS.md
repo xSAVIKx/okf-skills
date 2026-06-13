@@ -12,9 +12,11 @@ This repository is a central registry of standalone CLI skills for producing and
 okf-skills-registry/
 ├── AGENTS.md                      # This guide
 ├── README.md                      # General user-facing overview
+├── LICENSE                        # Apache License 2.0
 ├── go.work                        # Go workspace defining monorepo modules
 ├── Makefile                       # Build, test, install shortcuts
 ├── skills.sh                      # Build and install all skills to a directory
+├── skills.sh.json                 # skills.sh registry manifest (groups skills for discovery)
 ├── okf-go/                        # Shared Go library (YAML/MD serialization, ignore/metadata helpers)
 │   ├── okf.go                     # Core types: Frontmatter, ConceptDoc, helpers
 │   ├── okf_test.go                # Unit tests
@@ -82,6 +84,8 @@ Skills compile to standalone Go CLI binaries. Each skill exposes three subcomman
   ```
 - **Git Metadata Extraction**: For VCS tracking, query commit logs using `go-git`'s `LogOptions.FileName` targeting relative paths to pull commit message summaries, committer names, and commit dates.
 - **Documentation**: Keep each skill's `SKILL.md` detailed and descriptive so that MCP consumers and coding agents know what options the CLI supports.
+- **`SKILL.md` Frontmatter Spec**: Every `SKILL.md` must conform to the [Agent Skills specification](https://agentskills.io/specification). Only `name`, `description`, `license`, `compatibility`, `metadata`, and `allowed-tools` are permitted as top-level YAML keys, and `name` must equal the skill's directory name. Put project-specific fields (`version`, `author`, `tags`, …) under `metadata:` as string values — **never at the top level** (a top-level `version:`/`tags:` fails `skills-ref validate`). Write `description` as "what it does + when to use it" with searchable keywords so coding agents and the skills.sh registry surface it correctly. Set `license: Apache-2.0` on every skill to match the repository license (see `LICENSE`).
+- **Registry Discovery**: Skills under `skills/` are grouped for the [skills.sh](https://www.skills.sh) registry via the root `skills.sh.json`. When adding or removing a skill, update its `groupings` array. `okf-mcp` is intentionally excluded — it is the host server (lives outside `skills/`), not a discoverable registry skill.
 
 ---
 

@@ -1,13 +1,12 @@
 ---
 name: okf-git
-description: Git repository connector for producing and ingesting Open Knowledge Format (OKF) bundles.
-version: 0.1.0
-author: Yurii Serhiichuk
-tags:
-  - okf
-  - knowledge-catalog
-  - git
-  - documentation
+description: Git repository connector that produces and ingests Open Knowledge Format (OKF) bundles documenting repository file trees plus commit-history metadata (times, authors, messages), honoring .gitignore and .okfignore. Use when documenting or cataloging a Git repository as an OKF bundle.
+license: Apache-2.0
+compatibility: Requires the Go toolchain (1.24+) to build the connector binary, plus a local Git repository to read history from.
+metadata:
+  version: "0.1.0"
+  author: Yurii Serhiichuk
+  tags: "okf, knowledge-catalog, git, documentation"
 ---
 
 # Skill: okf-git (Git Repository OKF Connector)

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://skills.sh/schemas/skills.sh.schema.json",
+  "notGrouped": "bottom",
+  "groupings": [
+    {
+      "title": "Database Connectors",
+      "description": "Produce and ingest OKF bundles from SQL databases and warehouses.",
+      "skills": [
+        "okf-sqlite",
+        "okf-mysql",
+        "okf-postgresql",
+        "okf-bigquery"
+      ]
+    },
+    {
+      "title": "Filesystem & Git",
+      "description": "Produce and ingest OKF bundles from local directory trees and Git repositories.",
+      "skills": [
+        "okf-fs",
+        "okf-git"
+      ]
+    },
+    {
+      "title": "Agent Guidance",
+      "description": "Instructions-only skills that teach an agent's own LLM to read and enrich OKF bundles.",
+      "skills": [
+        "okf-reader",
+        "okf-enrich"
+      ]
+    }
+  ]
+}

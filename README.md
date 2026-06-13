@@ -10,9 +10,11 @@ Each skill is a self-contained Go module that compiles to a single portable bina
 okf-skills-registry/
 ├── AGENTS.md                      # Developer agent guide
 ├── README.md                      # This documentation
+├── LICENSE                        # Apache License 2.0
 ├── go.work                        # Go workspace mapping all sub-modules
 ├── Makefile                       # Build, test, install shortcuts
 ├── skills.sh                      # Build and install all skills to a directory
+├── skills.sh.json                 # skills.sh registry manifest (groups skills for discovery)
 ├── okf-go/                        # Shared Go library (OKF spec, YAML/MD serialization)
 │   ├── okf.go                     # Core types & helpers (Frontmatter, ConceptDoc)
 │   ├── okf_test.go                # Unit tests
@@ -159,3 +161,25 @@ cd tests && go test -v .
 ```
 
 SQLite, filesystem, git, the `schema`-contract checks, and `okf-mcp` discovery run without Docker; only the MySQL and PostgreSQL cases require the containers (they skip otherwise).
+
+---
+
+## 8. Spec Compliance & Registry Discovery
+
+Every `SKILL.md` follows the [Agent Skills specification](https://agentskills.io/specification): the YAML frontmatter exposes only the spec's top-level keys (`name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`), with project-specific fields (`version`, `author`, `tags`) nested under `metadata`. Each `name` matches its skill directory, and every skill declares `license: Apache-2.0` (the repository is Apache-2.0 licensed). Validate with the reference tool: `skills-ref validate skills/okf-sqlite`.
+
+The root `skills.sh.json` manifest groups the skills for the [skills.sh](https://www.skills.sh) registry so they are organized when the repository is indexed:
+
+| Group | Skills |
+|---|---|
+| Database Connectors | `okf-sqlite`, `okf-mysql`, `okf-postgresql`, `okf-bigquery` |
+| Filesystem & Git | `okf-fs`, `okf-git` |
+| Agent Guidance | `okf-reader`, `okf-enrich` |
+
+`okf-mcp` is deliberately omitted from the registry manifest: it is the host server that exposes the skills over MCP (and lives outside `skills/`), not a discoverable skill itself.
+
+---
+
+## License
+
+Licensed under the **Apache License 2.0** — see [`LICENSE`](LICENSE) for the full text. Copyright 2026 Yurii Serhiichuk.

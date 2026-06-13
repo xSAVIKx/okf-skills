@@ -1,14 +1,11 @@
 ---
 name: okf-enrich
-description: Guidance for an AI agent to enrich an OKF bundle with high-quality concept descriptions using its own LLM — grounded in the bundle's schema, data profile, and samples — then optionally sync them back to the source.
-version: 0.1.0
-author: Yurii Serhiichuk
-tags:
-  - okf
-  - enrichment
-  - documentation
-  - agent-guidance
-  - prompt-engineering
+description: Guidance for an AI agent to enrich an Open Knowledge Format (OKF) bundle with high-quality concept descriptions using its own LLM — grounded in the bundle's schema, data profile, and samples — then optionally sync them back to the source. Use when an OKF bundle has missing, weak, or low-quality descriptions that should be improved before publishing or ingestion. Instructions-only; no binary required.
+license: Apache-2.0
+metadata:
+  version: "0.1.0"
+  author: Yurii Serhiichuk
+  tags: "okf, enrichment, documentation, agent-guidance, prompt-engineering"
 ---
 
 # OKF Bundle Enrichment Guidance Skill
