@@ -11,4 +11,5 @@ use (
 	./skills/okf-fs
 	./skills/okf-git
 	./skills/okf-mcp
+	./skills/okf-enrich
 )
