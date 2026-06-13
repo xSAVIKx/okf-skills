@@ -13,23 +13,29 @@ okf-skills-registry/
 ├── AGENTS.md                      # This guide
 ├── README.md                      # General user-facing overview
 ├── go.work                        # Go workspace defining monorepo modules
-├── okf-go/                        # Shared Go library (YAML/MD serialization, types)
+├── okf-go/                        # Shared Go library (YAML/MD serialization, ignore/metadata helpers)
 ├── skills/                        # Standalone Go-based CLI skills
 │   ├── okf-sqlite/                # SQLite connector (CGO-free)
 │   ├── okf-mysql/                 # MySQL connector
 │   ├── okf-postgresql/            # PostgreSQL connector
 │   ├── okf-bigquery/              # GCP BigQuery connector
+│   ├── okf-fs/                    # Local filesystem connector
+│   ├── okf-git/                   # Git repository connector
 │   └── okf-reader/                # Ingestion guidance skill (Instructions-only)
 ├── agent/                         # Reference agent wrapping skills as tools
 │   ├── agents-cli-manifest.yaml   # Google Agents CLI manifest
 │   ├── Makefile                   # Agent runner and compilation scripts
 │   └── app/                       # Go ADK agent source code
-└── tests/                         # Integration test configurations and fixtures
+└── tests/                         # Central integration testing directory
     ├── docker-compose.yml         # MySQL & PostgreSQL containers
     ├── mysql/
     │   └── init_mysql.sql         # Sample MySQL schema with comments
-    └── postgres/
-        └── init_postgres.sql      # Sample PostgreSQL schema with comments
+    ├── postgres/
+    │   └── init_postgres.sql      # Sample PostgreSQL schema with comments
+    ├── helpers_test.go            # Shared test utilities
+    ├── db_integration_test.go     # Database integration tests
+    ├── fs_integration_test.go     # Filesystem integration tests
+    └── git_integration_test.go    # Git integration tests
 ```
 
 ---
@@ -42,6 +48,7 @@ All core OKF schemas and parsing helper functions live under `okf-go/`.
   - Subdirectory `index.md` files must contain **no frontmatter**.
   - The bundle-root `index.md` is the only index permitted to contain frontmatter, and it should only declare `okf_version: "0.1"` (omit `type`, `title`, and `description` from the YAML block; place them directly inside the Markdown body).
 - **Line Ending Compatibility**: `ReadConceptDoc` split operations must handle both Unix LF (`\n`) and Windows CRLF (`\r\n`) markers for frontmatter boundaries.
+- **Ignore & Metadata Helpers**: Use the shared `IgnoreMatcher` helper to load `.okfignore` wildcard matchers, and `ReadFolderMetadata`/`WriteFolderMetadata` to serialize/deserialize path-to-description mapping inside `.okf-metadata.yaml`.
 - **Unit Testing**: Maintain robust tests in `okf_test.go` and run `go test -v ./...` inside `okf-go/` after making changes.
 
 ---
@@ -49,8 +56,8 @@ All core OKF schemas and parsing helper functions live under `okf-go/`.
 ## 3. Skills Development & Best Practices
 
 Skills compile to standalone Go CLI binaries. They must support two main subcommands:
-1. `produce`: Extract database schema metadata and comments into an OKF bundle.
-2. `ingest`: Read an OKF bundle, diff comments with the live database, and optionally synchronize them using the `-sync` flag.
+1. `produce`: Extract database schema comments, local filesystem folder structures, or git repository commit history into an OKF bundle.
+2. `ingest`: Read an OKF bundle, validate assets, and optionally synchronize comments/descriptions back to the source database or `.okf-metadata.yaml` using the `-sync` flag.
 
 ### Best Practices for Skills:
 - **Portability**: Write skills in pure Go with zero runtime dependencies. To guarantee CGO-free compilation for SQLite, use `modernc.org/sqlite` instead of `github.com/mattn/go-sqlite3`.
@@ -68,14 +75,16 @@ Skills compile to standalone Go CLI binaries. They must support two main subcomm
       return val
   }
   ```
+- **Git Metadata Extraction**: For VCS tracking, query commit logs using `go-git`'s `LogOptions.FileName` targeting relative paths to pull commit message summaries, committer names, and commit dates.
 - **Documentation**: Keep each skill's `SKILL.md` detailed and descriptive so that subsequent consumer agents know what options the CLI supports.
 
 ---
 
 ## 4. Reference Agent Development
 
-The reference agent under `agent/` exposes the database skills as function tools to LLMs.
+The reference agent under `agent/` exposes all database, filesystem, and Git connector skills as function tools to LLMs.
 - **Go ADK Framework**: Built using Google's Agent Development Kit (`google.golang.org/adk`).
+- **Function Tools**: Exposes `sqlite_connector`, `mysql_connector`, `postgresql_connector`, `bigquery_connector`, `fs_connector`, and `git_connector`.
 - **Subprocess Execution**: The agent wraps the compiled binaries under `skills/` using `exec.Command`, passing structured JSON parameters received from Gemini tool calls to the underlying executables.
 - **Manifest Integration**: The agent is designed to work with `agents-cli`. Ensure any new commands or tool parameters align with [agents-cli-manifest.yaml](file:///d:/AntigravityProjects/okf-skills-registry/agent/agents-cli-manifest.yaml).
 
@@ -83,10 +92,10 @@ The reference agent under `agent/` exposes the database skills as function tools
 
 ## 5. Ongoing Development Workflow
 
-When adding a new database connector or modifying an existing one, follow these steps:
+When adding a new connector or modifying an existing one, follow these steps:
 1. **Initialize Module**: Create `skills/okf-<name>/go.mod` and add it to `go.work` at the root.
 2. **Update Workspace Dependencies**: Run `go mod tidy` in the new skill directory, ensuring it links to `okf-go` locally.
-3. **Local Testing**: Run `cd tests && docker-compose up -d` to launch test databases. Test the extraction (`produce`) and ingestion/synchronization (`ingest -sync`) against the live container.
+3. **Local Testing**: Run unit tests in the skill directory. For database connectors, start docker databases (`cd tests && docker-compose up -d`). Run all integration test checks under `tests/` using `go test -v .` to verify correctness.
 4. **Compile Binaries**: Recompile all binaries. Verify they compile without errors.
 5. **Agent Integration**: Expose the new skill as a tool in the reference agent `app/main.go` and test it in the Agents CLI playground.
 6. **Code Clean-up**: Shut down database containers via `cd tests && docker-compose down`.
