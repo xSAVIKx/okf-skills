@@ -15,25 +15,11 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/savikne/okf-skills-registry/okf-go"
 	"google.golang.org/api/iterator"
-	"gopkg.in/yaml.v3"
 )
 
-// Frontmatter represents the YAML metadata block at the top of an OKF concept document.
-type Frontmatter struct {
-	Type        string    `yaml:"type"`                  // Concept kind (e.g. BigQuery Table)
-	Title       string    `yaml:"title,omitempty"`       // Table ID
-	Description string    `yaml:"description,omitempty"` // Table description
-	Resource    string    `yaml:"resource,omitempty"`    // Canonical database URI for the table
-	Tags        []string  `yaml:"tags,omitempty"`        // Tags for classification
-	Timestamp   string    `yaml:"timestamp,omitempty"`   // Timestamp of extraction
-}
 
-// ConceptDoc represents a parsed or constructed OKF markdown document.
-type ConceptDoc struct {
-	Frontmatter Frontmatter
-	Body        string
-}
 
 // ColumnSpec represents the schema properties of a BigQuery table column/field.
 type ColumnSpec struct {
@@ -152,8 +138,8 @@ func runProduce(args []string) {
 				field.Name, field.Type, reqStr, field.Description)
 		}
 
-		doc := ConceptDoc{
-			Frontmatter: Frontmatter{
+		doc := okf.ConceptDoc{
+			Frontmatter: okf.Frontmatter{
 				Type:        "BigQuery Table",
 				Title:       t.TableID,
 				Description: tMeta.Description,
@@ -165,7 +151,7 @@ func runProduce(args []string) {
 		}
 
 		filePath := filepath.Join(tablesDir, t.TableID+".md")
-		if err := writeConceptDoc(filePath, doc); err != nil {
+		if err := okf.WriteConceptDoc(filePath, doc); err != nil {
 			log.Fatalf("Failed to write table %s document: %v", t.TableID, err)
 		}
 		fmt.Printf("Produced concept doc: %s\n", filePath)
@@ -180,8 +166,8 @@ func runProduce(args []string) {
 		fmt.Fprintf(&indexBody, "- [%s](tables/%s.md) - BigQuery table %s\n", table, table, table)
 	}
 
-	indexDoc := ConceptDoc{
-		Frontmatter: Frontmatter{
+	indexDoc := okf.ConceptDoc{
+		Frontmatter: okf.Frontmatter{
 			Type:        "Dataset",
 			Title:       *datasetID,
 			Description: dsMeta.Description,
@@ -189,7 +175,7 @@ func runProduce(args []string) {
 		},
 		Body: indexBody.String(),
 	}
-	if err := writeConceptDoc(filepath.Join(*outDir, "index.md"), indexDoc); err != nil {
+	if err := okf.WriteConceptDoc(filepath.Join(*outDir, "index.md"), indexDoc); err != nil {
 		log.Fatalf("Failed to write index.md: %v", err)
 	}
 	fmt.Println("Produced index.md successfully.")
@@ -235,7 +221,7 @@ func runIngest(args []string) {
 		}
 
 		filePath := filepath.Join(tablesDir, file.Name())
-		doc, err := readConceptDoc(filePath)
+		doc, err := okf.ReadConceptDoc(filePath)
 		if err != nil {
 			log.Fatalf("Failed to read concept doc %s: %v", filePath, err)
 		}
@@ -329,42 +315,4 @@ func parseColumnsFromMarkdown(body string) []ColumnSpec {
 	return cols
 }
 
-// writeConceptDoc writes the ConceptDoc structure as a markdown file with YAML frontmatter.
-func writeConceptDoc(filePath string, doc ConceptDoc) error {
-	var buf bytes.Buffer
-	buf.WriteString("---\n")
-	fmBytes, err := yaml.Marshal(doc.Frontmatter)
-	if err != nil {
-		return err
-	}
-	buf.Write(fmBytes)
-	buf.WriteString("---\n")
-	buf.WriteString(doc.Body)
-	return os.WriteFile(filePath, buf.Bytes(), 0644)
-}
 
-// readConceptDoc parses an OKF Markdown file.
-func readConceptDoc(filePath string) (*ConceptDoc, error) {
-	content, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, err
-	}
-
-	parts := bytes.SplitN(content, []byte("---\n"), 3)
-	if len(parts) < 3 {
-		parts = bytes.SplitN(content, []byte("---\r\n"), 3)
-		if len(parts) < 3 {
-			return nil, fmt.Errorf("invalid OKF concept file format: missing frontmatter boundaries")
-		}
-	}
-
-	var fm Frontmatter
-	if err := yaml.Unmarshal(parts[1], &fm); err != nil {
-		return nil, err
-	}
-
-	return &ConceptDoc{
-		Frontmatter: fm,
-		Body:        string(parts[2]),
-	}, nil
-}
