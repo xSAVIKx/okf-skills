@@ -10,8 +10,8 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-// profileTable computes per-column statistics for a BigQuery table by running a
-// single aggregate query that unions per-column counts.
+// profileTable computes per-column statistics for a BigQuery table by running
+// one aggregate query per column (one BigQuery job each).
 func profileTable(ctx context.Context, client *bigquery.Client, projectID, datasetID, table string, fields bigquery.Schema) ([]okf.ColumnProfile, error) {
 	ref := fmt.Sprintf("`%s.%s.%s`", projectID, datasetID, table)
 	var profiles []okf.ColumnProfile
