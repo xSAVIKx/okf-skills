@@ -9,7 +9,7 @@
 #   okf-mcp --skills-dir <INSTALL_DIR>     (or add INSTALL_DIR to PATH)
 set -euo pipefail
 
-SKILLS="okf-sqlite okf-mysql okf-postgresql okf-bigquery okf-fs okf-git okf-mcp okf-enrich"
+SKILLS="okf-sqlite okf-mysql okf-postgresql okf-bigquery okf-fs okf-git okf-enrich"
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 INSTALL_DIR="${1:-${OKF_INSTALL_DIR:-$HOME/.local/bin}}"
@@ -34,6 +34,12 @@ for skill in $SKILLS; do
   count=$((count + 1))
 done
 
-echo "Installed $count skills."
+# Build and install the okf-mcp server: the host that discovers and exposes the
+# skills over MCP. It is NOT a skill itself, so it lives at the repo top level
+# (not under skills/) and is not listed in the skills manifest.
+echo "  building okf-mcp (server) ..."
+( cd "$ROOT/okf-mcp" && go build -o "$INSTALL_DIR/okf-mcp$EXT" . )
+
+echo "Installed $count skills + the okf-mcp server."
 echo "Manifest: $MANIFEST"
 echo "Next: ensure $INSTALL_DIR is on your PATH, then run 'okf-mcp' (or 'okf-mcp --skills-dir $INSTALL_DIR')."

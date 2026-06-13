@@ -19,6 +19,7 @@ okf-skills-registry/
 │   ├── okf.go                     # Core types: Frontmatter, ConceptDoc, helpers
 │   ├── okf_test.go                # Unit tests
 │   └── okf-SPEC.md               # Full OKF specification document
+├── okf-mcp/                       # Generic MCP server — the host that exposes skills (not a skill)
 ├── skills/                        # Standalone Go-based CLI skills
 │   ├── okf-sqlite/                # SQLite connector (CGO-free)
 │   ├── okf-mysql/                 # MySQL connector
@@ -27,7 +28,6 @@ okf-skills-registry/
 │   ├── okf-fs/                    # Local filesystem connector
 │   ├── okf-git/                   # Git repository connector
 │   ├── okf-enrich/                # LLM enrichment skill
-│   ├── okf-mcp/                   # Generic MCP server (exposes installed skills as MCP tools)
 │   └── okf-reader/                # Ingestion guidance skill (Instructions-only)
 └── tests/                         # Central integration testing directory
     ├── docker-compose.yml         # MySQL & PostgreSQL containers

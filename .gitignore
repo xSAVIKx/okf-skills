@@ -9,7 +9,7 @@ skills/okf-bigquery/okf-bigquery
 skills/okf-fs/okf-fs
 skills/okf-git/okf-git
 skills/okf-enrich/okf-enrich
-skills/okf-mcp/okf-mcp
+okf-mcp/okf-mcp
 
 # Databases
 *.db

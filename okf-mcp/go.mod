@@ -18,4 +18,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/savikne/okf-skills-registry/okf-go => ../../okf-go
+replace github.com/savikne/okf-skills-registry/okf-go => ../okf-go
