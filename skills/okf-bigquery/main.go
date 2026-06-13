@@ -188,7 +188,7 @@ func runIngest(args []string) {
 	projectID := fs.String("project", "", "GCP Project ID (required)")
 	datasetID := fs.String("dataset", "", "BigQuery Dataset ID (required)")
 	bundleDir := fs.String("bundle", "", "OKF bundle path (required)")
-	sync := flag.Bool("sync", false, "Write descriptions back to BigQuery (optional)")
+	sync := fs.Bool("sync", false, "Write descriptions back to BigQuery (optional)")
 	fs.Parse(args)
 
 	if *projectID == "" || *datasetID == "" || *bundleDir == "" {

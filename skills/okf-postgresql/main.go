@@ -228,7 +228,7 @@ func runIngest(args []string) {
 	dbName := fs.String("db", "", "PostgreSQL database name (required)")
 	schemaName := fs.String("schema", "public", "PostgreSQL schema name")
 	bundleDir := fs.String("bundle", "", "OKF bundle path (required)")
-	sync := flag.Bool("sync", false, "Write modifications back to PostgreSQL (optional)")
+	sync := fs.Bool("sync", false, "Write modifications back to PostgreSQL (optional)")
 	fs.Parse(args)
 
 	if *password == "" || *dbName == "" || *bundleDir == "" {
