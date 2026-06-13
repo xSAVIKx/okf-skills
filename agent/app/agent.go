@@ -86,7 +86,7 @@ func BuildAgent(m model.LLM) (agent.Agent, error) {
 
 	// Instantiate the core ADK LLM agent
 	return llmagent.New(llmagent.Config{
-		Name:        "okf-reference-agent",
+		Name:        "okf-agent",
 		Model:       m,
 		Description: "An AI agent that creates and ingests Open Knowledge Format (OKF) bundles for database schemas, filesystems, and git repositories.",
 		Instruction: "You are a professional documentation agent utilizing the Open Knowledge Format (OKF). You use connectors (sqlite_connector, mysql_connector, postgresql_connector, bigquery_connector, fs_connector, git_connector) to produce OKF bundles (metadata markdown files) or ingest and sync comments/descriptions from OKF bundles back. Always explain what you are about to do before invoking any tool.",

@@ -1,13 +1,13 @@
 .PHONY: build run clean skills-build
 
 build:
-	cd app && go build -o ../okf-reference-agent.exe main.go
+	cd app && go build -o ../okf-agent.exe main.go
 
 run:
 	cd app && go run main.go
 
 clean:
-	del /q okf-reference-agent.exe 2>nul || true
+	del /q okf-agent.exe 2>nul || true
 	cd ../skills/okf-sqlite && del /q okf-sqlite.exe 2>nul || true
 	cd ../skills/okf-mysql && del /q okf-mysql.exe 2>nul || true
 	cd ../skills/okf-postgresql && del /q okf-postgresql.exe 2>nul || true

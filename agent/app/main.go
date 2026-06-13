@@ -1,4 +1,4 @@
-// Package main implements the OKF (Open Knowledge Format) Reference Agent.
+// Package main implements the OKF (Open Knowledge Format) Agent.
 // It uses the Google Agent Development Kit (ADK) for Go to initialize an LLM agent
 // that wraps our database, filesystem, and git skills as tools.
 package main
@@ -18,7 +18,7 @@ import (
 	"google.golang.org/genai"
 )
 
-// main is the reference agent entrypoint. It initializes Gemini, configures tools,
+// main is the okf-agent entrypoint. It initializes Gemini, configures tools,
 // creates the session storage service, and spins up a local command-line chat session loop.
 func main() {
 	ctx := context.Background()
@@ -47,7 +47,7 @@ func main() {
 	// Initialize session storage service (In-Memory implementation)
 	sessSvc := session.InMemoryService()
 	r, err := runner.New(runner.Config{
-		AppName:        "okf-reference-agent",
+		AppName:        "okf-agent",
 		Agent:          a,
 		SessionService: sessSvc,
 	})
@@ -56,7 +56,7 @@ func main() {
 	}
 
 	fmt.Println("=================================================================")
-	fmt.Println("   Open Knowledge Format (OKF) Reference Agent (Go ADK)")
+	fmt.Println("   Open Knowledge Format (OKF) Agent (Go ADK)")
 	fmt.Println("=================================================================")
 	fmt.Println("Enter your instructions (e.g. 'Generate an OKF bundle from sqlite database test.db to ./bundle'):")
 	fmt.Println("Press Ctrl+C to exit.")
@@ -85,13 +85,13 @@ func main() {
 
 		// Ensure session exists in storage before running the session
 		_, err = sessSvc.Get(ctx, &session.GetRequest{
-			AppName:   "okf-reference-agent",
+			AppName:   "okf-agent",
 			UserID:    userID,
 			SessionID: sessionID,
 		})
 		if err != nil {
 			_, _ = sessSvc.Create(ctx, &session.CreateRequest{
-				AppName:   "okf-reference-agent",
+				AppName:   "okf-agent",
 				UserID:    userID,
 				SessionID: sessionID,
 			})

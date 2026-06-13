@@ -1,4 +1,4 @@
-module okf-reference-agent
+module okf-agent
 
 go 1.24.4
 

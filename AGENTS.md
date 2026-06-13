@@ -14,6 +14,9 @@ okf-skills-registry/
 ├── README.md                      # General user-facing overview
 ├── go.work                        # Go workspace defining monorepo modules
 ├── okf-go/                        # Shared Go library (YAML/MD serialization, ignore/metadata helpers)
+│   ├── okf.go                     # Core types: Frontmatter, ConceptDoc, helpers
+│   ├── okf_test.go                # Unit tests
+│   └── okf-SPEC.md               # Full OKF specification document
 ├── skills/                        # Standalone Go-based CLI skills
 │   ├── okf-sqlite/                # SQLite connector (CGO-free)
 │   ├── okf-mysql/                 # MySQL connector
@@ -22,20 +25,24 @@ okf-skills-registry/
 │   ├── okf-fs/                    # Local filesystem connector
 │   ├── okf-git/                   # Git repository connector
 │   └── okf-reader/                # Ingestion guidance skill (Instructions-only)
-├── agent/                         # Reference agent wrapping skills as tools
+├── agent/                         # OKF Agent wrapping skills as tools
 │   ├── agents-cli-manifest.yaml   # Google Agents CLI manifest
-│   ├── Makefile                   # Agent runner and compilation scripts
+│   ├── Makefile                   # Agent build, run, clean, skills-build
 │   └── app/                       # Go ADK agent source code
+│       ├── main.go                # Entrypoint, CLI chat loop, session management
+│       ├── agent.go               # LLM agent config, prompts, tool registration
+│       └── tools.go               # Subprocess runner wrappers for each skill
 └── tests/                         # Central integration testing directory
     ├── docker-compose.yml         # MySQL & PostgreSQL containers
+    ├── helpers_test.go            # Shared test utilities (buildSkill, runSkill, etc.)
+    ├── db_integration_test.go     # SQLite, MySQL, PostgreSQL integration tests
+    ├── fs_integration_test.go     # Filesystem integration tests
+    ├── git_integration_test.go    # Git integration tests
     ├── mysql/
     │   └── init_mysql.sql         # Sample MySQL schema with comments
     ├── postgres/
     │   └── init_postgres.sql      # Sample PostgreSQL schema with comments
-    ├── helpers_test.go            # Shared test utilities
-    ├── db_integration_test.go     # Database integration tests
-    ├── fs_integration_test.go     # Filesystem integration tests
-    └── git_integration_test.go    # Git integration tests
+    └── testdata/                   # Test fixtures & sample data
 ```
 
 ---
@@ -80,28 +87,68 @@ Skills compile to standalone Go CLI binaries. They must support two main subcomm
 
 ---
 
-## 4. Reference Agent Development
+## 4. OKF Agent Development
 
-The reference agent under `agent/` exposes all database, filesystem, and Git connector skills as function tools to LLMs.
+The OKF Agent under `agent/` exposes all database, filesystem, and Git connector skills as function tools to LLMs.
 - **Go ADK Framework**: Built using Google's Agent Development Kit (`google.golang.org/adk`).
 - **Function Tools**: Exposes `sqlite_connector`, `mysql_connector`, `postgresql_connector`, `bigquery_connector`, `fs_connector`, and `git_connector`.
 - **Subprocess Execution**: The agent wraps the compiled binaries under `skills/` using `exec.Command`, passing structured JSON parameters received from Gemini tool calls to the underlying executables.
 - **Manifest Integration**: The agent is designed to work with `agents-cli`. Ensure any new commands or tool parameters align with [agents-cli-manifest.yaml](file:///d:/AntigravityProjects/okf-skills-registry/agent/agents-cli-manifest.yaml).
-- **Code Modularization**: As the agent grows, keep `agent/app/` structured and modular rather than putting everything in `main.go`:
-  - `main.go`: Application entrypoint, CLI scanner/chat loop, session initialization, and runtime config.
-  - `agent.go`: LLM agent build definitions, core prompts, model specifications, and tool list registration.
-  - `tools.go`: Go argument/result structs and subprocess runner execution wrappers.
-  - `web_tools.go`: Dedicated handlers for web crawling and search API integrations.
+
+### Code Modularization
+
+As the agent grows, keep `agent/app/` structured and modular. **Do not put everything in `main.go`**. Follow this layout:
+
+| File | Responsibility |
+|---|---|
+| `main.go` | Application entrypoint, CLI scanner/chat loop, session initialization, runtime config |
+| `agent.go` | LLM agent build definitions, core prompts, model specifications, tool list registration |
+| `tools.go` | Argument/result structs and subprocess runner execution wrappers for each skill |
+
+When adding new capabilities (e.g., web research, enrichment):
+- Create a **new file** for each distinct feature area (e.g., `enrichment.go`, `web_tools.go`).
+- Keep tool argument/result structs co-located with their runner functions.
+- Register new tools in `agent.go`'s `BuildAgent()` function alongside the existing connectors.
 
 ---
 
-## 5. Ongoing Development Workflow
+## 5. Integration Testing
+
+Integration tests are centralized under `tests/` and organized by connector type:
+
+| File | Coverage |
+|---|---|
+| `helpers_test.go` | `buildSkill()`, `runSkill()`, `readConceptDoc()` shared utilities |
+| `db_integration_test.go` | SQLite (no Docker), MySQL (Docker), PostgreSQL (Docker) |
+| `fs_integration_test.go` | Filesystem produce & ingest |
+| `git_integration_test.go` | Git repository produce & ingest |
+
+### Running Tests
+```bash
+# Start Docker databases (only needed for MySQL/PostgreSQL tests)
+cd tests && docker-compose up -d
+
+# Build all skill binaries (tests invoke them as subprocesses)
+cd ../agent && make skills-build
+
+# Run the full suite
+cd ../tests && go test -v .
+
+# Stop Docker databases
+docker-compose down
+```
+
+SQLite, filesystem, and git tests run without Docker. Tests that require Docker containers are guarded with connection checks.
+
+---
+
+## 6. Ongoing Development Workflow
 
 When adding a new connector or modifying an existing one, follow these steps:
 1. **Initialize Module**: Create `skills/okf-<name>/go.mod` and add it to `go.work` at the root.
 2. **Update Workspace Dependencies**: Run `go mod tidy` in the new skill directory, ensuring it links to `okf-go` locally.
 3. **Local Testing**: Run unit tests in the skill directory. For database connectors, start docker databases (`cd tests && docker-compose up -d`). Run all integration test checks under `tests/` using `go test -v .` to verify correctness.
 4. **Compile Binaries**: Recompile all binaries. Verify they compile without errors.
-5. **Agent Integration**: Expose the new skill as a tool in the reference agent `app/main.go` and test it in the Agents CLI playground.
+5. **Agent Integration**: Expose the new skill as a tool in the OKF Agent — add the runner to `tools.go` and register it in `agent.go`'s `BuildAgent()`.
 6. **Code Clean-up**: Shut down database containers via `cd tests && docker-compose down`.
 7. **Commit Conventions**: Use conventional commit messages (`feat: ...`, `fix: ...`, `refactor: ...`, `docs: ...`) and commit modularly.
