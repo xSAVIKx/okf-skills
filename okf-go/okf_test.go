@@ -3,6 +3,7 @@ package okf
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -160,5 +161,84 @@ func TestMalformedFiles(t *testing.T) {
 	_, err = ReadConceptDoc(badPath)
 	if err == nil {
 		t.Error("expected error for malformed file, but got nil")
+	}
+}
+
+// TestIgnoreMatcher verifies that it parses .okfignore patterns and matches correctly.
+func TestIgnoreMatcher(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "okf-ignore-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	ignoreContent := `# Comment
+*.log
+/temp/
+build/
+`
+	if err := os.WriteFile(filepath.Join(tempDir, ".okfignore"), []byte(ignoreContent), 0644); err != nil {
+		t.Fatalf("failed to write .okfignore: %v", err)
+	}
+
+	im, err := NewIgnoreMatcher(tempDir)
+	if err != nil {
+		t.Fatalf("failed to create ignore matcher: %v", err)
+	}
+
+	tests := []struct {
+		path   string
+		ignore bool
+	}{
+		{"test.log", true},
+		{"src/main.go", false},
+		{".git", true},
+		{".git/config", true},
+		{".okfignore", true},
+		{"temp/file.txt", true},
+		{"build/artifact.exe", true},
+		{"build/sub/file.json", true},
+	}
+
+	for _, test := range tests {
+		actual := im.Matches(test.path)
+		if actual != test.ignore {
+			t.Errorf("Matches(%q): expected %t, got %t", test.path, test.ignore, actual)
+		}
+	}
+}
+
+// TestFolderMetadata verifies loading and saving folder metadata.
+func TestFolderMetadata(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "okf-meta-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	meta, err := ReadFolderMetadata(tempDir)
+	if err != nil {
+		t.Fatalf("failed to read non-existent metadata: %v", err)
+	}
+	if len(meta) != 0 {
+		t.Errorf("expected empty metadata, got %+v", meta)
+	}
+
+	originalMeta := map[string]string{
+		"README.md":   "Project documentation",
+		"src/main.go": "Entry point code",
+	}
+
+	if err := WriteFolderMetadata(tempDir, originalMeta); err != nil {
+		t.Fatalf("failed to write folder metadata: %v", err)
+	}
+
+	parsedMeta, err := ReadFolderMetadata(tempDir)
+	if err != nil {
+		t.Fatalf("failed to read saved metadata: %v", err)
+	}
+
+	if !reflect.DeepEqual(parsedMeta, originalMeta) {
+		t.Errorf("expected %+v, got %+v", originalMeta, parsedMeta)
 	}
 }
