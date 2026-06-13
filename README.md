@@ -111,6 +111,9 @@ Located in `skills/okf-reader/`, this is an instructions-only skill (`SKILL.md`)
 The `okf-go` module provides shared Go types and helpers used by all skills:
 - `Frontmatter` / `ConceptDoc` structs for OKF YAML+Markdown serialization
 - `ReadConceptDoc` / `WriteConceptDoc` for parsing and writing OKF concept files
+- `UpsertSection` / `GetSection` for adding or replacing markdown body sections (e.g. `Data Profile`, `Sample`) without clobbering surrounding content
+- `ColumnProfile` with `RenderProfileSection` / `RenderSampleSection` for the `--profile` / `--sample` output
+- `SkillSchema` / `PrintSchema` for the self-describing `schema` subcommand every skill emits
 - `IgnoreMatcher` for `.okfignore` wildcard support
 - `ReadFolderMetadata` / `WriteFolderMetadata` for `.okf-metadata.yaml`
 
@@ -139,19 +142,20 @@ After installation, ensure the directory is on your `PATH`. Then either invoke s
 
 ## 7. Local Testing Environment
 
-Integration tests live in `tests/` and cover all connectors. A `docker-compose.yml` is provided to spin up MySQL and PostgreSQL instances with pre-loaded mock databases:
+Integration tests live in `tests/` and cover all connectors, the connectors' `schema` self-description contract, and `okf-mcp`'s discovery of a built skill. A `docker-compose.yml` is provided to spin up MySQL and PostgreSQL instances with pre-loaded mock databases:
 
 ```bash
-# Start test databases
-cd tests
-docker-compose up -d
-
-# Build all skill binaries (required by integration tests)
+# 1. Build the skill binaries IN PLACE (required by the integration tests, which
+#    locate them at skills/<name>/<name>). With GNU make (Linux/macOS/CI):
 make build
+#    Without make (e.g. Git Bash on Windows), build each connector and okf-mcp:
+#    for each: cd skills/okf-sqlite && go build -o okf-sqlite .   (and cd okf-mcp && go build -o okf-mcp .)
 
-# Run the full integration test suite
-cd tests
-go test -v .
+# 2. (Optional) start MySQL & PostgreSQL for the database integration tests:
+cd tests && docker-compose up -d && cd ..
+
+# 3. Run the integration suite:
+cd tests && go test -v .
 ```
 
-SQLite, filesystem, and git tests run without Docker. Only MySQL and PostgreSQL tests require the containers.
+SQLite, filesystem, git, the `schema`-contract checks, and `okf-mcp` discovery run without Docker; only the MySQL and PostgreSQL cases require the containers (they skip otherwise).

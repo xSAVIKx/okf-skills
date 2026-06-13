@@ -146,23 +146,26 @@ Integration tests are centralized under `tests/` and organized by connector type
 | `db_integration_test.go` | SQLite (no Docker), MySQL (Docker), PostgreSQL (Docker) |
 | `fs_integration_test.go` | Filesystem produce & ingest |
 | `git_integration_test.go` | Git repository produce & ingest |
+| `mcp_integration_test.go` | Connector `schema`-contract checks + `okf-mcp` discovery of a built skill |
 
 ### Running Tests
 ```bash
-# Start Docker databases (only needed for MySQL/PostgreSQL tests)
-cd tests && docker-compose up -d
-
-# Build all skill binaries (tests invoke them as subprocesses)
+# 1. Build skill binaries IN PLACE (the tests invoke them as subprocesses and
+#    locate them at skills/<name>/<name>). From the repo root, with GNU make:
 make build
+#    Without make: build each connector and okf-mcp with `go build -o <name> .`.
 
-# Run the full suite
+# 2. (Optional) start MySQL & PostgreSQL for the database tests:
+cd tests && docker-compose up -d && cd ..
+
+# 3. Run the suite:
 cd tests && go test -v .
 
-# Stop Docker databases
-docker-compose down
+# 4. (Optional) stop the databases:
+cd tests && docker-compose down && cd ..
 ```
 
-SQLite, filesystem, and git tests run without Docker. Tests that require Docker containers are guarded with connection checks.
+SQLite, filesystem, git, the `schema`-contract checks, and `okf-mcp` discovery run without Docker; the MySQL/PostgreSQL cases are guarded by connection checks and skip when the containers are down.
 
 ---
 
@@ -173,6 +176,6 @@ When adding a new connector or modifying an existing one, follow these steps:
 2. **Update Workspace Dependencies**: Run `go mod tidy` in the new skill directory, ensuring it links to `okf-go` locally.
 3. **Implement `schema` Subcommand**: Implement the `schema` subcommand so `okf-mcp` can discover and register the new skill as an MCP tool automatically.
 4. **Local Testing**: Run unit tests in the skill directory. For database connectors, start Docker databases (`cd tests && docker-compose up -d`). Run all integration tests under `tests/` using `go test -v .` to verify correctness.
-5. **Compile Binaries**: Run `make build` and verify all skills compile without errors.
+5. **Compile Binaries**: Run `make build` (or `go build -o <name> .` in each skill directory and `okf-mcp/`) and verify everything compiles without errors.
 6. **Code Clean-up**: Shut down database containers via `cd tests && docker-compose down`.
 7. **Commit Conventions**: Use conventional commit messages (`feat: ...`, `fix: ...`, `refactor: ...`, `docs: ...`) and commit modularly.
