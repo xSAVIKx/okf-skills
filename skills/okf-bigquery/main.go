@@ -69,6 +69,8 @@ func runProduce(args []string) {
 	datasetID := fs.String("dataset", "", "BigQuery Dataset ID (required)")
 	outDir := fs.String("out", "", "Output bundle directory (required)")
 	tablesStr := fs.String("tables", "", "Filter tables (comma-separated, optional)")
+	sample := fs.Int("sample", 0, "Number of sample rows to embed per table (0 = none)")
+	profile := fs.Bool("profile", false, "Compute per-column statistics and embed a Data Profile section")
 	fs.Parse(args)
 
 	if *projectID == "" || *datasetID == "" || *outDir == "" {
@@ -142,6 +144,22 @@ func runProduce(args []string) {
 				field.Name, field.Type, reqStr, field.Description)
 		}
 
+		bodyStr := body.String()
+		if *profile {
+			profiles, err := profileTable(ctx, client, *projectID, *datasetID, t.TableID, tMeta.Schema)
+			if err != nil {
+				log.Fatalf("Failed to profile table %s: %v", t.TableID, err)
+			}
+			bodyStr = okf.UpsertSection(bodyStr, "Data Profile", okf.RenderProfileSection(profiles))
+		}
+		if *sample > 0 {
+			headers, sampleRows, err := sampleTable(ctx, client, *projectID, *datasetID, t.TableID, *sample, tMeta.Schema)
+			if err != nil {
+				log.Fatalf("Failed to sample table %s: %v", t.TableID, err)
+			}
+			bodyStr = okf.UpsertSection(bodyStr, "Sample", okf.RenderSampleSection(headers, sampleRows))
+		}
+
 		doc := okf.ConceptDoc{
 			Frontmatter: okf.Frontmatter{
 				Type:        "BigQuery Table",
@@ -151,7 +169,7 @@ func runProduce(args []string) {
 				Tags:        []string{"bigquery", "table"},
 				Timestamp:   timestamp,
 			},
-			Body: body.String(),
+			Body: bodyStr,
 		}
 
 		filePath := filepath.Join(tablesDir, t.TableID+".md")
