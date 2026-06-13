@@ -8,8 +8,8 @@ skills/okf-postgresql/okf-postgresql
 skills/okf-bigquery/okf-bigquery
 skills/okf-fs/okf-fs
 skills/okf-git/okf-git
-agent/app/okf-reference-agent
-agent/okf-reference-agent
+skills/okf-enrich/okf-enrich
+skills/okf-mcp/okf-mcp
 
 # Databases
 *.db
