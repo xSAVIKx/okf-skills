@@ -24,11 +24,11 @@ Use this skill when you need to:
 
 ## Setup
 
-The connector requires Go 1.18+:
+The connector requires Go 1.24+:
 
 ```bash
 cd skills/okf-mysql
-go build -o okf-mysql main.go
+go build -o okf-mysql .
 ```
 
 ## How to Use
@@ -37,7 +37,7 @@ go build -o okf-mysql main.go
 Extract database schema metadata and comments:
 
 ```bash
-./okf-mysql produce --host <host> --port <port> --user <user> --password <password> --db <database-name> --out <output-bundle-dir> [--tables <comma-separated-table-names>]
+./okf-mysql produce --host <host> --port <port> --user <user> --password <password> --db <database-name> --out <output-bundle-dir> [--tables <comma-separated-table-names>] [--sample <N>] [--profile]
 ```
 
 ### 2. Ingest / Synchronize an OKF Bundle
@@ -51,8 +51,18 @@ Synchronize table/column descriptions from the OKF bundle back into database com
 - `--host` (default `localhost`): MySQL host.
 - `--port` (default `3306`): MySQL port.
 - `--user` (required): MySQL user.
-- `--password` (required): MySQL password.
+- `--password` (required): MySQL password. May also be supplied via the `MYSQL_PASSWORD` environment variable to keep secrets out of the command line.
 - `--db` (required): Target database schema.
 - `--bundle` (required for ingest): Path to the OKF bundle.
 - `--out` (required for produce): Path to output OKF bundle.
+- `--tables` (optional): Filter to extract only specific tables.
+- `--sample <N>` (optional): Embed up to N sample rows per table as a `## Sample` section in each table doc (default 0 = none).
+- `--profile` (optional): Compute per-column statistics (non-null, null, distinct, min, max) and embed a `## Data Profile` section.
 - `--sync` (optional for ingest): If provided, runs `ALTER TABLE ... COMMENT = ...` and `MODIFY COLUMN ... COMMENT ...` statements to synchronize descriptions.
+
+### 3. Inspect the Schema (self-description)
+Print a machine-readable JSON description of this skill's commands and flags (used by `okf-mcp` to expose the skill as an MCP tool):
+
+```bash
+./okf-mysql schema
+```

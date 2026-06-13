@@ -1,6 +1,27 @@
+---
+name: okf-fs
+description: Local filesystem connector for producing and ingesting Open Knowledge Format (OKF) bundles.
+version: 0.1.0
+author: Yurii Serhiichuk
+tags:
+  - okf
+  - knowledge-catalog
+  - filesystem
+  - documentation
+---
+
 # Skill: okf-fs (Local Filesystem OKF Connector)
 
 This skill produces and ingests OKF bundles documenting local directory tree structures and metadata, respecting `.okfignore` files.
+
+## Setup
+
+The connector is written in Go and requires Go 1.24+ to build from source:
+
+```bash
+cd skills/okf-fs
+go build -o okf-fs .
+```
 
 ## Commands
 
@@ -8,21 +29,28 @@ This skill produces and ingests OKF bundles documenting local directory tree str
 Traverses the specified directory, ignores files matching `.okfignore` rules, reads description text from `.okf-metadata.yaml`, and outputs an OKF bundle.
 
 ```bash
-okf-fs produce -dir <directory-to-document> -out <bundle-output-dir>
+./okf-fs produce --dir <directory-to-document> --out <bundle-output-dir>
 ```
 
 Options:
-- `-dir` (string): The path to the local directory to document (required).
-- `-out` (string): The path where the generated OKF bundle will be created (required).
+- `--dir` (string): The path to the local directory to document (required).
+- `--out` (string): The path where the generated OKF bundle will be created (required).
 
 ### 2. `ingest`
 Compares an OKF bundle with the target directory, checks for file existence and mismatches, and optionally syncs file descriptions back into `.okf-metadata.yaml`.
 
 ```bash
-okf-fs ingest -dir <target-directory> -bundle <okf-bundle-dir> [-sync]
+./okf-fs ingest --dir <target-directory> --bundle <okf-bundle-dir> [--sync]
 ```
 
 Options:
-- `-dir` (string): The target directory to compare against (required).
-- `-bundle` (string): The path to the OKF bundle to ingest (required).
-- `-sync` (bool): If true, updates `.okf-metadata.yaml` at the directory root with the descriptions from the bundle.
+- `--dir` (string): The target directory to compare against (required).
+- `--bundle` (string): The path to the OKF bundle to ingest (required).
+- `--sync` (bool): If true, updates `.okf-metadata.yaml` at the directory root with the descriptions from the bundle.
+
+### 3. Inspect the Schema (self-description)
+Print a machine-readable JSON description of this skill's commands and flags (used by `okf-mcp` to expose the skill as an MCP tool):
+
+```bash
+./okf-fs schema
+```

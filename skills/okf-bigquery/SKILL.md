@@ -25,11 +25,11 @@ Use this skill when you need to:
 
 ## Setup
 
-The connector requires Go 1.18+ and utilizes the official Google Cloud BigQuery Client:
+The connector requires Go 1.24+ and utilizes the official Google Cloud BigQuery Client:
 
 ```bash
 cd skills/okf-bigquery
-go build -o okf-bigquery main.go
+go build -o okf-bigquery .
 ```
 
 ## How to Use
@@ -43,7 +43,7 @@ export GOOGLE_APPLICATION_CREDENTIALS="/path/to/credentials.json"
 Extract dataset schema metadata and descriptions:
 
 ```bash
-./okf-bigquery produce --project <gcp-project-id> --dataset <dataset-id> --out <output-bundle-dir> [--tables <comma-separated-table-names>]
+./okf-bigquery produce --project <gcp-project-id> --dataset <dataset-id> --out <output-bundle-dir> [--tables <comma-separated-table-names>] [--sample <N>] [--profile]
 ```
 
 ### 2. Ingest / Synchronize an OKF Bundle
@@ -58,4 +58,14 @@ Synchronize table and field descriptions from the OKF bundle back to BigQuery:
 - `--dataset` (required): Target BigQuery dataset ID.
 - `--bundle` (required for ingest): Path to the OKF bundle.
 - `--out` (required for produce): Path to output OKF bundle.
+- `--tables` (optional): Filter to extract only specific tables.
+- `--sample <N>` (optional): Embed up to N sample rows per table as a `## Sample` section in each table doc (default 0 = none).
+- `--profile` (optional): Compute per-column statistics (non-null, null, distinct, min, max) and embed a `## Data Profile` section.
 - `--sync` (optional for ingest): If provided, calls the BigQuery API to update table and schema descriptions.
+
+### 3. Inspect the Schema (self-description)
+Print a machine-readable JSON description of this skill's commands and flags (used by `okf-mcp` to expose the skill as an MCP tool):
+
+```bash
+./okf-bigquery schema
+```
