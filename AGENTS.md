@@ -30,7 +30,8 @@ okf-skills-registry/
 │   ├── okf-fs/                    # Local filesystem connector
 │   ├── okf-git/                   # Git repository connector
 │   ├── okf-enrich/                # Enrichment guidance skill (Instructions-only)
-│   └── okf-reader/                # Ingestion guidance skill (Instructions-only)
+│   ├── okf-reader/                # Ingestion guidance skill (Instructions-only)
+│   └── okf-producer-generator/    # Producer-authoring guidance skill (Instructions-only)
 └── tests/                         # Central integration testing directory
     ├── docker-compose.yml         # MySQL & PostgreSQL containers
     ├── helpers_test.go            # Shared test utilities (getBinaryPath, isPortOpen, etc.)
@@ -175,7 +176,7 @@ SQLite, filesystem, git, the `schema`-contract checks, and `okf-mcp` discovery r
 
 ## 6. Ongoing Development Workflow
 
-When adding a new connector or modifying an existing one, follow these steps:
+When adding a new connector or modifying an existing one, follow these steps (the `okf-producer-generator` skill in `skills/okf-producer-generator/` walks an agent through this end to end — principles, code patterns, and the full registration checklist):
 1. **Initialize Module**: Create `skills/okf-<name>/go.mod` and add it to `go.work` at the root.
 2. **Update Workspace Dependencies**: Run `go mod tidy` in the new skill directory, ensuring it links to `okf-go` locally.
 3. **Implement `schema` Subcommand**: Implement the `schema` subcommand so `okf-mcp` can discover and register the new skill as an MCP tool automatically.

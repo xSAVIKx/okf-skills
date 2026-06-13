@@ -22,10 +22,11 @@
     },
     {
       "title": "Agent Guidance",
-      "description": "Instructions-only skills that teach an agent's own LLM to read and enrich OKF bundles.",
+      "description": "Instructions-only skills that teach an agent to read and enrich OKF bundles, and to author the producer skills that generate them.",
       "skills": [
         "okf-reader",
-        "okf-enrich"
+        "okf-enrich",
+        "okf-producer-generator"
       ]
     }
   ]

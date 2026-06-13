@@ -28,7 +28,8 @@ okf-skills-registry/
 │   ├── okf-fs/                    # Local filesystem connector
 │   ├── okf-git/                   # Git repository connector
 │   ├── okf-enrich/                # Enrichment guidance skill (Instructions-only)
-│   └── okf-reader/                # Ingestion guidance skill (Instructions-only)
+│   ├── okf-reader/                # Ingestion guidance skill (Instructions-only)
+│   └── okf-producer-generator/    # Producer-authoring guidance skill (Instructions-only)
 └── tests/                         # Integration test suite
     ├── docker-compose.yml         # MySQL & PostgreSQL containers
     ├── helpers_test.go            # Shared test utilities
@@ -174,9 +175,19 @@ The root `skills.sh.json` manifest groups the skills for the [skills.sh](https:/
 |---|---|
 | Database Connectors | `okf-sqlite`, `okf-mysql`, `okf-postgresql`, `okf-bigquery` |
 | Filesystem & Git | `okf-fs`, `okf-git` |
-| Agent Guidance | `okf-reader`, `okf-enrich` |
+| Agent Guidance | `okf-reader`, `okf-enrich`, `okf-producer-generator` |
 
 `okf-mcp` is deliberately omitted from the registry manifest: it is the host server that exposes the skills over MCP (and lives outside `skills/`), not a discoverable skill itself.
+
+---
+
+## 9. Producer Generator Skill (`okf-producer-generator`)
+
+Located in `skills/okf-producer-generator/`, this is an instructions-only skill (`SKILL.md`) — no binary. It is the "write a producer" on-ramp for the registry: it ships a copy of the OKF spec (`okf-SPEC.md`), an `okf-go` library API reference (`okf-go-api.md`), and a step-by-step guide for authoring a new connector that matches the existing six rather than reverse-engineering them.
+
+It covers the architectural principles (deterministic extraction with **no embedded LLM**, `okf-go` as the single source of OKF types, `schema` as the MCP-discovery contract), the `produce`/`ingest`/`schema` command surface, the secret-handling and `--sync` conventions, and the full registration checklist (`go.work`, `Makefile`, `skills.sh`, `skills.sh.json`, docs, and tests).
+
+Load it when extending the registry to a source it doesn't yet cover — e.g. MongoDB, Redis, Kafka, a CSV directory, or an HTTP API.
 
 ---
 
