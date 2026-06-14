@@ -35,6 +35,8 @@ html,body{margin:0;height:100%;font-family:system-ui,-apple-system,Segoe UI,Robo
 #tree li:hover{background:var(--surface)}
 #tree li.dir{color:var(--muted);font-weight:600}
 #tree li.selected{background:var(--accent);color:#fff}
+#tree li.kbd{outline:2px solid var(--accent);outline-offset:-2px}
+#trace.active{background:var(--accent);color:#fff}
 #filters{margin-bottom:10px;font-size:13px;color:var(--muted)}
 #filters label{display:inline-flex;align-items:center;gap:4px;margin:2px 6px 2px 0}
 #reader h1,#reader h2,#reader h3{margin-top:0.6em}

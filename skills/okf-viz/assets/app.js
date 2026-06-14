@@ -4,6 +4,8 @@
   var nodes = data.nodes || [], edges = data.edges || [], docs = data.docs || {};
   var manifest = data.manifest || {}; // id -> body-fragment path (lazy mode)
   var bodyCache = {};                  // id -> fetched body HTML
+  var selectedId = null;               // current selection (for permalinks)
+  var applyingState = false;           // guard against hash<->state feedback loops
 
   // ---- theme ----
   var themeSel = document.getElementById("theme");
@@ -85,6 +87,7 @@
   styleGraph(cy);
   cy.on("tap", "node", function (evt) {
     var n = evt.target;
+    if (traceMode) { handleTraceTap(n); return; }
     var k = n.data("kind");
     if (clustered && (k === "directory" || k === "root")) {
       var dirKey = k === "root" ? "" : n.id();
@@ -148,6 +151,8 @@
       { selector: 'node[kind="directory"], node[kind="root"]', style: { "shape": "round-rectangle" } },
       { selector: "node.selected", style: { "border-width": 3, "border-color": cssVar("--accent") || "#4f86c6" } },
       { selector: "node.dim", style: { "opacity": 0.25 } },
+      { selector: "node.traced", style: { "opacity": 1, "border-width": 3, "border-color": cssVar("--accent") || "#4f86c6" } },
+      { selector: "edge.traced", style: { "opacity": 1, "width": 4, "line-color": cssVar("--accent") || "#4f86c6", "target-arrow-color": cssVar("--accent") || "#4f86c6" } },
       { selector: 'edge[kind="containment"]', style: {
         "width": 1.5, "line-color": structural, "line-style": "dashed", "curve-style": "straight" } },
       { selector: 'edge[kind="crosslink"]', style: {
@@ -219,18 +224,34 @@
       cb.addEventListener("change", function (ev) {
         var r = ev.target.getAttribute("data-rel");
         cy.edges('edge[kind="crosslink"][relation="' + r + '"]').toggleClass("hidden", !ev.target.checked);
+        writeHash();
       });
     });
   }
 
   // ---- reader ----
+  function currentHops() {
+    var el = document.getElementById("hops");
+    var v = el ? parseInt(el.value, 10) : 1;
+    return isNaN(v) || v < 0 ? 1 : v;
+  }
+  // applySpotlight dims everything outside an N-hop neighborhood of n.
+  function applySpotlight(n) {
+    cy.elements().removeClass("dim traced");
+    if (n.empty()) return;
+    var hops = currentHops();
+    var hood = n;
+    for (var i = 0; i < hops; i++) hood = hood.closedNeighborhood();
+    var keep = hops > 0 ? hood : n;
+    cy.nodes().not(keep.nodes()).addClass("dim");
+  }
   function select(id) {
-    cy.nodes().removeClass("selected dim");
+    selectedId = id;
+    cy.nodes().removeClass("selected");
     var n = cy.getElementById(id);
     if (n.nonempty()) {
       n.addClass("selected");
-      var keep = n.closedNeighborhood().nodes();
-      cy.nodes().not(keep).addClass("dim");
+      applySpotlight(n);
       cy.animate({ center: { eles: n } }, { duration: 200 });
     }
     document.querySelectorAll("#tree li").forEach(function (li) { li.classList.toggle("selected", li.dataset.id === id); });
@@ -260,7 +281,7 @@
         r.innerHTML = head;
       }
     }
-    if (location.hash.slice(1) !== encodeURIComponent(id)) location.hash = encodeURIComponent(id);
+    writeHash();
   }
 
   // wireReaderLinks makes intra-bundle .md links navigate within the viewer.
@@ -269,7 +290,7 @@
       a.addEventListener("click", function (ev) {
         ev.preventDefault();
         var t = resolveHref(id, a.getAttribute("href"));
-        if (docs[t]) location.hash = encodeURIComponent(t);
+        if (docs[t]) select(t);
       });
     });
   }
@@ -318,17 +339,44 @@
 
   // ---- nav tree + filters ----
   var tree = document.getElementById("tree");
-  function renderTree(filterFn) {
+  // fuzzyScore ranks a subsequence match: contiguous runs and a prefix match score
+  // higher; -1 means no match. Dependency-free.
+  function fuzzyScore(q, text) {
+    q = q.toLowerCase(); text = text.toLowerCase();
+    if (!q) return 0;
+    var ti = 0, score = 0, streak = 0, first = -1;
+    for (var qi = 0; qi < q.length; qi++) {
+      var idx = text.indexOf(q[qi], ti);
+      if (idx < 0) return -1;
+      if (first < 0) first = idx;
+      if (idx === ti) { streak++; score += 5 + streak; } else { streak = 0; score += 1; }
+      ti = idx + 1;
+    }
+    if (first === 0) score += 10;
+    return score;
+  }
+  function searchScore(n) {
+    return fuzzyScore(searchEl.value.trim(), n.id + " " + n.title + " " + (n.type || "") + " " + (n.tags || []).join(" "));
+  }
+  function renderTree() {
     tree.innerHTML = "";
-    nodes.filter(function (n) { return n.kind === "concept"; })
-      .filter(filterFn)
-      .sort(function (a, b) { return a.id < b.id ? -1 : 1; })
-      .forEach(function (n) {
-        var li = document.createElement("li");
-        li.textContent = n.id; li.dataset.id = n.id; li.title = n.description || "";
-        li.addEventListener("click", function () { select(n.id); });
-        tree.appendChild(li);
-      });
+    var q = searchEl.value.trim();
+    var list = nodes.filter(function (n) { return n.kind === "concept" && typeMatch(n); });
+    if (q) {
+      list = list.map(function (n) { return { n: n, s: searchScore(n) }; })
+        .filter(function (x) { return x.s >= 0; })
+        .sort(function (a, b) { return b.s - a.s || (a.n.id < b.n.id ? -1 : 1); })
+        .map(function (x) { return x.n; });
+    } else {
+      list.sort(function (a, b) { return a.id < b.id ? -1 : 1; });
+    }
+    list.forEach(function (n) {
+      var li = document.createElement("li");
+      li.textContent = n.id; li.dataset.id = n.id; li.title = n.description || "";
+      li.addEventListener("click", function () { select(n.id); });
+      tree.appendChild(li);
+    });
+    kbdIndex = -1;
   }
   // type filter checkboxes
   var types = Array.from(new Set(nodes.filter(function (n){return n.kind==="concept" && n.type;}).map(function(n){return n.type;}))).sort();
@@ -346,14 +394,27 @@
   });
   var searchEl = document.getElementById("search");
   searchEl.addEventListener("input", applyFilter);
+  // keyboard navigation of the ranked result list.
+  var kbdIndex = -1;
+  searchEl.addEventListener("keydown", function (ev) {
+    var items = tree.querySelectorAll("li");
+    if (!items.length) return;
+    if (ev.key === "ArrowDown") { kbdIndex = Math.min(kbdIndex + 1, items.length - 1); ev.preventDefault(); }
+    else if (ev.key === "ArrowUp") { kbdIndex = Math.max(kbdIndex - 1, 0); ev.preventDefault(); }
+    else if (ev.key === "Enter") { if (kbdIndex >= 0 && items[kbdIndex]) select(items[kbdIndex].dataset.id); return; }
+    else { return; }
+    items.forEach(function (li, i) { li.classList.toggle("kbd", i === kbdIndex); });
+    if (items[kbdIndex]) items[kbdIndex].scrollIntoView({ block: "nearest" });
+  });
+  function typeMatch(n) { return !n.type || active.has(n.type); }
   function matches(n) {
-    var q = searchEl.value.toLowerCase();
-    var typeOk = !n.type || active.has(n.type);
-    var qOk = !q || (n.id + " " + n.title + " " + (n.description || "")).toLowerCase().indexOf(q) >= 0;
-    return typeOk && qOk;
+    if (!typeMatch(n)) return false;
+    if (!searchEl.value.trim()) return true;
+    return searchScore(n) >= 0;
   }
   function applyFilter() {
-    renderTree(matches);
+    renderTree();
+    writeHash();
     if (clustered) { applyClusterDisplay(); return; }
     cy.nodes('[kind="concept"]').forEach(function (cn) {
       var n = nodes.find(function (x) { return x.id === cn.id(); });
@@ -374,14 +435,119 @@
     });
   }
 
-  // ---- init ----
-  renderTree(matches);
-  window.addEventListener("hashchange", function () {
-    var id = decodeURIComponent(location.hash.slice(1));
-    if (id && docs[id]) select(id);
+  // ---- permalinks: encode node + filters + layout + hidden relations in the hash ----
+  function hiddenRelations() {
+    var out = [];
+    document.querySelectorAll(".legend .rel-toggle").forEach(function (cb) {
+      if (!cb.checked) out.push(cb.getAttribute("data-rel") || "_generic");
+    });
+    return out;
+  }
+  function writeHash() {
+    if (applyingState) return;
+    var parts = [];
+    if (selectedId) parts.push("n=" + encodeURIComponent(selectedId));
+    if (active.size !== types.length) parts.push("f=" + encodeURIComponent(Array.from(active).sort().join(",")));
+    var lay = document.getElementById("layout").value;
+    if (lay) parts.push("l=" + encodeURIComponent(lay));
+    var hr = hiddenRelations();
+    if (hr.length) parts.push("h=" + encodeURIComponent(hr.join(",")));
+    var h = parts.join("&");
+    if (location.hash.slice(1) !== h) {
+      try { history.replaceState(null, "", h ? "#" + h : "#"); } catch (e) { location.hash = h; }
+    }
+  }
+  function readHash() {
+    var raw = location.hash.slice(1);
+    if (!raw) return null;
+    if (raw.indexOf("=") < 0) return { n: decodeURIComponent(raw) }; // back-compat: bare concept id
+    var st = {};
+    raw.split("&").forEach(function (kv) {
+      var i = kv.indexOf("="); if (i < 0) return;
+      st[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1));
+    });
+    return st;
+  }
+  function applyState(st) {
+    if (!st) return;
+    applyingState = true;
+    try {
+      if (typeof st.f === "string") {
+        var want = new Set(st.f ? st.f.split(",") : []);
+        active = new Set();
+        types.forEach(function (t) {
+          var on = want.has(t);
+          if (on) active.add(t);
+          var cb = document.getElementById("f-" + t.replace(/\W/g, "_"));
+          if (cb) cb.checked = on;
+        });
+      }
+      if (st.l) {
+        var ls = document.getElementById("layout");
+        if (ls) ls.value = st.l;
+      }
+      if (typeof st.h === "string") {
+        var hide = new Set(st.h ? st.h.split(",") : []);
+        document.querySelectorAll(".legend .rel-toggle").forEach(function (cb) {
+          var key = cb.getAttribute("data-rel") || "_generic";
+          var shouldHide = hide.has(key);
+          cb.checked = !shouldHide;
+          cy.edges('edge[kind="crosslink"][relation="' + (cb.getAttribute("data-rel") || "") + '"]').toggleClass("hidden", shouldHide);
+        });
+      }
+      renderTree();
+      if (!clustered) {
+        cy.nodes('[kind="concept"]').forEach(function (cn) {
+          var n = nodes.find(function (x) { return x.id === cn.id(); });
+          cn.style("display", n && matches(n) ? "element" : "none");
+        });
+      }
+      if (st.l) runLayout(st.l);
+    } finally { applyingState = false; }
+    if (st.n && docs[st.n]) select(st.n);
+  }
+
+  // ---- path tracing over typed edges ----
+  var traceMode = false, traceA = null;
+  var traceBtn = document.getElementById("trace");
+  if (traceBtn) {
+    traceBtn.addEventListener("click", function () {
+      traceMode = true; traceA = null;
+      traceBtn.classList.add("active");
+      traceBtn.textContent = "Trace: pick A";
+    });
+  }
+  function handleTraceTap(n) {
+    if (!traceA) {
+      traceA = n.id();
+      traceBtn.textContent = "Trace: pick B";
+      return true;
+    }
+    var dj = cy.elements().dijkstra({ root: cy.getElementById(traceA), directed: false });
+    var path = dj.pathTo(n);
+    cy.elements().removeClass("traced");
+    cy.nodes().addClass("dim");
+    if (path && path.length) {
+      path.removeClass("dim").addClass("traced");
+    }
+    traceMode = false; traceA = null;
+    traceBtn.classList.remove("active");
+    traceBtn.textContent = "Trace";
+    return true;
+  }
+
+  // hop slider re-applies the spotlight for the current selection.
+  var hopsEl = document.getElementById("hops");
+  if (hopsEl) hopsEl.addEventListener("change", function () {
+    if (selectedId) { var n = cy.getElementById(selectedId); if (n.nonempty()) applySpotlight(n); }
   });
-  var startId = decodeURIComponent(location.hash.slice(1));
-  if (startId && docs[startId]) select(startId);
+  // re-write the hash when the layout changes too.
+  document.getElementById("layout").addEventListener("change", writeHash);
+
+  // ---- init ----
+  renderTree();
+  window.addEventListener("hashchange", function () { applyState(readHash()); });
+  applyState(readHash());
 
   function escapeHtml(s) { return String(s).replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }); }
 })();
