@@ -70,6 +70,7 @@ func runProduce(args []string) {
 	sample := fs.Int("sample", 0, "Number of sample rows to embed per table (0 = none)")
 	profile := fs.Bool("profile", false, "Compute per-column statistics and embed a Data Profile section")
 	relationships := fs.Bool("relationships", false, "Extract foreign-key constraints into a Relationships section")
+	stats := fs.Bool("stats", false, "Compute row-count and freshness statistics (Stats section)")
 	fs.Parse(args)
 
 	if *dbPath == "" || *outDir == "" {
@@ -92,22 +93,10 @@ func runProduce(args []string) {
 		}
 	}
 
-	// 1. Get all tables from the sqlite schema
-	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+	// 1. Get all tables and views from the sqlite schema
+	entities, err := listEntities(db, filterTables)
 	if err != nil {
-		log.Fatalf("Failed to query tables: %v", err)
-	}
-	defer rows.Close()
-
-	var tables []string
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			log.Fatalf("Scan table name error: %v", err)
-		}
-		if filterTables == nil || filterTables[name] {
-			tables = append(tables, name)
-		}
+		log.Fatalf("Failed to query tables/views: %v", err)
 	}
 
 	// Create output directory for tables
@@ -120,11 +109,13 @@ func runProduce(args []string) {
 	timestamp := time.Now().Format(time.RFC3339)
 	today := time.Now().Format("2006-01-02")
 
-	// 2. Generate concept documents for each table
-	for _, table := range tables {
+	// 2. Generate concept documents for each table and view
+	for _, ent := range entities {
+		table := ent.Name
+		isView := ent.Kind == "view"
 		cols, err := getTableColumns(db, table)
 		if err != nil {
-			log.Fatalf("Failed to get columns for table %s: %v", table, err)
+			log.Fatalf("Failed to get columns for %s: %v", table, err)
 		}
 
 		var body bytes.Buffer
@@ -151,6 +142,23 @@ func runProduce(args []string) {
 			}
 			bodyStr = okf.AppendRelationshipsSection(bodyStr, "Relationships", foreignKeyRelationships(fks))
 		}
+		// Constraints & indexes are cheap catalog reads, emitted by default.
+		indexes, uniqueCons, err := getIndexesAndConstraints(db, table)
+		if err != nil {
+			log.Fatalf("Failed to read indexes for %s: %v", table, err)
+		}
+		cons := append(uniqueCons, parseCheckConstraints(ent.SQL)...)
+		if s := okf.RenderConstraintsSection(cons); s != "" {
+			bodyStr = okf.UpsertSection(bodyStr, "Constraints", s)
+		}
+		if s := okf.RenderIndexesSection(indexes); s != "" {
+			bodyStr = okf.UpsertSection(bodyStr, "Indexes", s)
+		}
+		if isView {
+			if s := okf.RenderViewDefinition(ent.SQL); s != "" {
+				bodyStr = okf.UpsertSection(bodyStr, "View Definition", s)
+			}
+		}
 		if *profile {
 			profiles, err := profileTable(db, table, cols)
 			if err != nil {
@@ -165,14 +173,29 @@ func runProduce(args []string) {
 			}
 			bodyStr = okf.UpsertSection(bodyStr, "Sample", okf.RenderSampleSection(headers, sampleRows))
 		}
+		if *stats {
+			ts, err := getTableStats(db, table, cols)
+			if err != nil {
+				log.Fatalf("Failed to compute stats for %s: %v", table, err)
+			}
+			if s := okf.RenderStatsSection(ts); s != "" {
+				bodyStr = okf.UpsertSection(bodyStr, "Stats", s)
+			}
+		}
 
+		conceptType := "SQLite Table"
+		kindTag := "table"
+		if isView {
+			conceptType = "SQLite View"
+			kindTag = "view"
+		}
 		fresh := okf.ConceptDoc{
 			Frontmatter: okf.Frontmatter{
-				Type:        "SQLite Table",
+				Type:        conceptType,
 				Title:       table,
-				Description: fmt.Sprintf("SQLite table %s", table),
+				Description: fmt.Sprintf("SQLite %s %s", kindTag, table),
 				Resource:    fmt.Sprintf("sqlite:///%s/%s", filepath.ToSlash(absDbPath), table),
-				Tags:        []string{"sqlite", "table"},
+				Tags:        []string{"sqlite", kindTag},
 				Timestamp:   timestamp,
 			},
 			Body: bodyStr,
@@ -208,8 +231,12 @@ func runProduce(args []string) {
 	fmt.Fprintf(&indexBody, "# Database Schema: %s (SQLite)\n\n", filepath.Base(*dbPath))
 	indexBody.WriteString("This OKF bundle represents the tables extracted from SQLite.\n\n")
 	indexBody.WriteString("## Tables\n\n")
-	for _, table := range tables {
-		fmt.Fprintf(&indexBody, "- [%s](tables/%s.md) - SQLite table %s\n", table, table, table)
+	for _, ent := range entities {
+		kind := "table"
+		if ent.Kind == "view" {
+			kind = "view"
+		}
+		fmt.Fprintf(&indexBody, "- [%s](tables/%s.md) - SQLite %s %s\n", ent.Name, ent.Name, kind, ent.Name)
 	}
 
 	indexDoc := okf.ConceptDoc{

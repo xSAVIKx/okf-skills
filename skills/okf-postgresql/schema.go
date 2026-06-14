@@ -31,6 +31,7 @@ func buildSchema() okf.SkillSchema {
 		okf.FlagSchema{Name: "sample", Type: "int", Description: "Sample rows to embed per table (0 = none).", Default: "0"},
 		okf.FlagSchema{Name: "profile", Type: "bool", Description: "Embed a per-column Data Profile section.", Default: "false"},
 		okf.FlagSchema{Name: "relationships", Type: "bool", Description: "Extract foreign-key constraints into a Relationships section.", Default: "false"},
+		okf.FlagSchema{Name: "stats", Type: "bool", Description: "Compute row-count and freshness statistics (Stats section).", Default: "false"},
 	)
 	ingest := append(append([]okf.FlagSchema{}, conn...),
 		okf.FlagSchema{Name: "bundle", Type: "string", Description: "Path to existing OKF bundle directory.", Required: true},

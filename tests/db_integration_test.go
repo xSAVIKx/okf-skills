@@ -585,3 +585,179 @@ func TestPostgreSQLIntegration(t *testing.T) {
 		t.Errorf("column comment was not synced: expected %q, got %q (err: %v)", "Unit price in USD - PG INTEGRATION", colComment, err)
 	}
 }
+
+func TestSQLiteMetadataUpgrades(t *testing.T) {
+	binaryPath := getBinaryPath("okf-sqlite")
+	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
+		t.Skipf("SQLite binary not found at %s. Build it first.", binaryPath)
+	}
+
+	tempDir, err := os.MkdirTemp("", "okf-sqlite-meta-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	dbPath := filepath.Join(tempDir, "test.db")
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatalf("failed to create sqlite db: %v", err)
+	}
+	defer db.Close()
+
+	stmts := []string{
+		"CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT UNIQUE, age INTEGER CHECK (age >= 0), created_at TEXT)",
+		"CREATE INDEX idx_users_age ON users(age)",
+		"INSERT INTO users (email, age, created_at) VALUES ('a@x.com', 30, '2019-01-01'), ('b@x.com', 40, '2026-06-14')",
+		"CREATE VIEW adult_users AS SELECT id, email FROM users WHERE age >= 18",
+	}
+	for _, s := range stmts {
+		if _, err := db.Exec(s); err != nil {
+			t.Fatalf("setup failed (%s): %v", s, err)
+		}
+	}
+
+	outDir := filepath.Join(tempDir, "bundle")
+	cmd := exec.Command(binaryPath, "produce", "--db", dbPath, "--out", outDir, "--stats")
+	var stderr bytesBuffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("produce --stats failed: %v. Stderr: %s", err, stderr.String())
+	}
+
+	// Table concept: constraints, indexes, and stats.
+	usersBody, err := os.ReadFile(filepath.Join(outDir, "tables", "users.md"))
+	if err != nil {
+		t.Fatalf("failed to read users.md: %v", err)
+	}
+	u := string(usersBody)
+	for _, want := range []string{"## Constraints", "UNIQUE", "CHECK", "age >= 0", "## Indexes", "idx_users_age", "## Stats", "**Row Count**: 2", "**Freshness** (`created_at`)"} {
+		if !strings.Contains(u, want) {
+			t.Errorf("users.md missing %q:\n%s", want, u)
+		}
+	}
+
+	// View concept: type ends in View, defining SQL captured.
+	viewBody, err := os.ReadFile(filepath.Join(outDir, "tables", "adult_users.md"))
+	if err != nil {
+		t.Fatalf("failed to read adult_users.md: %v", err)
+	}
+	v := string(viewBody)
+	if !strings.Contains(v, "type: SQLite View") {
+		t.Errorf("adult_users.md type should be SQLite View:\n%s", v)
+	}
+	if !strings.Contains(v, "## View Definition") || !strings.Contains(v, "CREATE VIEW") {
+		t.Errorf("adult_users.md missing captured view definition:\n%s", v)
+	}
+
+	// ingest must still parse columns despite the new sections.
+	cmdIngest := exec.Command(binaryPath, "ingest", "--db", dbPath, "--bundle", outDir)
+	cmdIngest.Stderr = &stderr
+	if err := cmdIngest.Run(); err != nil {
+		t.Fatalf("ingest after metadata upgrades failed: %v. Stderr: %s", err, stderr.String())
+	}
+}
+
+func TestMySQLMetadataUpgrades(t *testing.T) {
+	binaryPath := getBinaryPath("okf-mysql")
+	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
+		t.Skipf("MySQL binary not found at %s.", binaryPath)
+	}
+	if !isPortOpen("localhost", 3306) {
+		t.Skip("MySQL container not running on localhost:3306.")
+	}
+
+	dsn := "root:secret@tcp(localhost:3306)/ecommerce?parseTime=true"
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		t.Fatalf("connect mysql: %v", err)
+	}
+	defer db.Close()
+
+	db.Exec("DROP VIEW IF EXISTS meta_active")
+	db.Exec("DROP TABLE IF EXISTS meta_widgets")
+	if _, err := db.Exec("CREATE TABLE meta_widgets (id INT PRIMARY KEY, sku VARCHAR(32) UNIQUE, qty INT CHECK (qty >= 0), created_at DATETIME)"); err != nil {
+		t.Fatalf("create table: %v", err)
+	}
+	db.Exec("INSERT INTO meta_widgets VALUES (1,'a',5,'2019-01-01 00:00:00'),(2,'b',9,'2026-06-14 00:00:00')")
+	if _, err := db.Exec("CREATE VIEW meta_active AS SELECT id, sku FROM meta_widgets WHERE qty > 0"); err != nil {
+		t.Fatalf("create view: %v", err)
+	}
+	defer func() {
+		db.Exec("DROP VIEW IF EXISTS meta_active")
+		db.Exec("DROP TABLE IF EXISTS meta_widgets")
+	}()
+
+	tempDir, _ := os.MkdirTemp("", "okf-mysql-meta-*")
+	defer os.RemoveAll(tempDir)
+	outDir := filepath.Join(tempDir, "bundle")
+	cmd := exec.Command(binaryPath, "produce", "-host", "localhost", "-port", "3306", "-user", "root", "-password", "secret", "-db", "ecommerce", "-out", outDir, "-stats", "-tables", "meta_widgets,meta_active")
+	var stderr bytesBuffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("produce failed: %v. Stderr: %s", err, stderr.String())
+	}
+
+	w, _ := os.ReadFile(filepath.Join(outDir, "tables", "meta_widgets.md"))
+	for _, want := range []string{"## Constraints", "UNIQUE", "CHECK", "## Indexes", "## Stats", "**Row Count**: 2", "**Freshness**"} {
+		if !strings.Contains(string(w), want) {
+			t.Errorf("meta_widgets.md missing %q:\n%s", want, string(w))
+		}
+	}
+	v, _ := os.ReadFile(filepath.Join(outDir, "tables", "meta_active.md"))
+	if !strings.Contains(string(v), "type: MySQL View") || !strings.Contains(string(v), "## View Definition") {
+		t.Errorf("meta_active.md missing view type/definition:\n%s", string(v))
+	}
+}
+
+func TestPostgreSQLMetadataUpgrades(t *testing.T) {
+	binaryPath := getBinaryPath("okf-postgresql")
+	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
+		t.Skipf("PostgreSQL binary not found at %s.", binaryPath)
+	}
+	if !isPortOpen("localhost", 5432) {
+		t.Skip("PostgreSQL container not running on localhost:5432.")
+	}
+
+	connStr := "host=localhost port=5432 user=postgres password=secret dbname=ecommerce sslmode=disable"
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		t.Fatalf("connect postgres: %v", err)
+	}
+	defer db.Close()
+
+	db.Exec("DROP VIEW IF EXISTS meta_active")
+	db.Exec("DROP TABLE IF EXISTS meta_widgets")
+	if _, err := db.Exec("CREATE TABLE meta_widgets (id INT PRIMARY KEY, sku VARCHAR(32) UNIQUE, qty INT CHECK (qty >= 0), created_at TIMESTAMP)"); err != nil {
+		t.Fatalf("create table: %v", err)
+	}
+	db.Exec("INSERT INTO meta_widgets VALUES (1,'a',5,'2019-01-01'),(2,'b',9,'2026-06-14')")
+	if _, err := db.Exec("CREATE VIEW meta_active AS SELECT id, sku FROM meta_widgets WHERE qty > 0"); err != nil {
+		t.Fatalf("create view: %v", err)
+	}
+	defer func() {
+		db.Exec("DROP VIEW IF EXISTS meta_active")
+		db.Exec("DROP TABLE IF EXISTS meta_widgets")
+	}()
+
+	tempDir, _ := os.MkdirTemp("", "okf-pg-meta-*")
+	defer os.RemoveAll(tempDir)
+	outDir := filepath.Join(tempDir, "bundle")
+	cmd := exec.Command(binaryPath, "produce", "-host", "localhost", "-port", "5432", "-user", "postgres", "-password", "secret", "-db", "ecommerce", "-out", outDir, "-stats", "-tables", "meta_widgets,meta_active")
+	var stderr bytesBuffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("produce failed: %v. Stderr: %s", err, stderr.String())
+	}
+
+	w, _ := os.ReadFile(filepath.Join(outDir, "tables", "meta_widgets.md"))
+	for _, want := range []string{"## Constraints", "UNIQUE", "CHECK", "## Indexes", "## Stats", "**Row Count**: 2", "**Freshness**"} {
+		if !strings.Contains(string(w), want) {
+			t.Errorf("meta_widgets.md missing %q:\n%s", want, string(w))
+		}
+	}
+	v, _ := os.ReadFile(filepath.Join(outDir, "tables", "meta_active.md"))
+	if !strings.Contains(string(v), "type: PostgreSQL View") || !strings.Contains(string(v), "## View Definition") {
+		t.Errorf("meta_active.md missing view type/definition:\n%s", string(v))
+	}
+}

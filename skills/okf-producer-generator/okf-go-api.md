@@ -141,6 +141,25 @@ Makes any value safe for a single markdown table cell (escapes `|`, flattens
 newlines, trims). **Call it on every cell you write into a table** — including
 the schema table you build by hand.
 
+### SQL metadata: constraints, indexes, stats, views
+
+For SQL sources, surface the cheap structural signals beyond columns. Types live
+in `okf` (`Constraint{Name,Type,Definition}`, `Index{Name,Columns,Unique}`,
+`TableStats{RowCount,HasRowCount,FreshnessColumn,Earliest,Latest}`); each renderer
+returns `""` when there is nothing to show, so guard the `UpsertSection`:
+
+```go
+if s := okf.RenderConstraintsSection(cons); s != "" { body = okf.UpsertSection(body, "Constraints", s) }
+if s := okf.RenderIndexesSection(idx);     s != "" { body = okf.UpsertSection(body, "Indexes", s) }
+if isView { if s := okf.RenderViewDefinition(viewSQL); s != "" { body = okf.UpsertSection(body, "View Definition", s) } }
+if *stats { if s := okf.RenderStatsSection(ts); s != "" { body = okf.UpsertSection(body, "Stats", s) } }
+```
+
+Conventions: distinguish a view in the concept `type` (e.g. `"PostgreSQL View"`
+vs `"PostgreSQL Table"`) and capture its defining SQL in `## View Definition`.
+Constraints/indexes are cheap catalog reads (emit by default); row-count and
+freshness are heavier, so gate them behind a `--stats` flag.
+
 ---
 
 ## Relationships (typed cross-links)

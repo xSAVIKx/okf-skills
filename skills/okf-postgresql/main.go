@@ -73,6 +73,7 @@ func runProduce(args []string) {
 	sample := fs.Int("sample", 0, "Number of sample rows to embed per table (0 = none)")
 	profile := fs.Bool("profile", false, "Compute per-column statistics and embed a Data Profile section")
 	relationships := fs.Bool("relationships", false, "Extract foreign-key constraints into a Relationships section")
+	stats := fs.Bool("stats", false, "Compute row-count and freshness statistics (Stats section)")
 	fs.Parse(args)
 	*password = resolvePassword(*password)
 
@@ -96,42 +97,19 @@ func runProduce(args []string) {
 		}
 	}
 
-	// 1. Get base tables in PostgreSQL schema and their comments
-	rows, err := db.Query(`
-		SELECT
-			c.relname AS table_name,
-			COALESCE(obj_description(c.oid, 'pg_class'), '') AS table_comment
-		FROM pg_class c
-		JOIN pg_namespace n ON n.oid = c.relnamespace
-		WHERE c.relkind = 'r' AND n.nspname = $1`, *schemaName)
+	// 1. Get base tables and views in the PostgreSQL schema and their comments.
+	tables, err := listEntities(db, *schemaName, filterTables)
 	if err != nil {
-		log.Fatalf("Failed to query tables: %v", err)
+		log.Fatalf("Failed to query tables/views: %v", err)
 	}
-	defer rows.Close()
 
 	tablesDir := filepath.Join(*outDir, "tables")
 	if err := os.MkdirAll(tablesDir, 0755); err != nil {
 		log.Fatalf("Failed to create tables directory: %v", err)
 	}
 
-	type TableInfo struct {
-		Name    string
-		Comment string
-	}
-	var tables []TableInfo
-
 	timestamp := time.Now().Format(time.RFC3339)
 	today := time.Now().Format("2006-01-02")
-
-	for rows.Next() {
-		var name, comment string
-		if err := rows.Scan(&name, &comment); err != nil {
-			log.Fatalf("Failed to scan table info: %v", err)
-		}
-		if filterTables == nil || filterTables[name] {
-			tables = append(tables, TableInfo{Name: name, Comment: strings.TrimSpace(comment)})
-		}
-	}
 
 	for _, tInfo := range tables {
 		// 2. Query columns and comments
@@ -185,6 +163,30 @@ func runProduce(args []string) {
 			}
 			bodyStr = okf.AppendRelationshipsSection(bodyStr, "Relationships", foreignKeyRelationships(fks))
 		}
+		// Constraints & indexes are cheap catalog reads, emitted by default.
+		cons, err := getConstraints(db, *schemaName, tInfo.Name)
+		if err != nil {
+			log.Fatalf("Failed to read constraints for %s: %v", tInfo.Name, err)
+		}
+		if s := okf.RenderConstraintsSection(cons); s != "" {
+			bodyStr = okf.UpsertSection(bodyStr, "Constraints", s)
+		}
+		indexes, err := getIndexes(db, *schemaName, tInfo.Name)
+		if err != nil {
+			log.Fatalf("Failed to read indexes for %s: %v", tInfo.Name, err)
+		}
+		if s := okf.RenderIndexesSection(indexes); s != "" {
+			bodyStr = okf.UpsertSection(bodyStr, "Indexes", s)
+		}
+		if tInfo.IsView {
+			viewSQL, err := getViewDefinition(db, *schemaName, tInfo.Name)
+			if err != nil {
+				log.Fatalf("Failed to read view definition for %s: %v", tInfo.Name, err)
+			}
+			if s := okf.RenderViewDefinition(viewSQL); s != "" {
+				bodyStr = okf.UpsertSection(bodyStr, "View Definition", s)
+			}
+		}
 		if *profile {
 			profiles, err := profileTable(db, *schemaName, tInfo.Name, cols)
 			if err != nil {
@@ -199,14 +201,29 @@ func runProduce(args []string) {
 			}
 			bodyStr = okf.UpsertSection(bodyStr, "Sample", okf.RenderSampleSection(headers, sampleRows))
 		}
+		if *stats {
+			ts, err := getTableStats(db, *schemaName, tInfo.Name, cols)
+			if err != nil {
+				log.Fatalf("Failed to compute stats for %s: %v", tInfo.Name, err)
+			}
+			if s := okf.RenderStatsSection(ts); s != "" {
+				bodyStr = okf.UpsertSection(bodyStr, "Stats", s)
+			}
+		}
 
+		conceptType := "PostgreSQL Table"
+		kindTag := "table"
+		if tInfo.IsView {
+			conceptType = "PostgreSQL View"
+			kindTag = "view"
+		}
 		fresh := okf.ConceptDoc{
 			Frontmatter: okf.Frontmatter{
-				Type:        "PostgreSQL Table",
+				Type:        conceptType,
 				Title:       tInfo.Name,
-				Description: tInfo.Comment,
+				Description: tInfo.Comment, // preserve the database COMMENT (obj_description) as the description
 				Resource:    fmt.Sprintf("postgres://%s:%d/%s/%s/%s", *host, *port, *dbName, *schemaName, tInfo.Name),
-				Tags:        []string{"postgres", "table"},
+				Tags:        []string{"postgres", kindTag},
 				Timestamp:   timestamp,
 			},
 			Body: bodyStr,
@@ -237,17 +254,21 @@ func runProduce(args []string) {
 		fmt.Printf("Produced concept doc: %s\n", filePath)
 	}
 
-	// Produce index.md listing all tables
+	// Produce index.md listing all tables and views
 	var indexBody bytes.Buffer
 	fmt.Fprintf(&indexBody, "# Database Schema: %s.%s\n\n", *dbName, *schemaName)
-	indexBody.WriteString("This OKF bundle represents the tables and comments extracted from PostgreSQL.\n\n")
-	indexBody.WriteString("## Tables\n\n")
+	indexBody.WriteString("This OKF bundle represents the tables, views and comments extracted from PostgreSQL.\n\n")
+	indexBody.WriteString("## Tables & Views\n\n")
 	for _, tInfo := range tables {
 		desc := tInfo.Comment
 		if desc == "" {
 			desc = "No description available"
 		}
-		fmt.Fprintf(&indexBody, "- [%s](tables/%s.md) - %s\n", tInfo.Name, tInfo.Name, desc)
+		kindLabel := "table"
+		if tInfo.IsView {
+			kindLabel = "view"
+		}
+		fmt.Fprintf(&indexBody, "- [%s](tables/%s.md) (%s) - %s\n", tInfo.Name, tInfo.Name, kindLabel, desc)
 	}
 
 	indexDoc := okf.ConceptDoc{

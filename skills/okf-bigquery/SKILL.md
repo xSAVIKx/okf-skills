@@ -43,7 +43,7 @@ export GOOGLE_APPLICATION_CREDENTIALS="/path/to/credentials.json"
 Extract dataset schema metadata and descriptions:
 
 ```bash
-./okf-bigquery produce --project <gcp-project-id> --dataset <dataset-id> --out <output-bundle-dir> [--tables <comma-separated-table-names>] [--sample <N>] [--profile]
+./okf-bigquery produce --project <gcp-project-id> --dataset <dataset-id> --out <output-bundle-dir> [--tables <comma-separated-table-names>] [--sample <N>] [--profile] [--relationships] [--stats]
 ```
 
 ### 2. Ingest / Synchronize an OKF Bundle
@@ -61,6 +61,8 @@ Synchronize table and field descriptions from the OKF bundle back to BigQuery:
 - `--tables` (optional): Filter to extract only specific tables.
 - `--sample <N>` (optional): Embed up to N sample rows per table as a `## Sample` section in each table doc (default 0 = none).
 - `--profile` (optional): Compute per-column statistics (non-null, null, distinct, min, max) and embed a `## Data Profile` section.
+- `--relationships` (optional): Extract informational foreign-key constraints into a `## Relationships` section.
+- `--stats` (optional): Add a `## Stats` section with the table row count (from table metadata) and, when a timestamp-like column is detected, a freshness window (min/max). Constraints (`## Constraints`) and view definitions (`## View Definition`, views only) are emitted by default. BigQuery has no secondary indexes, so no Indexes section is produced.
 - `--sync` (optional for ingest): If provided, calls the BigQuery API to update table and schema descriptions.
 
 ### 3. Inspect the Schema (self-description)
