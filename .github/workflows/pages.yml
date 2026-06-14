@@ -1,0 +1,170 @@
+name: OKF Catalog (Pages)
+
+# Regenerate the OKF bundle of this repository on every push to master and
+# publish it as the repo's GitHub Pages site (a browsable okf-viz catalog).
+#
+# Double duty: when a GEMINI_KEY secret is present this workflow also acts as an
+# end-to-end SELF-TEST of our own skills — the Antigravity CLI (`agy`) drives the
+# full pipeline through okf-fs (produce) -> okf-enrich (enrich) -> okf-viz
+# (render), exercising each SKILL.md exactly as a third-party agent harness
+# would. A deterministic fallback guarantees the site still publishes if the
+# agent path is unavailable or stumbles.
+#
+# Cost model — kept low:
+#   * produce/render are pure-Go and deterministic; the agent only adds the
+#     enrichment judgement on top, and only for NEW (placeholder) descriptions.
+#   * Only git-tracked files are checked out, so the catalog is clean by design.
+#   * Enriched descriptions are synced to .okf-metadata.yaml and held in a
+#     rolling Actions cache, so the agent only ever sees genuinely new files.
+#   * The `agy` binary is cached between runs to avoid re-downloading it.
+#   * Publishing uses the official Pages actions: no gh-pages branch, no commits
+#     to master (honouring the repo's PR-only workflow).
+#
+# One-time setup: optionally add a repository secret GEMINI_KEY to enable the
+# agent self-test + enrichment. Pages is enabled automatically by configure-pages.
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment; let in-progress deploys finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  GO_VERSION: "1.26"
+  CATALOG_TITLE: "okf-skills knowledge catalog"
+
+jobs:
+  build:
+    name: Produce, (optionally) enrich, render
+    runs-on: ubuntu-latest
+    env:
+      GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: "**/go.sum"
+
+      - name: Configure Pages (enables Pages if not already)
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      # Pre-build the connector binaries OUTSIDE the worktree and put them on
+      # PATH. The agent self-test then exercises the okf-fs/okf-viz *commands*
+      # (the skill surface) without rebuilding them in-tree, and the same
+      # binaries back the deterministic fallback below.
+      - name: Build okf-fs and okf-viz (outside the worktree)
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          ( cd skills/okf-fs  && go build -o "$RUNNER_TEMP/bin/okf-fs"  . )
+          ( cd skills/okf-viz && go build -o "$RUNNER_TEMP/bin/okf-viz" . )
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      # Restore the enriched-description store so okf-fs reuses prior work and
+      # the agent only sees genuinely new files. Rolling key: always saves a
+      # fresh cache (run_id is unique) while restoring the most recent prior one.
+      - name: Restore description cache
+        if: env.GEMINI_KEY != ''
+        uses: actions/cache@v4
+        with:
+          path: .okf-metadata.yaml
+          key: okf-metadata-${{ github.run_id }}
+          restore-keys: |
+            okf-metadata-
+
+      # Cache the Antigravity CLI binary so we don't re-download it every run.
+      - name: Cache Antigravity CLI (agy)
+        if: env.GEMINI_KEY != ''
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/bin/agy
+          key: antigravity-agy-${{ runner.os }}-v1
+
+      # Self-test: drive the whole pipeline through our OWN skills via `agy`.
+      # Best-effort — a CLI/auth hiccup must not fail the site; the fallback
+      # step below still publishes. Verify flag names against `agy --help` for
+      # your installed version if this ever no-ops unexpectedly.
+      - name: Self-test pipeline via Antigravity CLI (okf-fs + okf-enrich + okf-viz)
+        if: env.GEMINI_KEY != ''
+        continue-on-error: true
+        env:
+          # Sources disagree on the var name; set both so either is honoured.
+          GEMINI_API_KEY: ${{ secrets.GEMINI_KEY }}
+          ANTIGRAVITY_API_KEY: ${{ secrets.GEMINI_KEY }}
+          BUNDLE: ${{ runner.temp }}/bundle
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.local/bin:$HOME/.antigravity/bin:$HOME/.gemini/antigravity-cli/bin:$PATH"
+          # 1. Install the Antigravity CLI (`agy`) unless restored from cache.
+          if ! command -v agy >/dev/null 2>&1; then
+            curl -fsSL https://antigravity.google/cli/install.sh | bash -s -- --skip-path --skip-aliases
+          fi
+          command -v agy
+
+          # 2. Install our own skills globally so the agent discovers them
+          #    (global dir avoids polluting the worktree / the produced bundle).
+          rm -rf "$HOME/.gemini/antigravity-cli/skills"
+          mkdir -p "$HOME/.gemini/antigravity-cli/skills"
+          cp -r skills/okf-fs skills/okf-viz skills/okf-enrich skills/okf-reader \
+                "$HOME/.gemini/antigravity-cli/skills/"
+
+          # 3. One headless run drives EVERY okf-skill call through agy:
+          #    produce -> enrich -> render -> ingest (persist for the cache).
+          cat > "$RUNNER_TEMP/prompt.txt" <<EOF
+          You are running headlessly in CI as an end-to-end self-test of our OKF skills.
+          The okf-fs and okf-viz skill binaries are ALREADY built and on PATH as 'okf-fs' and 'okf-viz' — do NOT build, clone, or 'go install' them; just run their commands. The working directory is the repository root.
+
+          Using our own skills, perform the full pipeline in order:
+          1. okf-fs (produce): run 'okf-fs produce --dir . --out ${BUNDLE}'. okf-fs automatically reuses descriptions from .okf-metadata.yaml.
+          2. okf-enrich (enrich): for EVERY concept doc in ${BUNDLE} whose frontmatter 'description' is still the placeholder (exactly 'File <name>' or 'Directory <name>'), write one concise description grounded only in the path, name and extension — grain first (what it is), then purpose — per the okf-enrich quality rules. Edit ONLY the frontmatter 'description:' field; preserve type/title/resource/tags/timestamp and the whole body byte-for-byte; never modify index.md or log.md. Skip concepts that already have a substantive description.
+          3. okf-viz (render): run 'okf-viz render --bundle ${BUNDLE} --offline --title "${CATALOG_TITLE}"'.
+          4. okf-fs (ingest): run 'okf-fs ingest --dir . --bundle ${BUNDLE} --sync' to persist your enriched descriptions into .okf-metadata.yaml.
+
+          Do not touch any files outside ${BUNDLE} and .okf-metadata.yaml. Work fully autonomously without asking for confirmation. Finish by confirming ${BUNDLE}/index.html exists.
+          EOF
+          agy -p "$(cat "$RUNNER_TEMP/prompt.txt")" --yes --no-color < /dev/null
+
+      # Safety net: guarantee a published catalog. When GEMINI_KEY is set the
+      # agy path above already produced/rendered, so these direct binary calls
+      # are skipped; they run only when there is no key or the agent did not
+      # complete (the degraded path, where agy is not an option anyway).
+      - name: Ensure catalog (deterministic fallback)
+        env:
+          BUNDLE: ${{ runner.temp }}/bundle
+        run: |
+          set -euo pipefail
+          if [ ! -f "$BUNDLE/index.md" ]; then
+            okf-fs produce --dir . --out "$BUNDLE"
+          fi
+          if [ ! -f "$BUNDLE/index.html" ]; then
+            okf-viz render --bundle "$BUNDLE" --offline --title "$CATALOG_TITLE"
+          fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/bundle
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
