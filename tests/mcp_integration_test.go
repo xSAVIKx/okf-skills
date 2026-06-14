@@ -21,38 +21,51 @@ type skillSchema struct {
 	} `json:"commands"`
 }
 
-// TestConnectorSchemaContract verifies that every built connector binary emits a
+// TestConnectorSchemaContract verifies that every built skill binary emits a
 // valid `schema` JSON self-description carrying the expected name and commands —
 // the exact contract okf-mcp relies on to discover and expose skills as tools.
 func TestConnectorSchemaContract(t *testing.T) {
-	connectors := []string{
-		"okf-sqlite", "okf-mysql", "okf-postgresql",
-		"okf-bigquery", "okf-fs", "okf-git",
+	// Connector producers/ingesters advertise produce+ingest+schema.
+	// Consumer skills (e.g. okf-viz) advertise their own command set instead.
+	type skillSpec struct {
+		name     string
+		commands []string // commands that MUST be present in the schema
 	}
-	for _, skill := range connectors {
-		t.Run(skill, func(t *testing.T) {
-			bin := getBinaryPath(skill)
+	skills := []skillSpec{
+		{"okf-sqlite", []string{"produce", "ingest", "schema"}},
+		{"okf-mysql", []string{"produce", "ingest", "schema"}},
+		{"okf-postgresql", []string{"produce", "ingest", "schema"}},
+		{"okf-bigquery", []string{"produce", "ingest", "schema"}},
+		{"okf-fs", []string{"produce", "ingest", "schema"}},
+		{"okf-git", []string{"produce", "ingest", "schema"}},
+		// okf-viz is a consumer skill: render + schema (no produce/ingest)
+		{"okf-viz", []string{"render", "schema"}},
+	}
+	for _, spec := range skills {
+		spec := spec // capture
+		t.Run(spec.name, func(t *testing.T) {
+			bin := getBinaryPath(spec.name)
 			if _, err := os.Stat(bin); os.IsNotExist(err) {
-				t.Skipf("%s not built at %s (run 'make build' or skills.sh first)", skill, bin)
+				t.Skipf("%s not built at %s (run 'make build' or skills.sh first)", spec.name, bin)
 			}
 			out, err := exec.Command(bin, "schema").Output()
 			if err != nil {
-				t.Fatalf("%s schema failed: %v", skill, err)
+				t.Fatalf("%s schema failed: %v", spec.name, err)
 			}
 			var s skillSchema
 			if err := json.Unmarshal(out, &s); err != nil {
-				t.Fatalf("%s schema is not valid JSON: %v\n%s", skill, err, out)
+				t.Fatalf("%s schema is not valid JSON: %v\n%s", spec.name, err, out)
 			}
-			if s.Name != skill {
-				t.Errorf("%s schema name = %q, want %q", skill, s.Name, skill)
+			if s.Name != spec.name {
+				t.Errorf("%s schema name = %q, want %q", spec.name, s.Name, spec.name)
 			}
 			have := map[string]bool{}
 			for _, c := range s.Commands {
 				have[c.Name] = true
 			}
-			for _, want := range []string{"produce", "ingest", "schema"} {
+			for _, want := range spec.commands {
 				if !have[want] {
-					t.Errorf("%s schema missing command %q (have %v)", skill, want, have)
+					t.Errorf("%s schema missing command %q (have %v)", spec.name, want, have)
 				}
 			}
 		})
