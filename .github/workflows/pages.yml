@@ -4,11 +4,11 @@ name: OKF Catalog (Pages)
 # publish it as the repo's GitHub Pages site (a browsable okf-viz catalog).
 #
 # Double duty: when a GEMINI_KEY secret is present this workflow also acts as an
-# end-to-end SELF-TEST of our own skills — the Antigravity CLI (`agy`) drives the
-# full pipeline through okf-fs (produce) -> okf-enrich (enrich) -> okf-viz
-# (render), exercising each SKILL.md exactly as a third-party agent harness
-# would. A deterministic fallback guarantees the site still publishes if the
-# agent path is unavailable or stumbles.
+# end-to-end SELF-TEST of our own skills — the Gemini CLI drives the full
+# pipeline through okf-fs (produce) -> okf-enrich (enrich) -> okf-viz (render),
+# reusing each SKILL.md via `gemini skills` exactly as a third-party agent
+# harness would. A deterministic fallback guarantees the site still publishes if
+# the agent path is unavailable or stumbles.
 #
 # Cost model — kept low:
 #   * produce/render are pure-Go and deterministic; the agent only adds the
@@ -16,12 +16,13 @@ name: OKF Catalog (Pages)
 #   * Only git-tracked files are checked out, so the catalog is clean by design.
 #   * Enriched descriptions are synced to .okf-metadata.yaml and held in a
 #     rolling Actions cache, so the agent only ever sees genuinely new files.
-#   * The `agy` binary is cached between runs to avoid re-downloading it.
+#   * The Gemini CLI is installed from npm with the npm cache reused between runs.
 #   * Publishing uses the official Pages actions: no gh-pages branch, no commits
 #     to master (honouring the repo's PR-only workflow).
 #
-# One-time setup: optionally add a repository secret GEMINI_KEY to enable the
-# agent self-test + enrichment. Pages is enabled automatically by configure-pages.
+# One-time setup: optionally add a repository secret GEMINI_KEY (a Gemini API key
+# from Google AI Studio) to enable the agent self-test + enrichment. Pages is
+# enabled automatically by configure-pages.
 
 on:
   push:
@@ -40,6 +41,7 @@ concurrency:
 
 env:
   GO_VERSION: "1.26"
+  GEMINI_CLI_VERSION: "0.45.0"
   CATALOG_TITLE: "okf-skills knowledge catalog"
   # These Pages/cache actions are the latest majors but still ship on Node 20;
   # run them on Node 24 (becomes the runner default 2026-06-16) to clear the
@@ -88,64 +90,65 @@ jobs:
           restore-keys: |
             okf-metadata-
 
-      # Cache the Antigravity CLI binary so we don't re-download it every run.
-      - name: Cache Antigravity CLI (agy)
+      # Gemini CLI runs on Node; cache npm downloads so reinstalls are fast.
+      - name: Cache npm (Gemini CLI)
         if: env.GEMINI_KEY != ''
         uses: actions/cache@v4
         with:
-          path: ~/.local/bin/agy
-          key: antigravity-agy-${{ runner.os }}-v1
+          path: ~/.npm
+          key: npm-gemini-cli-${{ runner.os }}-${{ env.GEMINI_CLI_VERSION }}
 
-      # Self-test: drive the whole pipeline through our OWN skills via `agy`.
-      # Flags verified against `agy --help` (v1.0.8): -p/--print runs one prompt
-      # non-interactively; --dangerously-skip-permissions auto-approves tool use;
-      # --add-dir grants access to the bundle outside the workspace.
-      # Best-effort — a CLI/auth hiccup must not fail the site; the fallback
-      # step below still publishes.
-      - name: Self-test pipeline via Antigravity CLI (okf-fs + okf-enrich + okf-viz)
+      - name: Set up Node
+        if: env.GEMINI_KEY != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      # Self-test: drive EVERY okf-skill call through the Gemini CLI, reusing our
+      # own skills. Flags verified against `gemini --help` (v0.45): -p runs one
+      # prompt headlessly; --approval-mode yolo auto-approves tool use;
+      # --skip-trust trusts the CI workspace; --include-directories grants access
+      # to the bundle outside the workspace. Auth is non-interactive via
+      # GEMINI_API_KEY. Best-effort — a CLI/auth hiccup must not fail the site.
+      - name: Self-test pipeline via Gemini CLI (okf-fs + okf-enrich + okf-viz)
         if: env.GEMINI_KEY != ''
         continue-on-error: true
         env:
-          # Sources disagree on the var name; set both so either is honoured.
           GEMINI_API_KEY: ${{ secrets.GEMINI_KEY }}
-          ANTIGRAVITY_API_KEY: ${{ secrets.GEMINI_KEY }}
           BUNDLE: ${{ runner.temp }}/bundle
         run: |
           set -euo pipefail
-          export PATH="$HOME/.local/bin:$HOME/.antigravity/bin:$HOME/.gemini/antigravity-cli/bin:$PATH"
-          # 1. Install the Antigravity CLI (`agy`) unless restored from cache.
-          #    install.sh only supports `--dir`; pin it to the cached location.
-          if ! command -v agy >/dev/null 2>&1; then
-            curl -fsSL https://antigravity.google/cli/install.sh | bash -s -- --dir "$HOME/.local/bin"
-          fi
-          command -v agy
+          npm install -g "@google/gemini-cli@${GEMINI_CLI_VERSION}"
+          gemini --version
 
-          # 2. One headless run drives EVERY okf-skill call through agy:
-          #    produce -> enrich -> render -> ingest (persist for the cache).
-          #    The repo root is the agent's workspace, so it reads our skill
-          #    guidance directly (skills/okf-enrich/SKILL.md). The bundle lives
-          #    outside the workspace, so it is added with --add-dir below.
+          # Reuse our own skills: register them so the agent auto-discovers them.
+          for s in okf-fs okf-viz okf-enrich okf-reader; do
+            gemini skills link "$PWD/skills/$s" --scope user --consent
+          done
+
+          # One headless run drives EVERY okf-skill call through gemini:
+          # produce -> enrich -> render -> ingest (persist for the cache).
           cat > "$RUNNER_TEMP/prompt.txt" <<EOF
           You are running headlessly in CI as an end-to-end self-test of our OKF skills.
-          The okf-fs and okf-viz skill binaries are ALREADY built and on PATH as 'okf-fs' and 'okf-viz' — do NOT build, clone, or 'go install' them; just run their commands. The working directory is the repository root.
+          The okf-fs and okf-viz skill binaries are ALREADY built and on PATH as 'okf-fs' and 'okf-viz' — do NOT build, clone, or 'go install' them; just run their commands. The working directory is the repository root, and our okf-* skills are registered (consult the okf-enrich skill for the enrichment quality rules).
 
           Using our own skills, perform the full pipeline in order:
           1. okf-fs (produce): run 'okf-fs produce --dir . --out ${BUNDLE}'. okf-fs automatically reuses descriptions from .okf-metadata.yaml.
-          2. okf-enrich (enrich): for EVERY concept doc in ${BUNDLE} whose frontmatter 'description' is still the placeholder (exactly 'File <name>' or 'Directory <name>'), write one concise description grounded only in the path, name and extension — grain first (what it is), then purpose — per the okf-enrich quality rules in skills/okf-enrich/SKILL.md. Edit ONLY the frontmatter 'description:' field; preserve type/title/resource/tags/timestamp and the whole body byte-for-byte; never modify index.md or log.md. Skip concepts that already have a substantive description.
+          2. okf-enrich (enrich): for EVERY concept doc in ${BUNDLE} whose frontmatter 'description' is still the placeholder (exactly 'File <name>' or 'Directory <name>'), write one concise description grounded only in the path, name and extension — grain first (what it is), then purpose — per the okf-enrich quality rules. Edit ONLY the frontmatter 'description:' field; preserve type/title/resource/tags/timestamp and the whole body byte-for-byte; never modify index.md or log.md. Skip concepts that already have a substantive description.
           3. okf-viz (render): run 'okf-viz render --bundle ${BUNDLE} --offline --title "${CATALOG_TITLE}"'.
           4. okf-fs (ingest): run 'okf-fs ingest --dir . --bundle ${BUNDLE} --sync' to persist your enriched descriptions into .okf-metadata.yaml.
 
           Do not touch any files outside ${BUNDLE} and .okf-metadata.yaml. Work fully autonomously without asking for confirmation. Finish by confirming ${BUNDLE}/index.html exists.
           EOF
-          agy -p "$(cat "$RUNNER_TEMP/prompt.txt")" \
-            --dangerously-skip-permissions \
-            --add-dir "$BUNDLE" \
-            --print-timeout 20m < /dev/null
+          gemini -p "$(cat "$RUNNER_TEMP/prompt.txt")" \
+            --approval-mode yolo \
+            --skip-trust \
+            --include-directories "$BUNDLE" < /dev/null
 
       # Safety net: guarantee a published catalog. When GEMINI_KEY is set the
-      # agy path above already produced/rendered, so these direct binary calls
-      # are skipped; they run only when there is no key or the agent did not
-      # complete (the degraded path, where agy is not an option anyway).
+      # Gemini CLI path above already produced/rendered, so these direct binary
+      # calls are skipped; they run only when there is no key or the agent did
+      # not complete (the degraded path).
       - name: Ensure catalog (deterministic fallback)
         env:
           BUNDLE: ${{ runner.temp }}/bundle
