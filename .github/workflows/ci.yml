@@ -1,0 +1,101 @@
+name: CI
+
+# Build verification: formatting, vet, per-module build + unit tests, and the
+# Docker-backed integration suite. Runs on every PR and on pushes to master.
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Match the toolchain pinned in go.work so workspace resolution is exact.
+  GO_VERSION: "1.26"
+
+jobs:
+  lint:
+    name: Format & vet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: "**/go.sum"
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l $(git ls-files '*.go'))
+          if [ -n "$unformatted" ]; then
+            echo "::error::These files are not gofmt-clean:"; echo "$unformatted"
+            exit 1
+          fi
+      - name: go vet (all workspace modules)
+        run: |
+          set -e
+          for mod in okf-go okf-mcp skills/okf-sqlite skills/okf-mysql skills/okf-postgresql \
+                     skills/okf-bigquery skills/okf-fs skills/okf-git skills/okf-viz tests; do
+            echo "== vet $mod =="
+            ( cd "$mod" && go vet ./... )
+          done
+
+  build-test:
+    name: Build & unit test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: "**/go.sum"
+      - name: Build all skill binaries + okf-mcp
+        run: make build
+      - name: Unit tests (shared lib, skills, server)
+        run: make test
+
+  integration:
+    name: Integration (SQLite/FS/Git + MySQL/PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: secret
+          MYSQL_DATABASE: ecommerce
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -psecret"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: ecommerce
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: "**/go.sum"
+      - name: Load schema fixtures into the service databases
+        run: |
+          sudo apt-get update && sudo apt-get install -y default-mysql-client postgresql-client
+          mysql -h 127.0.0.1 -P 3306 -uroot -psecret ecommerce < tests/mysql/init_mysql.sql
+          PGPASSWORD=secret psql -h 127.0.0.1 -p 5432 -U postgres -d ecommerce -f tests/postgres/init_postgres.sql
+      - name: Build connector binaries in place (required by the suite)
+        run: make build
+      - name: Run integration suite
+        run: cd tests && go test -v ./...

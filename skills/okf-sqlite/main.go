@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	_ "modernc.org/sqlite"
 	"github.com/xSAVIKx/okf-skills/okf-go"
+	_ "modernc.org/sqlite"
 )
 
 // Column represents the properties of a database table column.

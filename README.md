@@ -228,6 +228,18 @@ The `render` command writes `<bundle>/index.html` by default (override with `--o
 
 ---
 
+## Continuous Integration & Releases
+
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every PR:
+gofmt, `go vet`, build of every module, unit tests, and the Docker-backed
+integration suite (SQLite/FS/Git always; MySQL/PostgreSQL via service containers).
+
+Releases are automated from [Conventional Commits](https://www.conventionalcommits.org/)
+with [release-please](https://github.com/googleapis/release-please): merging work
+to `master` maintains a release PR, and merging that PR tags each changed module
+in Go's `<path>/vX.Y.Z` form, cuts a GitHub Release, and warms the module proxy.
+See **[RELEASING.md](RELEASING.md)** for the full flow and one-time repo settings.
+
 ## License
 
 Licensed under the **Apache License 2.0** — see [`LICENSE`](LICENSE) for the full text. Copyright 2026 Yurii Serhiichuk.

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "go",
+  "include-component-in-tag": true,
+  "include-v-in-tag": true,
+  "tag-separator": "/",
+  "separate-pull-requests": false,
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": false,
+  "changelog-sections": [
+    { "type": "feat", "section": "Features" },
+    { "type": "fix", "section": "Bug Fixes" },
+    { "type": "perf", "section": "Performance Improvements" },
+    { "type": "deps", "section": "Dependencies" },
+    { "type": "revert", "section": "Reverts" },
+    { "type": "refactor", "section": "Code Refactoring" },
+    { "type": "build", "section": "Build System" },
+    { "type": "chore", "section": "Miscellaneous Chores", "hidden": true },
+    { "type": "docs", "section": "Documentation", "hidden": true },
+    { "type": "style", "section": "Styles", "hidden": true },
+    { "type": "test", "section": "Tests", "hidden": true },
+    { "type": "ci", "section": "Continuous Integration", "hidden": true }
+  ],
+  "packages": {
+    "okf-go": { "component": "okf-go" },
+    "okf-mcp": { "component": "okf-mcp" },
+    "skills/okf-sqlite": { "component": "skills/okf-sqlite" },
+    "skills/okf-mysql": { "component": "skills/okf-mysql" },
+    "skills/okf-postgresql": { "component": "skills/okf-postgresql" },
+    "skills/okf-bigquery": { "component": "skills/okf-bigquery" },
+    "skills/okf-fs": { "component": "skills/okf-fs" },
+    "skills/okf-git": { "component": "skills/okf-git" },
+    "skills/okf-viz": { "component": "skills/okf-viz" }
+  }
+}

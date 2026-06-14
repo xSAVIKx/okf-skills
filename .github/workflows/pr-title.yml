@@ -1,0 +1,40 @@
+name: PR Title (Conventional Commits)
+
+# release-please derives every version bump and changelog entry from commit
+# messages. With squash-merge, the PR title becomes the commit on master, so we
+# lint it against the Conventional Commits spec here. Keep squash-merge enabled.
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Types that release-please understands (see release-please-config.json).
+          types: |
+            feat
+            fix
+            perf
+            deps
+            revert
+            refactor
+            build
+            chore
+            docs
+            style
+            test
+            ci
+          # Scope is optional, but when present should name a module, e.g.
+          # feat(okf-sqlite): ... or fix(okf-go): ...
+          requireScope: false
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            The subject "{subject}" should start with a lowercase letter.

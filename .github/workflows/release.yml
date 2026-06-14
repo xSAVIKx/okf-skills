@@ -1,0 +1,66 @@
+name: Release
+
+# Conventional-commit driven releases for every Go module in the monorepo.
+#
+# Flow:
+#   1. A normal merge to master makes release-please open/refresh a single
+#      "release PR" that bumps each changed module's version + CHANGELOG.
+#   2. Merging that release PR makes release-please create a GitHub Release and a
+#      git tag per changed module, in Go's required `<path>/vX.Y.Z` form
+#      (e.g. okf-go/v0.2.0, skills/okf-fs/v0.2.0). Pushing the tag *is* publishing
+#      a Go module — the proxy serves it on first request.
+#   3. The warm-proxy job primes proxy.golang.org for each freshly tagged module
+#      so `go install ...@latest` resolves immediately instead of after the
+#      module mirror's indexing lag.
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      releases_created: ${{ steps.rp.outputs.releases_created }}
+      paths_released: ${{ steps.rp.outputs.paths_released }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: rp
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  warm-proxy:
+    name: Prime Go module proxy
+    needs: release-please
+    if: needs.release-please.outputs.releases_created == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Request each released module from proxy.golang.org
+        env:
+          PATHS_RELEASED: ${{ needs.release-please.outputs.paths_released }}
+        run: |
+          set -euo pipefail
+          # Go module proxy escapes uppercase letters as '!'+lowercase, so the
+          # repo owner "xSAVIKx" becomes "x!s!a!v!i!kx".
+          BASE="github.com/x!s!a!v!i!kx/okf-skills"
+          echo "$PATHS_RELEASED" | jq -r '.[]' | while read -r path; do
+            [ -z "$path" ] && continue
+            version=$(jq -r --arg p "$path" '.[$p]' .release-please-manifest.json)
+            url="https://proxy.golang.org/${BASE}/${path}/@v/v${version}.info"
+            echo "Warming ${path}@v${version}"
+            # Retry: the mirror fetches asynchronously on first request.
+            curl -fsS --retry 8 --retry-all-errors --retry-delay 15 "$url" \
+              && echo "  indexed" \
+              || echo "  still indexing (will resolve automatically shortly)"
+          done

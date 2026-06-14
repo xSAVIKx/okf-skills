@@ -14,13 +14,13 @@ import (
 
 // Frontmatter represents the YAML metadata block at the top of an OKF concept document.
 type Frontmatter struct {
-	Type        string    `yaml:"type,omitempty"`        // The kind of concept (e.g., SQLite Table, Dataset)
-	Title       string    `yaml:"title,omitempty"`       // The display name of the concept
-	Description string    `yaml:"description,omitempty"` // A brief summary description
-	Resource    string    `yaml:"resource,omitempty"`    // Canonical URI for the underlying asset
-	Tags        []string  `yaml:"tags,omitempty"`        // Tags for classification
-	Timestamp   string    `yaml:"timestamp,omitempty"`   // ISO 8601 modification timestamp
-	OKFVersion  string    `yaml:"okf_version,omitempty"` // OKF version targeted (only permitted in bundle-root index.md)
+	Type        string   `yaml:"type,omitempty"`        // The kind of concept (e.g., SQLite Table, Dataset)
+	Title       string   `yaml:"title,omitempty"`       // The display name of the concept
+	Description string   `yaml:"description,omitempty"` // A brief summary description
+	Resource    string   `yaml:"resource,omitempty"`    // Canonical URI for the underlying asset
+	Tags        []string `yaml:"tags,omitempty"`        // Tags for classification
+	Timestamp   string   `yaml:"timestamp,omitempty"`   // ISO 8601 modification timestamp
+	OKFVersion  string   `yaml:"okf_version,omitempty"` // OKF version targeted (only permitted in bundle-root index.md)
 }
 
 // ConceptDoc represents a complete OKF document, separating YAML frontmatter from the markdown body.

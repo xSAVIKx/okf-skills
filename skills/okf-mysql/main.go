@@ -18,8 +18,6 @@ import (
 	"github.com/xSAVIKx/okf-skills/okf-go"
 )
 
-
-
 // ColumnSpec represents the schema properties of a MySQL table column.
 type ColumnSpec struct {
 	Name     string // Column name

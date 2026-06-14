@@ -19,8 +19,6 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-
-
 // ColumnSpec represents the schema properties of a BigQuery table column/field.
 type ColumnSpec struct {
 	Name        string // Field name
@@ -344,5 +342,3 @@ func parseColumnsFromMarkdown(body string) []ColumnSpec {
 	}
 	return cols
 }
-
-
