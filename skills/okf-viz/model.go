@@ -18,7 +18,7 @@ type Node struct {
 	Description string   `json:"description"` // one-line summary (concepts only)
 	Resource    string   `json:"resource,omitempty"`
 	Tags        []string `json:"tags,omitempty"`
-	Dir         string   `json:"dir"`  // parent directory id ("" = root)
+	Dir         string   `json:"dir"`    // parent directory id ("" = root)
 	Degree      int      `json:"degree"` // set in links.go
 }
 

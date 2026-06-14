@@ -90,7 +90,7 @@ type EmitOptions struct {
 }
 
 type pageData struct {
-	Title, CSS, AppJS, LibTag, DataJSON, InitTheme string
+	Title, CSS, AppJS, LibTag, DataJSON, InitTheme, Lang string
 }
 
 // Emit renders the full self-contained HTML for a model.
@@ -108,6 +108,10 @@ func Emit(m *Model, opt EmitOptions) (string, error) {
 	if theme != "light" && theme != "dark" {
 		theme = "system"
 	}
+	lang := opt.Lang
+	if lang == "" {
+		lang = "en"
+	}
 	libTag, err := libraryTag(opt.Offline)
 	if err != nil {
 		return "", err
@@ -119,7 +123,7 @@ func Emit(m *Model, opt EmitOptions) (string, error) {
 	var buf strings.Builder
 	err = tmpl.Execute(&buf, pageData{
 		Title: opt.Title, CSS: string(css), AppJS: string(appjs),
-		LibTag: libTag, DataJSON: string(dataJSON), InitTheme: theme,
+		LibTag: libTag, DataJSON: string(dataJSON), InitTheme: theme, Lang: lang,
 	})
 	return buf.String(), err
 }
@@ -149,7 +153,7 @@ func libraryTag(offline bool) (string, error) {
 	for _, name := range vendorOrder {
 		js, err := vendorFS.ReadFile("assets/vendor/" + name)
 		if err != nil {
-			return "", fmt.Errorf("vendored lib missing: %s (run Task 8 download)", name)
+			return "", fmt.Errorf("vendored library %s missing; run the offline vendoring step", name)
 		}
 		b.WriteString("<script>")
 		b.Write(js)

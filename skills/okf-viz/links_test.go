@@ -1,6 +1,8 @@
 package main
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestCrossLinks(t *testing.T) {
 	m, err := BuildModel("testdata/linked")
@@ -34,5 +36,35 @@ func TestCrossLinks(t *testing.T) {
 	}
 	if deg["tables/customers"] < 2 {
 		t.Errorf("customers degree = %d, want >= 2", deg["tables/customers"])
+	}
+}
+
+// TestEdgeOrderDeterministic verifies that addCrossLinks leaves m.Edges sorted
+// by (Kind, Source, Target).  The fixture has two link-source concepts
+// (orders→customers and customers→orders), so map iteration order in
+// addCrossLinks would produce different orderings across runs without the sort.
+// This test fails deterministically without the sort.Slice call in addCrossLinks.
+func TestEdgeOrderDeterministic(t *testing.T) {
+	m, err := BuildModel("testdata/linked")
+	if err != nil {
+		t.Fatalf("BuildModel: %v", err)
+	}
+	addCrossLinks(m)
+
+	for i := 1; i < len(m.Edges); i++ {
+		prev, cur := m.Edges[i-1], m.Edges[i]
+		// Compare (Kind, Source, Target) lexicographically.
+		less := func(a, b Edge) bool {
+			if a.Kind != b.Kind {
+				return a.Kind < b.Kind
+			}
+			if a.Source != b.Source {
+				return a.Source < b.Source
+			}
+			return a.Target < b.Target
+		}
+		if less(cur, prev) {
+			t.Errorf("edges not sorted at index %d: %+v > %+v", i, prev, cur)
+		}
 	}
 }

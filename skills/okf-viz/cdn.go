@@ -2,9 +2,8 @@ package main
 
 import "strings"
 
-// cdnTags returns the pinned CDN <script> tags with SRI integrity. The integrity
-// values are filled in Task 8 (computed from the pinned files); until then they
-// are empty and the offline path is used for real rendering.
+// cdnTags returns the pinned CDN <script> tags with SRI integrity hashes
+// computed from the vendored copies of each library.
 func cdnTags() string {
 	tags := []struct{ url, integrity string }{
 		{"https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js", "sha384-IWROdLKRsN1UuJywMlWl7/blXQ8GEooN2n7dzTxfEPd7ybYIKCUJ2Ol/1Gpf3YV4"},

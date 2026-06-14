@@ -3,6 +3,7 @@ package main
 import (
 	"path"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -32,6 +33,19 @@ func addCrossLinks(m *Model) {
 			m.Edges = append(m.Edges, Edge{Source: srcID, Target: target, Kind: "crosslink"})
 		}
 	}
+	// Sort edges deterministically by (Kind, Source, Target) so that map-iteration
+	// order in the loop above does not produce byte-different output across runs.
+	sort.Slice(m.Edges, func(i, j int) bool {
+		ei, ej := m.Edges[i], m.Edges[j]
+		if ei.Kind != ej.Kind {
+			return ei.Kind < ej.Kind
+		}
+		if ei.Source != ej.Source {
+			return ei.Source < ej.Source
+		}
+		return ei.Target < ej.Target
+	})
+
 	// Degree = count of incident edges (both kinds).
 	deg := map[string]int{}
 	for _, e := range m.Edges {
