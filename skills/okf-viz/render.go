@@ -2,10 +2,20 @@ package main
 
 import (
 	"bytes"
+	"embed"
+	"encoding/json"
+	"strings"
+	"text/template"
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
 )
+
+//go:embed assets/page.tmpl.html assets/app.css assets/app.js
+var assetFS embed.FS
+
+//go:embed all:assets/vendor
+var vendorFS embed.FS
 
 var md = goldmark.New(goldmark.WithExtensions(extension.GFM))
 
@@ -68,4 +78,72 @@ func htmlEscape(s string) string {
 		}
 	}
 	return r.String()
+}
+
+// EmitOptions controls page generation.
+type EmitOptions struct {
+	Title   string
+	Theme   string // light|dark|system
+	Offline bool
+	Lang    string
+}
+
+type pageData struct {
+	Title, CSS, AppJS, LibTag, DataJSON, InitTheme string
+}
+
+// Emit renders the full self-contained HTML for a model.
+func Emit(m *Model, opt EmitOptions) (string, error) {
+	css, _ := assetFS.ReadFile("assets/app.css")
+	appjs, _ := assetFS.ReadFile("assets/app.js")
+	tmplBytes, _ := assetFS.ReadFile("assets/page.tmpl.html")
+
+	payload := map[string]any{"nodes": m.Nodes, "edges": m.Edges, "docs": buildDocs(m)}
+	dataJSON, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+	theme := opt.Theme
+	if theme != "light" && theme != "dark" {
+		theme = "system"
+	}
+	libTag, err := libraryTag(opt.Offline)
+	if err != nil {
+		return "", err
+	}
+	tmpl, err := template.New("page").Parse(string(tmplBytes))
+	if err != nil {
+		return "", err
+	}
+	var buf strings.Builder
+	err = tmpl.Execute(&buf, pageData{
+		Title: opt.Title, CSS: string(css), AppJS: string(appjs),
+		LibTag: libTag, DataJSON: string(dataJSON), InitTheme: theme,
+	})
+	return buf.String(), err
+}
+
+// libraryTag returns CDN <script> tags (default) or inlined library <script>
+// blocks (offline). The exact CDN URLs/integrity and vendor filenames are set
+// in Task 8; until then offline returns a clearly-marked stub.
+func libraryTag(offline bool) (string, error) {
+	if !offline {
+		return cdnTags(), nil
+	}
+	entries, err := vendorFS.ReadDir("assets/vendor")
+	if err != nil {
+		return "", err
+	}
+	var b strings.Builder
+	b.WriteString("<!-- OKF_INLINE_LIB -->\n")
+	for _, e := range entries {
+		if !strings.HasSuffix(e.Name(), ".js") {
+			continue
+		}
+		js, _ := vendorFS.ReadFile("assets/vendor/" + e.Name())
+		b.WriteString("<script>")
+		b.Write(js)
+		b.WriteString("</script>\n")
+	}
+	return b.String(), nil
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/savikne/okf-skills-registry/okf-go"
 )
@@ -38,9 +39,40 @@ func printUsage() {
 	fmt.Println("\nRun 'okf-viz render -h' for options.")
 }
 
-// runRender is fleshed out in Task 7; stub keeps the build green for early tasks.
 func runRender(args []string) {
 	fs := flag.NewFlagSet("render", flag.ExitOnError)
+	bundle := fs.String("bundle", "", "Path to the OKF bundle directory (required)")
+	out := fs.String("out", "", "Output HTML path (default <bundle>/index.html)")
+	offline := fs.Bool("offline", false, "Inline the graph library instead of CDN")
+	lang := fs.String("lang", "en", "UI-chrome language code")
+	theme := fs.String("theme", "system", "Initial theme: light, dark, or system")
+	title := fs.String("title", "", "Page title (default derived from bundle)")
 	_ = fs.Parse(args)
-	log.Fatal("render not yet implemented")
+
+	if *bundle == "" {
+		fs.Usage()
+		os.Exit(1)
+	}
+	m, err := BuildModel(*bundle)
+	if err != nil {
+		log.Fatalf("Failed to read bundle: %v", err)
+	}
+	addCrossLinks(m)
+
+	pageTitle := *title
+	if pageTitle == "" {
+		pageTitle = m.RootTitle
+	}
+	html, err := Emit(m, EmitOptions{Title: pageTitle, Theme: *theme, Offline: *offline, Lang: *lang})
+	if err != nil {
+		log.Fatalf("Failed to render: %v", err)
+	}
+	outPath := *out
+	if outPath == "" {
+		outPath = filepath.Join(*bundle, "index.html")
+	}
+	if err := os.WriteFile(outPath, []byte(html), 0644); err != nil {
+		log.Fatalf("Failed to write %s: %v", outPath, err)
+	}
+	fmt.Printf("Rendered %d concepts to %s\n", len(m.concepts), outPath)
 }
