@@ -69,6 +69,30 @@ func TestMergeConcept_UnchangedStructurePreservesByteForByte(t *testing.T) {
 	}
 }
 
+func TestMergeConcept_CarriesEnrichedAgainstOnChange(t *testing.T) {
+	oldBody := "# Columns\n\n| id |\n"
+	existing := ConceptDoc{
+		Frontmatter: Frontmatter{
+			Description:     "agent description",
+			ContentHash:     ConceptStructuralHash(ConceptDoc{Body: oldBody}),
+			EnrichedAgainst: "stale-hash-value",
+		},
+		Body: oldBody,
+	}
+	fresh := ConceptDoc{Body: "# Columns\n\n| id |\n| email |\n"}
+	merged, changed := MergeConcept(&existing, fresh)
+	if !changed {
+		t.Fatal("structural change expected")
+	}
+	if merged.Frontmatter.EnrichedAgainst != "stale-hash-value" {
+		t.Fatalf("enriched_against must be carried over, got %q", merged.Frontmatter.EnrichedAgainst)
+	}
+	// And it must now differ from the new content hash → concept reads as stale.
+	if merged.Frontmatter.EnrichedAgainst == merged.Frontmatter.ContentHash {
+		t.Fatal("after a structural change the marker must not match the new hash")
+	}
+}
+
 func TestMergeConcept_StructuralChangeCarriesAgentContent(t *testing.T) {
 	oldBody := "# Columns\n\n| id |\n"
 	existing := ConceptDoc{
