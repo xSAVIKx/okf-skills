@@ -6,7 +6,7 @@ Welcome, Agent! This guide contains crucial context, structural guidelines, and 
 
 ## 1. Repository Overview & Architecture
 
-This repository is a central registry of standalone CLI skills for producing and ingesting Open Knowledge Format (OKF) bundles. It is organized as a Go workspace containing multiple modules:
+This repository is a central registry of skills for producing, consuming, and authoring Open Knowledge Format (OKF) bundles — standalone CLI connectors, instructions-only guidance skills (read, enrich, and author), and a generic MCP server. It is organized as a Go workspace containing multiple modules:
 
 ```
 okf-skills-registry/
@@ -31,7 +31,8 @@ okf-skills-registry/
 │   ├── okf-git/                   # Git repository connector
 │   ├── okf-enrich/                # Enrichment guidance skill (Instructions-only)
 │   ├── okf-reader/                # Ingestion guidance skill (Instructions-only)
-│   └── okf-producer-generator/    # Producer-authoring guidance skill (Instructions-only)
+│   ├── okf-producer-generator/    # Producer-authoring guidance skill (Instructions-only)
+│   └── okf-viz/                   # Bundle visualizer — renders OKF bundles to interactive HTML
 └── tests/                         # Central integration testing directory
     ├── docker-compose.yml         # MySQL & PostgreSQL containers
     ├── helpers_test.go            # Shared test utilities (getBinaryPath, isPortOpen, etc.)
@@ -66,6 +67,8 @@ Skills compile to standalone Go CLI binaries. Each skill exposes three subcomman
 1. `produce`: Extract database schema comments, local filesystem folder structures, or git repository commit history into an OKF bundle. The four SQL connectors (`okf-sqlite`, `okf-mysql`, `okf-postgresql`, `okf-bigquery`) also support `--sample` and `--profile` flags.
 2. `ingest`: Read an OKF bundle, validate assets, and optionally synchronize comments/descriptions back to the source database or `.okf-metadata.yaml` using the `-sync` flag.
 3. `schema`: Emit a JSON description of the skill's commands, flags, and parameters (used by `okf-mcp` for tool discovery).
+
+> **Authoring a new connector?** The `okf-producer-generator` skill (`skills/okf-producer-generator/`) codifies this entire section — the architectural principles, the `okf-go` contract, the `produce`/`ingest`/`schema` surface, secret handling, the three `--sync` patterns, and the registration checklist — into a step-by-step guide. Load it first.
 
 ### Best Practices for Skills:
 - **Portability**: Write skills in pure Go with zero runtime dependencies. To guarantee CGO-free compilation for SQLite, use `modernc.org/sqlite` instead of `github.com/mattn/go-sqlite3`.

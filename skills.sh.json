@@ -28,6 +28,11 @@
         "okf-enrich",
         "okf-producer-generator"
       ]
+    },
+    {
+      "title": "Visualization",
+      "description": "Render OKF bundles into a browsable, interactive HTML graph view.",
+      "skills": ["okf-viz"]
     }
   ]
 }
