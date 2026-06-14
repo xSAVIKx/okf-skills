@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{.InitTheme}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}}</title>
+<style>{{.CSS}}</style>
+</head>
+<body>
+<header id="topbar">
+  <span id="bundle-title">{{.Title}}</span>
+  <span class="spacer"></span>
+  <input id="search" type="search" placeholder="Search concepts…" aria-label="Search">
+  <select id="layout" aria-label="Graph layout">
+    <option value="fcose">fcose</option>
+    <option value="cola">cola</option>
+    <option value="dagre">dagre</option>
+    <option value="breadthfirst">breadthfirst</option>
+    <option value="concentric">concentric</option>
+    <option value="circle">circle</option>
+    <option value="grid">grid</option>
+  </select>
+  <select id="theme" aria-label="Theme">
+    <option value="system">System</option>
+    <option value="light">Light</option>
+    <option value="dark">Dark</option>
+  </select>
+  <button id="toggle-nav" title="Toggle navigator">☰</button>
+  <button id="toggle-graph" title="Toggle graph">◉</button>
+  <button id="toggle-reader" title="Toggle reader">▤</button>
+</header>
+<main id="panes">
+  <aside id="nav"><div id="filters"></div><ul id="tree"></ul></aside>
+  <section id="graph"></section>
+  <article id="reader"><p class="empty">Select a concept.</p></article>
+</main>
+<script type="application/json" id="okf-data">{{.DataJSON}}</script>
+{{.LibTag}}
+<script>{{.AppJS}}</script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+:root{
+  --bg:#fff; --surface:#f6f7f9; --text:#1c2430; --muted:#5b6470; --border:#dfe3e8;
+  --accent:#4f86c6; --crosslink:#c64f86; --containment:#c2c8d2;
+}
+:root[data-theme="dark"]{
+  --bg:#11151b; --surface:#1a2029; --text:#e6eaf0; --muted:#9aa4b2; --border:#2a313c;
+  --accent:#6fa3df; --crosslink:#e07bab; --containment:#3a434f;
+}
+@media (prefers-color-scheme:dark){
+  :root[data-theme="system"]{
+    --bg:#11151b; --surface:#1a2029; --text:#e6eaf0; --muted:#9aa4b2; --border:#2a313c;
+    --accent:#6fa3df; --crosslink:#e07bab; --containment:#3a434f;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
+#topbar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface)}
+#bundle-title{font-weight:600}
+.spacer{flex:1}
+#topbar input,#topbar select,#topbar button{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font:inherit}
+#topbar button{cursor:pointer}
+#panes{display:grid;grid-template-columns:260px 1fr 380px;height:calc(100vh - 49px)}
+#panes.no-nav{grid-template-columns:0 1fr 380px}
+#panes.no-graph{grid-template-columns:260px 0 1fr}
+#panes.no-reader{grid-template-columns:260px 1fr 0}
+#nav,#reader{overflow:auto;padding:12px;border-right:1px solid var(--border)}
+#reader{border-right:0;border-left:1px solid var(--border)}
+#graph{position:relative;min-width:0}
+#nav.hidden,#graph.hidden,#reader.hidden{display:none}
+#tree{list-style:none;margin:0;padding:0}
+#tree li{padding:3px 6px;border-radius:5px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tree li:hover{background:var(--surface)}
+#tree li.dir{color:var(--muted);font-weight:600}
+#tree li.selected{background:var(--accent);color:#fff}
+#filters{margin-bottom:10px;font-size:13px;color:var(--muted)}
+#filters label{display:inline-flex;align-items:center;gap:4px;margin:2px 6px 2px 0}
+#reader h1,#reader h2,#reader h3{margin-top:0.6em}
+#reader table{border-collapse:collapse;width:100%;font-size:14px}
+#reader th,#reader td{border:1px solid var(--border);padding:4px 8px;text-align:left}
+#reader .fm{color:var(--muted);font-size:13px;margin-bottom:10px}
+#reader .empty{color:var(--muted)}
+.legend{position:absolute;bottom:8px;left:8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12px}
