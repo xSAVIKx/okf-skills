@@ -18,8 +18,9 @@ type Node struct {
 	Description string   `json:"description"` // one-line summary (concepts only)
 	Resource    string   `json:"resource,omitempty"`
 	Tags        []string `json:"tags,omitempty"`
-	Dir         string   `json:"dir"`    // parent directory id ("" = root)
-	Degree      int      `json:"degree"` // set in links.go
+	Dir         string   `json:"dir"`                // parent directory id ("" = root)
+	Degree      int      `json:"degree"`             // set in links.go
+	Coverage    string   `json:"coverage,omitempty"` // "placeholder" | "enriched" (concepts only; for the coverage overlay)
 }
 
 // Edge connects two nodes. Kind is "containment" (dashed) or "crosslink" (solid).

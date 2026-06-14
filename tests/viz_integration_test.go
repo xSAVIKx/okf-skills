@@ -80,6 +80,13 @@ func TestOkfVizERColumns(t *testing.T) {
 	if !strings.Contains(s, "er-mode") {
 		t.Errorf("index.html missing the ER mode control")
 	}
+	// data-aware reader: structured profile payload + coverage state + controls.
+	if !strings.Contains(s, "\"coverage\":\"enriched\"") {
+		t.Errorf("index.html missing per-node coverage state")
+	}
+	if !strings.Contains(s, "coverage-overlay") {
+		t.Errorf("index.html missing the coverage overlay control")
+	}
 }
 
 func TestOkfVizLazyScale(t *testing.T) {

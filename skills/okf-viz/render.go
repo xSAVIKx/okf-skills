@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -32,14 +33,28 @@ func renderMarkdown(body string) string {
 
 // Doc is the per-concept payload embedded for the reader pane.
 type Doc struct {
-	Title       string   `json:"title"`
-	Type        string   `json:"type"`
-	Description string   `json:"description"`
-	Resource    string   `json:"resource,omitempty"`
-	Tags        []string `json:"tags,omitempty"`
-	Timestamp   string   `json:"timestamp,omitempty"`
-	BodyHTML    string   `json:"bodyHtml"`
-	Columns     []Column `json:"columns,omitempty"`
+	Title       string       `json:"title"`
+	Type        string       `json:"type"`
+	Description string       `json:"description"`
+	Resource    string       `json:"resource,omitempty"`
+	Tags        []string     `json:"tags,omitempty"`
+	Timestamp   string       `json:"timestamp,omitempty"`
+	BodyHTML    string       `json:"bodyHtml"`
+	Columns     []Column     `json:"columns,omitempty"`
+	Profile     []ProfileRow `json:"profile,omitempty"`
+}
+
+// ProfileRow is a parsed row of a concept's "## Data Profile" section, so the
+// reader can chart it (null-ratio bars, distinct counts) instead of showing a raw
+// table. Populated only when a Data Profile section is present.
+type ProfileRow struct {
+	Column   string `json:"column"`
+	NonNull  int64  `json:"nonNull"`
+	Null     int64  `json:"null"`
+	Distinct int64  `json:"distinct"`
+	Min      string `json:"min,omitempty"`
+	Max      string `json:"max,omitempty"`
+	Semantic string `json:"semantic,omitempty"`
 }
 
 // buildDocs renders every concept's body to HTML keyed by concept ID, and parses
@@ -74,9 +89,63 @@ func buildDocs(m *Model) map[string]Doc {
 			Timestamp:   doc.Frontmatter.Timestamp,
 			BodyHTML:    renderMarkdown(doc.Body),
 			Columns:     cols,
+			Profile:     parseProfile(doc.Body),
 		}
 	}
 	return docs
+}
+
+// parseProfile reads the "## Data Profile" table into structured rows for the
+// reader's inline charts. Returns nil when no profile section is present, so the
+// reader shows the body unchanged.
+func parseProfile(body string) []ProfileRow {
+	section, ok := okf.GetSection(body, "Data Profile")
+	if !ok {
+		return nil
+	}
+	var rows []ProfileRow
+	var idx map[string]int
+	atoi := func(s string) int64 {
+		n, _ := strconv.ParseInt(strings.TrimSpace(s), 10, 64)
+		return n
+	}
+	for _, line := range strings.Split(section, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "|") || !strings.HasSuffix(line, "|") || strings.Contains(line, "---") {
+			continue
+		}
+		cells := splitTableRow(line)
+		if idx == nil {
+			idx = map[string]int{}
+			for i, h := range cells {
+				idx[strings.ToLower(h)] = i
+			}
+			if _, has := idx["column"]; !has {
+				return nil
+			}
+			continue
+		}
+		get := func(key string) string {
+			if p, ok := idx[key]; ok && p < len(cells) {
+				return cells[p]
+			}
+			return ""
+		}
+		name := get("column")
+		if name == "" {
+			continue
+		}
+		rows = append(rows, ProfileRow{
+			Column:   name,
+			NonNull:  atoi(get("non-null")),
+			Null:     atoi(get("null")),
+			Distinct: atoi(get("distinct")),
+			Min:      get("min"),
+			Max:      get("max"),
+			Semantic: get("semantic"),
+		})
+	}
+	return rows
 }
 
 // parseColumns reads the "# Columns" GFM table (header: Name | Type | Primary Key
@@ -198,6 +267,19 @@ func Emit(m *Model, opt EmitOptions) (string, map[string]string, error) {
 		threshold = DefaultLazyThreshold
 	}
 	lazy := !opt.InlineAll && len(m.concepts) > threshold
+
+	// Stamp per-concept enrichment state for the coverage overlay (deterministic,
+	// no LLM — reuses the placeholder catalog).
+	for i := range m.Nodes {
+		if m.Nodes[i].Kind != "concept" {
+			continue
+		}
+		if okf.IsPlaceholderDescription(m.Nodes[i].Description) {
+			m.Nodes[i].Coverage = "placeholder"
+		} else {
+			m.Nodes[i].Coverage = "enriched"
+		}
+	}
 
 	var payload map[string]any
 	var fragments map[string]string

@@ -31,10 +31,12 @@
     if (n.kind === "concept" && d && d.columns && d.columns.length) tabular[n.id] = d.columns;
   });
 
+  var coverageOverlay = false;
+
   function baseElements() {
     var els = [];
     nodes.forEach(function (n) {
-      els.push({ data: { id: n.id, label: n.title, kind: n.kind, ntype: n.type || "", degree: n.degree || 1 } });
+      els.push({ data: { id: n.id, label: n.title, kind: n.kind, ntype: n.type || "", degree: n.degree || 1, coverage: n.coverage || "" } });
     });
     edges.forEach(function (e) {
       var rel = e.relation || "";
@@ -57,9 +59,9 @@
           var flags = (c.pk ? " 🔑" : "") + (c.fk ? " ↗" : "");
           lines.push(c.name + (c.type ? " : " + c.type : "") + flags);
         });
-        els.push({ data: { id: n.id, label: lines.join("\n"), kind: "er-table", ntype: n.type || "" } });
+        els.push({ data: { id: n.id, label: lines.join("\n"), kind: "er-table", ntype: n.type || "", coverage: n.coverage || "" } });
       } else {
-        els.push({ data: { id: n.id, label: n.title, kind: n.kind, ntype: n.type || "", degree: n.degree || 1 } });
+        els.push({ data: { id: n.id, label: n.title, kind: n.kind, ntype: n.type || "", degree: n.degree || 1, coverage: n.coverage || "" } });
       }
     });
     edges.forEach(function (e) {
@@ -111,6 +113,14 @@
       clustered = clusterCb.checked;
       expandedDirs.clear();
       if (clustered) applyClusterDisplay(); else applyFilter();
+    });
+  }
+  // coverage overlay: recolor nodes by enrichment state (placeholder/enriched).
+  var covCb = document.getElementById("coverage-overlay");
+  if (covCb) {
+    covCb.addEventListener("change", function () {
+      coverageOverlay = covCb.checked;
+      styleGraph(cy);
     });
   }
   function applyClusterDisplay() {
@@ -172,7 +182,16 @@
         "line-color": cssVar("--rel-references") || crosslink,
         "source-arrow-shape": "tee", "source-arrow-color": cssVar("--rel-references") || crosslink,
         "target-arrow-shape": "triangle-tee", "target-arrow-color": cssVar("--rel-references") || crosslink } },
-    ].concat(relationStyles()));
+    ].concat(relationStyles()).concat(coverageOverlay ? coverageStyles() : []));
+  }
+
+  // coverageStyles recolors concept nodes by enrichment state; layered over the
+  // type coloring only while the overlay is on, so default coloring is untouched.
+  function coverageStyles() {
+    return [
+      { selector: 'node[coverage="placeholder"]', style: { "background-color": cssVar("--cov-placeholder") || "#d9534f" } },
+      { selector: 'node[coverage="enriched"]', style: { "background-color": cssVar("--cov-enriched") || "#3fae6b" } },
+    ];
   }
 
   // relationStyles produces one style rule per known relation, coloring its edges
@@ -268,20 +287,51 @@
       var inlineBody = d.bodyHtml || bodyCache[id];
       if (inlineBody) {
         r.innerHTML = head + inlineBody;
-        wireReaderLinks(r, id);
+        decorateReader(r, id, d);
       } else if (manifest[id]) {
         r.innerHTML = head + '<p class="empty">Loading…</p>';
         loadFragment(manifest[id], function (htmlText, ok) {
           if (!ok) { r.innerHTML = head + '<p class="empty">Body unavailable offline; serve the bundle over http to load it.</p>'; return; }
           bodyCache[id] = htmlText;
           r.innerHTML = head + htmlText;
-          wireReaderLinks(r, id);
+          decorateReader(r, id, d);
         });
       } else {
         r.innerHTML = head;
       }
     }
     writeHash();
+  }
+
+  // decorateReader wires intra-bundle links and, when a structured Data Profile is
+  // present, replaces its raw table with inline null-ratio bars (legible, no chart
+  // dependency). Degrades to the plain body when no profile data exists.
+  function decorateReader(r, id, d) {
+    wireReaderLinks(r, id);
+    if (!d || !d.profile || !d.profile.length) return;
+    var charts = '<div class="pf">';
+    d.profile.forEach(function (p) {
+      var total = (p.nonNull || 0) + (p.null || 0);
+      var nullPct = total > 0 ? Math.round(100 * (p.null || 0) / total) : 0;
+      var meta = "distinct " + (p.distinct || 0) + (p.semantic ? " · " + p.semantic : "") +
+        (p.min || p.max ? " · " + escapeHtml((p.min || "") + "…" + (p.max || "")) : "");
+      charts += '<div class="pf-row"><span class="pf-col">' + escapeHtml(p.column) + '</span>' +
+        '<span class="pf-bar" title="' + nullPct + '% null"><span class="pf-fill" style="width:' + (100 - nullPct) + '%"></span></span>' +
+        '<span class="pf-meta">' + meta + '</span></div>';
+    });
+    charts += "</div>";
+    // Replace the rendered "Data Profile" heading + its table with the charts.
+    var headings = r.querySelectorAll("h1, h2, h3");
+    for (var i = 0; i < headings.length; i++) {
+      if (headings[i].textContent.trim() === "Data Profile") {
+        var tbl = headings[i].nextElementSibling;
+        while (tbl && tbl.tagName !== "TABLE" && tbl.tagName !== "H1" && tbl.tagName !== "H2" && tbl.tagName !== "H3") tbl = tbl.nextElementSibling;
+        if (tbl && tbl.tagName === "TABLE") tbl.outerHTML = charts;
+        return;
+      }
+    }
+    // No heading found in body (e.g. lazy/edge cases): append the charts.
+    r.insertAdjacentHTML("beforeend", '<h2>Data Profile</h2>' + charts);
   }
 
   // wireReaderLinks makes intra-bundle .md links navigate within the viewer.
