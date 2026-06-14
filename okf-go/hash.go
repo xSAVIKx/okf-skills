@@ -68,6 +68,9 @@ func MergeConcept(existing *ConceptDoc, fresh ConceptDoc) (ConceptDoc, bool) {
 	if strings.TrimSpace(existing.Frontmatter.Description) != "" {
 		merged.Frontmatter.Description = existing.Frontmatter.Description
 	}
+	// Carry the enrichment marker over. The new ContentHash will differ from it,
+	// so okf-enrich correctly sees this concept as stale and re-enriches it.
+	merged.Frontmatter.EnrichedAgainst = existing.Frontmatter.EnrichedAgainst
 	merged.Frontmatter.Tags = unionTags(fresh.Frontmatter.Tags, existing.Frontmatter.Tags)
 	merged.Body = preserveExtraSections(fresh.Body, existing.Body)
 	return merged, true
