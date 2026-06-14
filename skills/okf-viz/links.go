@@ -17,12 +17,18 @@ func addCrossLinks(m *Model) {
 	for _, n := range m.Nodes {
 		exists[n.ID] = true
 	}
+	seen := map[string]bool{}
 	for srcID, doc := range m.concepts {
 		for _, match := range markdownLink.FindAllStringSubmatch(doc.Body, -1) {
 			target := resolveLink(srcID, match[1])
 			if target == "" || target == srcID || !exists[target] {
 				continue // external, self, or broken -> no edge
 			}
+			key := srcID + "\x00" + target
+			if seen[key] {
+				continue // a concept may link the same target many times -> one edge
+			}
+			seen[key] = true
 			m.Edges = append(m.Edges, Edge{Source: srcID, Target: target, Kind: "crosslink"})
 		}
 	}
