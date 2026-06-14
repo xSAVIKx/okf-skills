@@ -3,6 +3,8 @@ package main
 import (
 	"strings"
 	"testing"
+
+	"github.com/xSAVIKx/okf-skills/okf-go"
 )
 
 func TestRenderDoc_TableToHTML(t *testing.T) {
@@ -10,6 +12,44 @@ func TestRenderDoc_TableToHTML(t *testing.T) {
 	html := renderMarkdown(body)
 	if !strings.Contains(html, "<table>") || !strings.Contains(html, "<td>id</td>") {
 		t.Errorf("expected a rendered HTML table, got:\n%s", html)
+	}
+}
+
+func TestParseColumns(t *testing.T) {
+	body := "# Columns\n\n| Name | Type | Primary Key | Nullable | Default |\n| --- | --- | --- | --- | --- |\n| id | INTEGER | Yes | No |  |\n| email | TEXT | No | Yes |  |\n\n## Data Profile\n\n| Column | x |\n| --- | --- |\n| id | 1 |\n"
+	cols := parseColumns(body)
+	if len(cols) != 2 {
+		t.Fatalf("expected 2 columns (Data Profile rows must not leak), got %d: %+v", len(cols), cols)
+	}
+	if cols[0].Name != "id" || cols[0].Type != "INTEGER" || !cols[0].PK || cols[0].Nullable {
+		t.Errorf("unexpected first column: %+v", cols[0])
+	}
+	if cols[1].Name != "email" || cols[1].PK || !cols[1].Nullable {
+		t.Errorf("unexpected second column: %+v", cols[1])
+	}
+}
+
+func TestParseColumns_NonTabular(t *testing.T) {
+	if cols := parseColumns("# File: x\n\n## Metadata\n\n- Size: 1\n"); cols != nil {
+		t.Fatalf("non-tabular concept must yield nil columns, got %+v", cols)
+	}
+}
+
+func TestBuildDocs_MarksFKColumns(t *testing.T) {
+	m := &Model{concepts: map[string]*okf.ConceptDoc{
+		"orders": {Body: "# Columns\n\n| Name | Type |\n| --- | --- |\n| id | INT |\n| customer_id | INT |\n"},
+	}}
+	m.Edges = []Edge{{Source: "orders", Target: "customers", Kind: "crosslink", Relation: "references", Label: "customer_id"}}
+	docs := buildDocs(m)
+	cols := docs["orders"].Columns
+	var fk bool
+	for _, c := range cols {
+		if c.Name == "customer_id" {
+			fk = c.FK
+		}
+	}
+	if !fk {
+		t.Fatalf("customer_id should be marked FK from the references edge: %+v", cols)
 	}
 }
 

@@ -10,6 +10,10 @@ import (
 // markdownLink matches [text](target), capturing both the link text and target.
 var markdownLink = regexp.MustCompile(`\[([^\]]*)\]\(([^)]+)\)`)
 
+// fkColumn extracts the source column from a connector's "FK on <col>" relationship
+// line, so ER mode can anchor the edge at the specific column.
+var fkColumn = regexp.MustCompile(`(?i)FK on (\w+)`)
+
 // headingRelations maps a conventional section heading (case-folded) to the edge
 // relation a link under it carries. Links outside any known section keep an empty
 // relation and render as a generic crosslink — permissive by design.
@@ -55,6 +59,10 @@ func addCrossLinks(m *Model) {
 				relation = headingRelations[strings.ToLower(strings.TrimSpace(strings.TrimLeft(trimmed, "#")))]
 				continue
 			}
+			label := ""
+			if mm := fkColumn.FindStringSubmatch(line); mm != nil {
+				label = mm[1] // FK source column, for ER-mode column anchoring
+			}
 			for _, match := range markdownLink.FindAllStringSubmatch(line, -1) {
 				linkText, href := match[1], match[2]
 				target := resolveLink(srcID, href)
@@ -65,12 +73,16 @@ func addCrossLinks(m *Model) {
 				if a, ok := annotationRelations[strings.ToLower(strings.TrimSpace(linkText))]; ok {
 					rel = a // explicit annotation overrides the section relation
 				}
+				edgeLabel := ""
+				if rel == "references" {
+					edgeLabel = label
+				}
 				key := srcID + "\x00" + target + "\x00" + rel
 				if seen[key] {
 					continue // dedup per (source, target, relation)
 				}
 				seen[key] = true
-				m.Edges = append(m.Edges, Edge{Source: srcID, Target: target, Kind: "crosslink", Relation: rel})
+				m.Edges = append(m.Edges, Edge{Source: srcID, Target: target, Kind: "crosslink", Relation: rel, Label: edgeLabel})
 			}
 		}
 	}

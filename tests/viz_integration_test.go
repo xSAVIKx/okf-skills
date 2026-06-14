@@ -38,6 +38,43 @@ func TestOkfVizTypedEdges(t *testing.T) {
 	}
 }
 
+func TestOkfVizERColumns(t *testing.T) {
+	bin := getBinaryPath("okf-viz")
+	if _, err := os.Stat(bin); err != nil {
+		t.Skipf("okf-viz binary not built: %v", err)
+	}
+	bundle := t.TempDir()
+	write := func(p, body string) {
+		if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(filepath.Join(bundle, "index.md"), "---\nokf_version: \"0.1\"\n---\n# Demo\n")
+	write(filepath.Join(bundle, "tables", "orders.md"),
+		"---\ntype: SQLite Table\ntitle: orders\ndescription: One row per order.\n---\n# Columns\n\n| Name | Type | Primary Key | Nullable | Default |\n| --- | --- | --- | --- | --- |\n| id | INTEGER | Yes | No |  |\n| customer_id | INTEGER | No | No |  |\n\n# Relationships\n\n- FK on customer_id [customers](/tables/customers.md)\n")
+	write(filepath.Join(bundle, "tables", "customers.md"),
+		"---\ntype: SQLite Table\ntitle: customers\ndescription: One row per customer.\n---\n# Columns\n\n| Name | Type | Primary Key | Nullable | Default |\n| --- | --- | --- | --- | --- |\n| id | INTEGER | Yes | No |  |\n")
+
+	out := filepath.Join(bundle, "index.html")
+	if err := exec.Command(bin, "render", "--bundle", bundle, "--out", out).Run(); err != nil {
+		t.Fatalf("render failed: %v", err)
+	}
+	html, _ := os.ReadFile(out)
+	s := string(html)
+	if !strings.Contains(s, "\"columns\":") || !strings.Contains(s, "\"customer_id\"") {
+		t.Errorf("index.html missing parsed columns payload")
+	}
+	if !strings.Contains(s, "\"fk\":true") {
+		t.Errorf("index.html should mark customer_id as an FK column")
+	}
+	if !strings.Contains(s, "er-mode") {
+		t.Errorf("index.html missing the ER mode control")
+	}
+}
+
 func TestOkfVizCoverage(t *testing.T) {
 	bin := getBinaryPath("okf-viz")
 	if _, err := os.Stat(bin); err != nil {
