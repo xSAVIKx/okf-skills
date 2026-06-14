@@ -126,6 +126,11 @@ jobs:
             gemini skills link "$PWD/skills/$s" --scope user --consent
           done
 
+          # The bundle dir must exist before launch: --include-directories
+          # validates it at startup, but okf-fs (run by the agent) is what
+          # populates it. Create it empty here; the agent produces into it.
+          mkdir -p "$BUNDLE"
+
           # One headless run drives EVERY okf-skill call through gemini:
           # produce -> enrich -> render -> ingest (persist for the cache).
           cat > "$RUNNER_TEMP/prompt.txt" <<EOF
