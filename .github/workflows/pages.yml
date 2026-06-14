@@ -3,21 +3,24 @@ name: OKF Catalog (Pages)
 # Regenerate the OKF bundle of this repository on every push to master and
 # publish it as the repo's GitHub Pages site (a browsable okf-viz catalog).
 #
-# Cost model — kept deliberately low:
-#   * produce (okf-fs) + render (okf-viz) are pure-Go and deterministic: free.
+# Double duty: when a GEMINI_KEY secret is present this workflow also acts as an
+# end-to-end SELF-TEST of our own skills — the Antigravity CLI (`agy`) drives the
+# full pipeline through okf-fs (produce) -> okf-enrich (enrich) -> okf-viz
+# (render), exercising each SKILL.md exactly as a third-party agent harness
+# would. A deterministic fallback guarantees the site still publishes if the
+# agent path is unavailable or stumbles.
+#
+# Cost model — kept low:
+#   * produce/render are pure-Go and deterministic; the agent only adds the
+#     enrichment judgement on top, and only for NEW (placeholder) descriptions.
 #   * Only git-tracked files are checked out, so the catalog is clean by design.
-#   * Enrichment runs ONLY when a GEMINI_KEY secret exists. It is driven by the
-#     Antigravity CLI (`agy`) executing our own okf-enrich skill — okf-enrich is
-#     instruction-only by design (no binary, no embedded LLM in the connectors),
-#     so an agent harness is exactly what it expects. The agent only rewrites
-#     placeholder descriptions, so combined with the .okf-metadata.yaml cache
-#     below, steady-state token usage approaches zero.
+#   * Enriched descriptions are synced to .okf-metadata.yaml and held in a
+#     rolling Actions cache, so the agent only ever sees genuinely new files.
 #   * Publishing uses the official Pages actions: no gh-pages branch, no commits
 #     to master (honouring the repo's PR-only workflow).
 #
-# One-time setup: optionally add a repository secret GEMINI_KEY to enable
-# enrichment (and a GEMINI_MODEL repo variable if your agy version honours it).
-# Pages is enabled automatically by configure-pages below.
+# One-time setup: optionally add a repository secret GEMINI_KEY to enable the
+# agent self-test + enrichment. Pages is enabled automatically by configure-pages.
 
 on:
   push:
@@ -36,6 +39,7 @@ concurrency:
 
 env:
   GO_VERSION: "1.26"
+  CATALOG_TITLE: "okf-skills knowledge catalog"
 
 jobs:
   build:
@@ -56,11 +60,16 @@ jobs:
         with:
           enablement: true
 
+      # Pre-build the connector binaries OUTSIDE the worktree and put them on
+      # PATH. The agent self-test then exercises the okf-fs/okf-viz *commands*
+      # (the skill surface) without rebuilding them in-tree, and the same
+      # binaries back the deterministic fallback below.
       - name: Build okf-fs and okf-viz (outside the worktree)
         run: |
           mkdir -p "$RUNNER_TEMP/bin"
           ( cd skills/okf-fs  && go build -o "$RUNNER_TEMP/bin/okf-fs"  . )
           ( cd skills/okf-viz && go build -o "$RUNNER_TEMP/bin/okf-viz" . )
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
 
       # Restore the enriched-description store so okf-fs reuses prior work and
       # the agent only sees genuinely new files. Rolling key: always saves a
@@ -74,15 +83,11 @@ jobs:
           restore-keys: |
             okf-metadata-
 
-      - name: Produce OKF bundle
-        run: |
-          "$RUNNER_TEMP/bin/okf-fs" produce --dir . --out "$RUNNER_TEMP/bundle"
-
-      # Enrichment: drive our own okf-enrich skill via the Antigravity CLI.
-      # Best-effort — a CLI/auth hiccup must publish placeholders, not fail the
-      # site (continue-on-error). Verify flag names against `agy --help` for your
-      # installed version if this step ever no-ops unexpectedly.
-      - name: Enrich descriptions via Antigravity CLI + okf-enrich skill
+      # Self-test: drive the whole pipeline through our OWN skills via `agy`.
+      # Best-effort — a CLI/auth hiccup must not fail the site; the fallback
+      # step below still publishes. Verify flag names against `agy --help` for
+      # your installed version if this ever no-ops unexpectedly.
+      - name: Self-test pipeline via Antigravity CLI (okf-fs + okf-enrich + okf-viz)
         if: env.GEMINI_KEY != ''
         continue-on-error: true
         env:
@@ -98,31 +103,43 @@ jobs:
           export PATH="$HOME/.antigravity/bin:$HOME/.local/bin:$HOME/.gemini/antigravity-cli/bin:$PATH"
           command -v agy
 
-          # 2. Expose our own skills to the agent as workspace skills.
-          mkdir -p .agents/skills
-          cp -r skills/okf-enrich .agents/skills/okf-enrich
-          cp -r skills/okf-reader .agents/skills/okf-reader
+          # 2. Install our own skills globally so the agent discovers them
+          #    (global dir avoids polluting the worktree / the produced bundle).
+          mkdir -p "$HOME/.gemini/antigravity-cli/skills"
+          cp -r skills/okf-fs skills/okf-viz skills/okf-enrich skills/okf-reader \
+                "$HOME/.gemini/antigravity-cli/skills/"
 
-          # 3. Run headless: enrich only placeholder descriptions, surgically.
-          PROMPT="Use the okf-enrich skill to enrich the Open Knowledge Format bundle at ${BUNDLE}. \
-          It is an okf-fs bundle: concept docs are *.md files with YAML frontmatter whose 'type' is File or Directory. \
-          For EVERY concept doc whose frontmatter 'description' is still the connector placeholder (exactly 'File <name>' or 'Directory <name>'), \
-          write one concise description grounded only in the path, name and extension: grain first (what it is), then purpose, following the okf-enrich quality rules. \
-          Edit ONLY the frontmatter 'description:' field; preserve type/title/resource/tags/timestamp and the entire body byte-for-byte. \
-          Never modify index.md or log.md, and never touch any file outside ${BUNDLE}. \
-          Skip concepts that already have a substantive (non-placeholder) description. Work fully autonomously without asking for confirmation."
-          agy -p "$PROMPT" --yes --no-color < /dev/null
+          # 3. One headless run drives the full pipeline through our skills.
+          cat > "$RUNNER_TEMP/prompt.txt" <<EOF
+          You are running headlessly in CI as an end-to-end self-test of our OKF skills.
+          The okf-fs and okf-viz skill binaries are ALREADY built and on PATH as 'okf-fs' and 'okf-viz' — do NOT build, clone, or 'go install' them; just run their commands. The working directory is the repository root.
+
+          Using our own skills, perform the full pipeline in order:
+          1. okf-fs (produce): run 'okf-fs produce --dir . --out ${BUNDLE}'. okf-fs automatically reuses descriptions from .okf-metadata.yaml.
+          2. okf-enrich (enrich): for EVERY concept doc in ${BUNDLE} whose frontmatter 'description' is still the placeholder (exactly 'File <name>' or 'Directory <name>'), write one concise description grounded only in the path, name and extension — grain first (what it is), then purpose — per the okf-enrich quality rules. Edit ONLY the frontmatter 'description:' field; preserve type/title/resource/tags/timestamp and the whole body byte-for-byte; never modify index.md or log.md. Skip concepts that already have a substantive description.
+          3. okf-viz (render): run 'okf-viz render --bundle ${BUNDLE} --offline --title "${CATALOG_TITLE}"'.
+
+          Do not touch any files outside ${BUNDLE}. Work fully autonomously without asking for confirmation. Finish by confirming ${BUNDLE}/index.html exists.
+          EOF
+          agy -p "$(cat "$RUNNER_TEMP/prompt.txt")" --yes --no-color < /dev/null
 
           # 4. Persist enriched descriptions into .okf-metadata.yaml so the
           #    rolling cache carries them to the next run (incremental cost).
-          "$RUNNER_TEMP/bin/okf-fs" ingest --dir . --bundle "$BUNDLE" --sync
+          okf-fs ingest --dir . --bundle "$BUNDLE" --sync
 
-      - name: Render self-contained HTML catalog
+      # Guarantee a published catalog regardless of the agent path: produce
+      # and/or render deterministically only if the agent did not already.
+      - name: Ensure catalog (deterministic fallback)
+        env:
+          BUNDLE: ${{ runner.temp }}/bundle
         run: |
-          "$RUNNER_TEMP/bin/okf-viz" render \
-            --bundle "$RUNNER_TEMP/bundle" \
-            --offline \
-            --title "okf-skills knowledge catalog"
+          set -euo pipefail
+          if [ ! -f "$BUNDLE/index.md" ]; then
+            okf-fs produce --dir . --out "$BUNDLE"
+          fi
+          if [ ! -f "$BUNDLE/index.html" ]; then
+            okf-viz render --bundle "$BUNDLE" --offline --title "$CATALOG_TITLE"
+          fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
