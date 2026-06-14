@@ -1,0 +1,105 @@
+name: OKF Catalog (Pages)
+
+# Regenerate the OKF bundle of this repository on every push to master and
+# publish it as the repo's GitHub Pages site (a browsable okf-viz catalog).
+#
+# Cost model — kept deliberately low:
+#   * produce (okf-fs) + render (okf-viz) are pure-Go and deterministic: free.
+#   * Only git-tracked files are checked out, so the catalog is clean by design.
+#   * Enrichment runs ONLY when a GEMINI_KEY secret exists, and only on concepts
+#     whose description is still a placeholder. Enriched descriptions are cached
+#     in .okf-metadata.yaml (Actions cache, rolling key) and reused by okf-fs on
+#     later runs — so steady-state API usage approaches zero.
+#   * Publishing uses the official Pages actions: no gh-pages branch, no commits
+#     to master (honouring the repo's PR-only workflow).
+#
+# One-time setup: repo Settings -> Pages -> "Build and deployment" Source =
+# "GitHub Actions". Optionally add a repository secret GEMINI_KEY to enable
+# enrichment (and GEMINI_MODEL var to override the default cheap flash model).
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment; let in-progress deploys finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  GO_VERSION: "1.26"
+
+jobs:
+  build:
+    name: Produce, (optionally) enrich, render
+    runs-on: ubuntu-latest
+    env:
+      GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
+      GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: "**/go.sum"
+
+      - name: Build okf-fs and okf-viz (outside the worktree)
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          ( cd skills/okf-fs  && go build -o "$RUNNER_TEMP/bin/okf-fs"  . )
+          ( cd skills/okf-viz && go build -o "$RUNNER_TEMP/bin/okf-viz" . )
+
+      # Restore the enriched-description store so okf-fs reuses prior work and
+      # Gemini only sees genuinely new files. Rolling key: always saves a fresh
+      # cache (run_id is unique) while restoring the most recent prior one.
+      - name: Restore description cache
+        if: env.GEMINI_KEY != ''
+        uses: actions/cache@v4
+        with:
+          path: .okf-metadata.yaml
+          key: okf-metadata-${{ github.run_id }}
+          restore-keys: |
+            okf-metadata-
+
+      - name: Produce OKF bundle
+        run: |
+          "$RUNNER_TEMP/bin/okf-fs" produce --dir . --out "$RUNNER_TEMP/bundle"
+
+      - name: Enrich descriptions (only when GEMINI_KEY is set)
+        if: env.GEMINI_KEY != ''
+        run: |
+          python3 .github/scripts/enrich_okf.py "$RUNNER_TEMP/bundle"
+          # Persist freshly enriched descriptions into .okf-metadata.yaml so the
+          # cache (saved at job end) carries them to the next run.
+          "$RUNNER_TEMP/bin/okf-fs" ingest --dir . --bundle "$RUNNER_TEMP/bundle" --sync
+
+      - name: Render self-contained HTML catalog
+        run: |
+          "$RUNNER_TEMP/bin/okf-viz" render \
+            --bundle "$RUNNER_TEMP/bundle" \
+            --offline \
+            --title "okf-skills knowledge catalog"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/bundle
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
