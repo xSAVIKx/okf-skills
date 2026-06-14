@@ -20,12 +20,43 @@ func profileTable(db *sql.DB, table string, cols []ColumnSpec) ([]okf.ColumnProf
 		if err := db.QueryRow(q).Scan(&nonNull, &null, &distinct, &min, &max); err != nil {
 			return nil, fmt.Errorf("profile column %s.%s: %w", table, c.Name, err)
 		}
+		// Pull up to LowCardinalityN+1 distinct values (LIMIT-bounded, no full scan)
+		// to drive semantic-type detection and the literal value set.
+		distinctVals, err := distinctValues(db, table, c.Name, okf.LowCardinalityN+1)
+		if err != nil {
+			return nil, fmt.Errorf("distinct values %s.%s: %w", table, c.Name, err)
+		}
+		semantic, values := okf.ClassifyColumn(c.Name, distinctVals, distinct)
 		profiles = append(profiles, okf.ColumnProfile{
 			Column: c.Name, NonNull: nonNull, Null: null, Distinct: distinct,
 			Min: min.String, Max: max.String,
+			Semantic: semantic, Values: values,
 		})
 	}
 	return profiles, nil
+}
+
+// distinctValues returns up to limit distinct non-null values of a column as text.
+// The LIMIT lets MySQL stop early on high-cardinality columns, so this stays a
+// cheap, bounded read rather than a full scan.
+func distinctValues(db *sql.DB, table, col string, limit int) ([]string, error) {
+	q := fmt.Sprintf("SELECT DISTINCT CAST(`%[1]s` AS CHAR) FROM `%[2]s` WHERE `%[1]s` IS NOT NULL LIMIT %[3]d", col, table, limit)
+	rows, err := db.Query(q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var v sql.NullString
+		if err := rows.Scan(&v); err != nil {
+			return nil, err
+		}
+		if v.Valid {
+			out = append(out, v.String)
+		}
+	}
+	return out, rows.Err()
 }
 
 // sampleTable returns up to limit rows from a MySQL table as string headers + cells.
