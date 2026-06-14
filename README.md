@@ -1,8 +1,8 @@
 # Open Knowledge Format (OKF) Skills Registry
 
-This repository is a central registry of standalone CLI skills for producing and ingesting Open Knowledge Format (OKF) bundles. OKF is a simple, human- and agent-friendly specification for documenting data assets (schemas, comments, constraints, and metrics) as a directory of Markdown files with YAML frontmatter.
+This repository is a central registry of standalone CLI skills for producing, ingesting, and visualizing Open Knowledge Format (OKF) bundles. OKF is a simple, human- and agent-friendly specification for documenting data assets (schemas, comments, constraints, and metrics) as a directory of Markdown files with YAML frontmatter.
 
-Each skill is a self-contained Go module that compiles to a single portable binary.
+Most skills are self-contained Go modules that compile to a single portable binary; the agent-guidance skills are instructions-only (`SKILL.md`, no binary).
 
 ## Registry Structure
 

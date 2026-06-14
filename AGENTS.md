@@ -63,7 +63,7 @@ All core OKF schemas and parsing helper functions live under `okf-go/`.
 
 ## 3. Skills Development & Best Practices
 
-Skills compile to standalone Go CLI binaries. Each skill exposes three subcommands:
+The connector skills compile to standalone Go CLI binaries, each exposing three subcommands (the `okf-viz` visualizer is a consumer binary exposing `render`/`schema`; the guidance skills are instructions-only, no binary):
 1. `produce`: Extract database schema comments, local filesystem folder structures, or git repository commit history into an OKF bundle. The four SQL connectors (`okf-sqlite`, `okf-mysql`, `okf-postgresql`, `okf-bigquery`) also support `--sample` and `--profile` flags.
 2. `ingest`: Read an OKF bundle, validate assets, and optionally synchronize comments/descriptions back to the source database or `.okf-metadata.yaml` using the `-sync` flag.
 3. `schema`: Emit a JSON description of the skill's commands, flags, and parameters (used by `okf-mcp` for tool discovery).
