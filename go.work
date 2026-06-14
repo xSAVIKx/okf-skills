@@ -9,5 +9,6 @@ use (
 	./skills/okf-mysql
 	./skills/okf-postgresql
 	./skills/okf-sqlite
+	./skills/okf-viz
 	./tests
 )
