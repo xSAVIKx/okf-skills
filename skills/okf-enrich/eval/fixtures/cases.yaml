@@ -1,0 +1,93 @@
+# Labelled evaluation fixtures. Each case pairs a fixture concept with a candidate
+# description and the score band it should land in per dimension (see ../rubric.md).
+# Bands are deliberately coarse (low = 1-2, mid = 3, high = 4-5) because the judge is
+# non-deterministic — they assert ordering and gross correctness, not exact scores.
+#
+# A correct rubric + guidance must rank `high` cases above `low` cases on every
+# dimension; a hallucinated description out-scoring a grounded one is a bug.
+
+cases:
+  # ---- orders (SQL table, fully grounded) ----
+  - concept: orders.md
+    label: strong
+    candidate: >-
+      One row per customer order, capturing its lifecycle status
+      (cancelled/pending/shipped), the order total in cents, and the placing
+      customer; spans 2019–2026.
+    expected:
+      grounding: high
+      specificity: high
+      conciseness: high
+    rationale: Grain + purpose; every claim (status set, monetary total, time span, FK) is in the evidence.
+
+  - concept: orders.md
+    label: restated-schema
+    candidate: "A table with id, customer_id, status, total_cents and created_at columns."
+    expected:
+      grounding: high
+      specificity: low
+      conciseness: mid
+    rationale: Accurate but pure schema echo — adds nothing beyond the column list.
+
+  - concept: orders.md
+    label: hallucinated
+    candidate: >-
+      Stores refund approvals and the warehouse shelf location for each returned
+      item, used by the loyalty-points engine.
+    expected:
+      grounding: low
+      specificity: mid
+      conciseness: mid
+    rationale: Invents meaning (refunds, shelves, loyalty) the schema/sample do not support.
+
+  - concept: orders.md
+    label: over-long
+    candidate: >-
+      This particular table, which is named orders, is a very important table that
+      basically stores a whole bunch of information about each and every order that
+      has ever been placed, including but not limited to the id and the customer and
+      the status and the total and when it was created, and it is generally used for
+      lots of different things across the application.
+    expected:
+      grounding: mid
+      specificity: low
+      conciseness: low
+    rationale: Rambling, padded, and still mostly restates columns.
+
+  # ---- config.yaml (file, name/metadata grounding only) ----
+  - concept: config_yaml.md
+    label: strong
+    candidate: "Application configuration in YAML; the settings the service loads at startup."
+    expected:
+      grounding: high
+      specificity: high
+      conciseness: high
+    rationale: Infers role conservatively from name/extension without inventing specific keys.
+
+  - concept: config_yaml.md
+    label: hallucinated
+    candidate: "Stores the production database password and Stripe secret key in plaintext."
+    expected:
+      grounding: low
+      specificity: mid
+      conciseness: high
+    rationale: Asserts specific secret contents the evidence (name + size only) cannot support.
+
+  # ---- main.go (git file, commit-message grounding) ----
+  - concept: main_go.md
+    label: strong
+    candidate: "Server entrypoint; wires up and gracefully shuts down the HTTP server."
+    expected:
+      grounding: high
+      specificity: high
+      conciseness: high
+    rationale: Grounded in the path (cmd/server) and the last commit message; concise.
+
+  - concept: main_go.md
+    label: restated-schema
+    candidate: "A Git file named main.go that is 3120 bytes and was last committed by Dana Lee."
+    expected:
+      grounding: high
+      specificity: low
+      conciseness: mid
+    rationale: Restates metadata the reader can already see; conveys no purpose.
