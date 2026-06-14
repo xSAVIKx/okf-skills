@@ -19,13 +19,13 @@ html,body{margin:0;height:100%;font-family:system-ui,-apple-system,Segoe UI,Robo
 .spacer{flex:1}
 #topbar input,#topbar select,#topbar button{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font:inherit}
 #topbar button{cursor:pointer}
-#panes{display:grid;grid-template-columns:260px 1fr 380px;height:calc(100vh - 49px)}
-#panes.no-nav{grid-template-columns:0 1fr 380px}
-#panes.no-graph{grid-template-columns:260px 0 1fr}
-#panes.no-reader{grid-template-columns:260px 1fr 0}
-#nav,#reader{overflow:auto;padding:12px;border-right:1px solid var(--border)}
-#reader{border-right:0;border-left:1px solid var(--border)}
-#graph{position:relative;min-width:0}
+#panes{display:flex;height:calc(100vh - 49px)}
+#nav{flex:0 0 260px;overflow:auto;padding:12px;border-right:1px solid var(--border)}
+#graph{flex:1 1 0;position:relative;min-width:0}
+#reader{flex:0 0 380px;overflow:auto;padding:12px;border-left:1px solid var(--border)}
+/* Hidden panes are removed (display:none) and flex reflows the rest automatically.
+   When the graph is hidden, let the reader grow to fill the freed space. */
+#panes:has(#graph.hidden) #reader{flex:1 1 0}
 #nav.hidden,#graph.hidden,#reader.hidden{display:none}
 #tree{list-style:none;margin:0;padding:0}
 #tree li{padding:3px 6px;border-radius:5px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

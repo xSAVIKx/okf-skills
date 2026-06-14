@@ -184,13 +184,14 @@
   }
 
   // ---- pane toggles ----
-  wireToggle("toggle-nav", "nav", "no-nav");
-  wireToggle("toggle-graph", "graph", "no-graph");
-  wireToggle("toggle-reader", "reader", "no-reader");
-  function wireToggle(btn, pane, cls) {
+  // Toggle display:none on the pane; the flex layout reflows the rest (no grid
+  // track-shifting). cy.resize() refits the graph after its pane changes size.
+  wireToggle("toggle-nav", "nav");
+  wireToggle("toggle-graph", "graph");
+  wireToggle("toggle-reader", "reader");
+  function wireToggle(btn, pane) {
     document.getElementById(btn).addEventListener("click", function () {
       document.getElementById(pane).classList.toggle("hidden");
-      document.getElementById("panes").classList.toggle(cls);
       if (window.cy) cy.resize();
     });
   }
