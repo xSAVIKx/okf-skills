@@ -148,7 +148,7 @@ func commentStats(body string) (total, commented int) {
 func brokenLinks(srcID, body string, exists map[string]bool) []string {
 	var out []string
 	for _, match := range markdownLink.FindAllStringSubmatch(body, -1) {
-		target := resolveLink(srcID, match[1])
+		target := resolveLink(srcID, match[2]) // match[1]=text, match[2]=href
 		if target == "" || target == srcID {
 			continue
 		}

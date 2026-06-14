@@ -8,6 +8,36 @@ import (
 	"testing"
 )
 
+func TestOkfVizTypedEdges(t *testing.T) {
+	bin := getBinaryPath("okf-viz")
+	if _, err := os.Stat(bin); err != nil {
+		t.Skipf("okf-viz binary not built: %v", err)
+	}
+	bundle := t.TempDir()
+	write := func(p, body string) {
+		if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(filepath.Join(bundle, "index.md"), "---\nokf_version: \"0.1\"\n---\n# Demo\n")
+	write(filepath.Join(bundle, "tables", "orders.md"),
+		"---\ntype: SQLite Table\ntitle: orders\ndescription: One row per order.\n---\n# Columns\n\n# Relationships\n\n- FK on customer_id [customers](/tables/customers.md)\n")
+	write(filepath.Join(bundle, "tables", "customers.md"),
+		"---\ntype: SQLite Table\ntitle: customers\ndescription: One row per customer.\n---\n# Columns\n")
+
+	out := filepath.Join(bundle, "index.html")
+	if err := exec.Command(bin, "render", "--bundle", bundle, "--out", out).Run(); err != nil {
+		t.Fatalf("render failed: %v", err)
+	}
+	html, _ := os.ReadFile(out)
+	if !strings.Contains(string(html), "\"relation\":\"references\"") {
+		t.Errorf("index.html missing typed FK relation in inlined JSON")
+	}
+}
+
 func TestOkfVizCoverage(t *testing.T) {
 	bin := getBinaryPath("okf-viz")
 	if _, err := os.Stat(bin); err != nil {
