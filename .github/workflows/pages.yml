@@ -41,6 +41,10 @@ concurrency:
 env:
   GO_VERSION: "1.26"
   CATALOG_TITLE: "okf-skills knowledge catalog"
+  # These Pages/cache actions are the latest majors but still ship on Node 20;
+  # run them on Node 24 (becomes the runner default 2026-06-16) to clear the
+  # deprecation warning and stay future-proof.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   build:
@@ -108,8 +112,9 @@ jobs:
           set -euo pipefail
           export PATH="$HOME/.local/bin:$HOME/.antigravity/bin:$HOME/.gemini/antigravity-cli/bin:$PATH"
           # 1. Install the Antigravity CLI (`agy`) unless restored from cache.
+          #    install.sh only supports `--dir`; pin it to the cached location.
           if ! command -v agy >/dev/null 2>&1; then
-            curl -fsSL https://antigravity.google/cli/install.sh | bash -s -- --skip-path --skip-aliases
+            curl -fsSL https://antigravity.google/cli/install.sh | bash -s -- --dir "$HOME/.local/bin"
           fi
           command -v agy
 
