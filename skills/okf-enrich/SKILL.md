@@ -65,6 +65,7 @@ Enrich a concept when its `description` is empty or a generic placeholder the co
 Base every claim on evidence in the document. Read only what you need:
 - **Schema** (`# Columns`): names, types, keys, nullability → the shape of the concept.
 - **`## Data Profile`** (if present): per-column non-null / null / distinct / min / max. Signals: a 2–3-distinct column is likely a flag, enum, or status; min/max timestamps reveal the time span the data covers; a high null ratio flags optional fields.
+  - **`Semantic` column and `Values:` set** (when present): the connector now detects a column's semantic type deterministically (`email`, `uuid`, `iso-timestamp`, `monetary`, `boolean`, `enum`, `fk-ish`) and, for low-cardinality columns, lists the literal distinct values as `col ∈ {…}`. **Treat these as primary, near-mechanical grounding** — an `enum` column with its `Values` set is almost a description on its own; restate it rather than re-deriving it from samples.
 - **`## Sample`** (if present): real example rows — the strongest signal for what the data actually *means*.
 - **Relationships**: links in the body to other concept files → how this concept connects to others.
 

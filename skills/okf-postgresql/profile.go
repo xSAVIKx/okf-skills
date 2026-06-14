@@ -28,12 +28,45 @@ func profileTable(db *sql.DB, schema, table string, cols []ColumnSpec) ([]okf.Co
 		if err := db.QueryRow(q).Scan(&nonNull, &null, &distinct, &min, &max); err != nil {
 			return nil, fmt.Errorf("profile column %s.%s: %w", table, c.Name, err)
 		}
+		// Pull up to LowCardinalityN+1 distinct values (LIMIT-bounded, no full scan)
+		// to drive semantic-type detection and the literal value set.
+		distinctVals, err := distinctValues(db, schema, table, c.Name, okf.LowCardinalityN+1)
+		if err != nil {
+			return nil, fmt.Errorf("distinct values %s.%s: %w", table, c.Name, err)
+		}
+		semantic, values := okf.ClassifyColumn(c.Name, distinctVals, distinct)
 		profiles = append(profiles, okf.ColumnProfile{
 			Column: c.Name, NonNull: nonNull, Null: null, Distinct: distinct,
 			Min: min.String, Max: max.String,
+			Semantic: semantic, Values: values,
 		})
 	}
 	return profiles, nil
+}
+
+// distinctValues returns up to limit distinct non-null values of a column as text.
+// The LIMIT lets PostgreSQL stop early on high-cardinality columns, so this stays
+// a cheap, bounded read rather than a full scan.
+func distinctValues(db *sql.DB, schema, table, col string, limit int) ([]string, error) {
+	q := fmt.Sprintf(
+		"SELECT DISTINCT CAST(%s AS TEXT) FROM %s.%s WHERE %s IS NOT NULL LIMIT %d",
+		quoteIdent(col), quoteIdent(schema), quoteIdent(table), quoteIdent(col), limit)
+	rows, err := db.Query(q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var v sql.NullString
+		if err := rows.Scan(&v); err != nil {
+			return nil, err
+		}
+		if v.Valid {
+			out = append(out, v.String)
+		}
+	}
+	return out, rows.Err()
 }
 
 // sampleTable returns up to limit rows from a PostgreSQL table as string headers + cells.

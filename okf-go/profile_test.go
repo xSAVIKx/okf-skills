@@ -15,6 +15,45 @@ func TestRenderProfileSection(t *testing.T) {
 	}
 }
 
+func TestRenderProfileSection_LegacyWhenNoSemantic(t *testing.T) {
+	profiles := []ColumnProfile{{Column: "id", NonNull: 10, Null: 0, Distinct: 10, Min: "1", Max: "10"}}
+	got := RenderProfileSection(profiles)
+	if contains(got, "Semantic") {
+		t.Fatalf("semantic-free profile must render the legacy 6-column table:\n%s", got)
+	}
+	if !contains(got, "| Column | Non-Null | Null | Distinct | Min | Max |") {
+		t.Fatalf("legacy header missing:\n%s", got)
+	}
+}
+
+func TestRenderProfileSection_WithSemanticAndValues(t *testing.T) {
+	profiles := []ColumnProfile{
+		{Column: "email", NonNull: 5, Null: 0, Distinct: 5, Min: "a@x.com", Max: "z@x.com", Semantic: "email"},
+		{Column: "status", NonNull: 5, Null: 0, Distinct: 3, Min: "cancelled", Max: "shipped", Semantic: "enum", Values: []string{"shipped", "pending", "cancelled"}},
+	}
+	got := RenderProfileSection(profiles)
+	if !contains(got, "| Column | Non-Null | Null | Distinct | Min | Max | Semantic |") {
+		t.Fatalf("semantic header missing:\n%s", got)
+	}
+	if !contains(got, "| email | 5 | 0 | 5 | a@x.com | z@x.com | email |") {
+		t.Fatalf("semantic row missing:\n%s", got)
+	}
+	// Values rendered sorted.
+	if !contains(got, "- status ∈ {cancelled, pending, shipped}") {
+		t.Fatalf("sorted value set missing:\n%s", got)
+	}
+}
+
+func TestRenderProfileSection_SanitizesValues(t *testing.T) {
+	profiles := []ColumnProfile{
+		{Column: "kind", Distinct: 1, Semantic: "enum", Values: []string{"a|b"}},
+	}
+	got := RenderProfileSection(profiles)
+	if !contains(got, `a\|b`) {
+		t.Fatalf("pipe in value not sanitized:\n%s", got)
+	}
+}
+
 func TestRenderSampleSection(t *testing.T) {
 	headers := []string{"id", "name"}
 	rows := [][]string{{"1", "alice"}, {"2", "bob"}}

@@ -297,6 +297,41 @@ func TestSQLiteCompositeFK(t *testing.T) {
 	assertCompositeFKEdges(t, string(body))
 }
 
+func TestSQLiteRicherGrounding(t *testing.T) {
+	binaryPath := getBinaryPath("okf-sqlite")
+	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
+		t.Skipf("SQLite binary not found at %s.", binaryPath)
+	}
+
+	tempDir, _ := os.MkdirTemp("", "okf-sqlite-grounding-*")
+	defer os.RemoveAll(tempDir)
+
+	dbPath := filepath.Join(tempDir, "test.db")
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer db.Close()
+	db.Exec("CREATE TABLE accounts (id TEXT PRIMARY KEY, email TEXT, status TEXT)")
+	db.Exec("INSERT INTO accounts VALUES ('123e4567-e89b-12d3-a456-426614174000','a@x.com','active'),('00000000-0000-0000-0000-000000000002','b@y.com','pending'),('00000000-0000-0000-0000-000000000003','c@z.com','active')")
+
+	outDir := filepath.Join(tempDir, "bundle")
+	cmd := exec.Command(binaryPath, "produce", "--db", dbPath, "--out", outDir, "--profile")
+	var stderr bytesBuffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("produce --profile failed: %v. Stderr: %s", err, stderr.String())
+	}
+
+	body, _ := os.ReadFile(filepath.Join(outDir, "tables", "accounts.md"))
+	s := string(body)
+	for _, want := range []string{"| Semantic |", "email", "uuid", "## Data Profile", "status ∈ {active, pending}"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("accounts.md missing %q:\n%s", want, s)
+		}
+	}
+}
+
 func TestMySQLIntegration(t *testing.T) {
 	binaryPath := getBinaryPath("okf-mysql")
 	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
