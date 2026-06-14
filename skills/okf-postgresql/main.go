@@ -121,6 +121,7 @@ func runProduce(args []string) {
 	var tables []TableInfo
 
 	timestamp := time.Now().Format(time.RFC3339)
+	today := time.Now().Format("2006-01-02")
 
 	for rows.Next() {
 		var name, comment string
@@ -199,7 +200,7 @@ func runProduce(args []string) {
 			bodyStr = okf.UpsertSection(bodyStr, "Sample", okf.RenderSampleSection(headers, sampleRows))
 		}
 
-		doc := okf.ConceptDoc{
+		fresh := okf.ConceptDoc{
 			Frontmatter: okf.Frontmatter{
 				Type:        "PostgreSQL Table",
 				Title:       tInfo.Name,
@@ -212,8 +213,26 @@ func runProduce(args []string) {
 		}
 
 		filePath := filepath.Join(tablesDir, tInfo.Name+".md")
-		if err := okf.WriteConceptDoc(filePath, doc); err != nil {
+		// Incremental produce: preserve an unchanged concept byte-for-byte (keeping
+		// any enriched description/body), rewrite only when the structure changed.
+		var existing *okf.ConceptDoc
+		if e, err := okf.ReadConceptDoc(filePath); err == nil {
+			existing = e
+		}
+		merged, changed := okf.MergeConcept(existing, fresh)
+		if !changed {
+			fmt.Printf("Unchanged, preserved: %s\n", filePath)
+			continue
+		}
+		if err := okf.WriteConceptDoc(filePath, merged); err != nil {
 			log.Fatalf("Failed to write table %s document: %v", tInfo.Name, err)
+		}
+		kind, action := "Update", "Structure changed for"
+		if existing == nil {
+			kind, action = "Creation", "Established"
+		}
+		if err := okf.AppendLogEntry(*outDir, today, kind, fmt.Sprintf("%s [%s](/tables/%s.md).", action, tInfo.Name, tInfo.Name)); err != nil {
+			log.Fatalf("Failed to append log entry: %v", err)
 		}
 		fmt.Printf("Produced concept doc: %s\n", filePath)
 	}

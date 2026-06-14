@@ -181,6 +181,8 @@ func runProduce(args []string) {
 		existsConcept = func(c string) bool { return pathSet[c] }
 	}
 
+	today := time.Now().Format("2006-01-02")
+
 	for _, rel := range paths {
 		fullPath := filepath.Join(absRepo, rel)
 		fi, err := os.Stat(fullPath)
@@ -247,7 +249,7 @@ func runProduce(args []string) {
 			bodyStr = okf.AppendRelationshipsSection(bodyStr, "Related Files", rels)
 		}
 
-		doc := okf.ConceptDoc{
+		fresh := okf.ConceptDoc{
 			Frontmatter: okf.Frontmatter{
 				Type:        conceptType,
 				Title:       filepath.Base(rel),
@@ -264,9 +266,24 @@ func runProduce(args []string) {
 			log.Fatalf("Failed to create concept subdirectories: %v", err)
 		}
 
-		if err := okf.WriteConceptDoc(conceptPath, doc); err != nil {
+		var existing *okf.ConceptDoc
+		if e, err := okf.ReadConceptDoc(conceptPath); err == nil {
+			existing = e
+		}
+		merged, changed := okf.MergeConcept(existing, fresh)
+		if !changed {
+			fmt.Printf("Unchanged, preserved: %s\n", conceptPath)
+			continue
+		}
+		if err := okf.WriteConceptDoc(conceptPath, merged); err != nil {
 			log.Fatalf("Failed to write concept doc: %v", err)
 		}
+		kind, action := "Update", "Structure changed for"
+		if existing == nil {
+			kind, action = "Creation", "Established"
+		}
+		bundlePath := "/" + filepath.ToSlash(rel) + ".md"
+		_ = okf.AppendLogEntry(*outDir, today, kind, fmt.Sprintf("%s [%s](%s).", action, filepath.Base(rel), bundlePath))
 		fmt.Printf("Produced concept doc: %s\n", conceptPath)
 	}
 

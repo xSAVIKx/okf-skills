@@ -107,6 +107,7 @@ func runProduce(args []string) {
 	}
 
 	timestamp := time.Now().Format(time.RFC3339)
+	today := time.Now().Format("2006-01-02")
 
 	// Create OKF bundle documents
 	for _, rel := range paths {
@@ -140,7 +141,7 @@ func runProduce(args []string) {
 			}
 		}
 
-		doc := okf.ConceptDoc{
+		fresh := okf.ConceptDoc{
 			Frontmatter: okf.Frontmatter{
 				Type:        conceptType,
 				Title:       filepath.Base(rel),
@@ -158,8 +159,27 @@ func runProduce(args []string) {
 			log.Fatalf("Failed to create concept subdirectories: %v", err)
 		}
 
-		if err := okf.WriteConceptDoc(conceptPath, doc); err != nil {
+		// Incremental produce: preserve an unchanged concept byte-for-byte (keeping
+		// any enriched description/body), rewrite only when the structure changed.
+		var existing *okf.ConceptDoc
+		if e, err := okf.ReadConceptDoc(conceptPath); err == nil {
+			existing = e
+		}
+		merged, changed := okf.MergeConcept(existing, fresh)
+		if !changed {
+			fmt.Printf("Unchanged, preserved: %s\n", conceptPath)
+			continue
+		}
+		if err := okf.WriteConceptDoc(conceptPath, merged); err != nil {
 			log.Fatalf("Failed to write concept doc for %s: %v", rel, err)
+		}
+		kind, action := "Update", "Structure changed for"
+		if existing == nil {
+			kind, action = "Creation", "Established"
+		}
+		bundlePath := "/" + filepath.ToSlash(rel) + ".md"
+		if err := okf.AppendLogEntry(*outDir, today, kind, fmt.Sprintf("%s [%s](%s).", action, filepath.Base(rel), bundlePath)); err != nil {
+			log.Fatalf("Failed to append log entry: %v", err)
 		}
 		fmt.Printf("Produced concept doc: %s\n", conceptPath)
 	}
