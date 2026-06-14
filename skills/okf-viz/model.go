@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/savikne/okf-skills-registry/okf-go"
+	"github.com/savikne/okf-skills/okf-go"
 )
 
 // Node is a graph node: a concept, a directory, or the bundle root.

@@ -1,6 +1,6 @@
 ---
 name: okf-producer-generator
-description: Guidance and the bundled OKF specification for building a new Open Knowledge Format (OKF) producer/connector skill in this registry — the architectural principles, the okf-go library contract, the produce/ingest/schema command surface, the secret-handling and sync conventions, and the exact registration steps. Use when creating a new OKF connector or producer for a data source the registry does not yet cover (e.g. MongoDB, Redis, Kafka, CSV, an HTTP API), scaffolding an okf-* skill, or extending the registry to a new source. Instructions-only; no binary required.
+description: Guidance and the bundled OKF specification for building a new Open Knowledge Format (OKF) producer/connector skill in this project — the architectural principles, the okf-go library contract, the produce/ingest/schema command surface, the secret-handling and sync conventions, and the exact registration steps. Use when creating a new OKF connector or producer for a data source the project does not yet cover (e.g. MongoDB, Redis, Kafka, CSV, an HTTP API), scaffolding an okf-* skill, or extending the project to a new source. Instructions-only; no binary required.
 license: Apache-2.0
 metadata:
   version: "0.1.0"
@@ -11,7 +11,7 @@ metadata:
 # OKF Producer Skill Generator
 
 This skill teaches a coding agent (Claude Code, Cursor, Gemini CLI, Copilot, …)
-how to author a new **producer** for this registry: a standalone CLI skill that
+how to author a new **producer** for this project: a standalone CLI skill that
 extracts metadata from a data source into an Open Knowledge Format (OKF) bundle,
 and ingests/syncs descriptions back. It ships the OKF spec it must conform to,
 the conventions every existing connector follows, and the exact wiring steps so
@@ -26,7 +26,7 @@ the six that already exist (`okf-sqlite`, `okf-mysql`, `okf-postgresql`,
 
 Load this skill when asked to:
 - **Add a new data source** — "make an OKF connector for MongoDB / Redis / Kafka / CSV / an API".
-- **Scaffold an `okf-*` producer skill**, or extend the registry to a source it doesn't cover.
+- **Scaffold an `okf-*` producer skill**, or extend the project to a source it doesn't cover.
 
 Do **not** use it for: reading a bundle (use `okf-reader`), enriching descriptions
 (use `okf-enrich`), or building a *consumer* that only reads OKF (the spec in
@@ -55,7 +55,7 @@ These are not obvious from reading one connector. Internalize them before writin
    mechanical: read the source, emit/compare markdown. **Never call an LLM inside
    `produce` to write descriptions.** Emit a deterministic placeholder (e.g.
    `fmt.Sprintf("MongoDB collection %s", name)`); the meaning is added later by
-   `okf-enrich`, which uses the agent's *own* LLM. (This registry deliberately
+   `okf-enrich`, which uses the agent's *own* LLM. (This project deliberately
    deleted an embedded second model — a model calling a tool that calls another
    model is redundant cost and usually worse output.)
 
@@ -170,7 +170,7 @@ cols := parseColumns(section)
 
 `ingest` verifies the bundle against the source; `--sync` then **persists the
 enriched descriptions back to the source.** Where they can go depends on the source
-— pick from the three patterns this registry already uses, and **do not invent a new
+— pick from the three patterns this project already uses, and **do not invent a new
 mechanism:**
 
 | Source has… | Where `--sync` persists descriptions | Examples |

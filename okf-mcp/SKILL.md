@@ -1,6 +1,6 @@
 ---
 name: okf-mcp
-description: Generic Model Context Protocol (MCP) server that discovers installed okf-* skill binaries and exposes their produce/ingest commands as MCP tools for any MCP-capable harness (Claude Code, Gemini CLI, etc.). Use when wiring the OKF skills registry into an agent over MCP instead of invoking each connector binary directly.
+description: Generic Model Context Protocol (MCP) server that discovers installed okf-* skill binaries and exposes their produce/ingest commands as MCP tools for any MCP-capable harness (Claude Code, Gemini CLI, etc.). Use when wiring OKF Skills into an agent over MCP instead of invoking each connector binary directly.
 license: Apache-2.0
 compatibility: Requires the Go toolchain (1.24+) to build the server binary, plus installed okf-* skill binaries to discover and expose.
 metadata:
@@ -11,7 +11,7 @@ metadata:
 
 # OKF MCP Server
 
-`okf-mcp` is a generic [Model Context Protocol](https://modelcontextprotocol.io) server. On startup it discovers installed `okf-*` skill binaries, runs `<skill> schema` on each, and exposes every skill command (except `schema` itself) as an MCP tool named `<skill>__<command>` (e.g. `okf-sqlite__produce`). Any MCP-capable harness can then drive the whole OKF skills registry without per-skill glue.
+`okf-mcp` is a generic [Model Context Protocol](https://modelcontextprotocol.io) server. On startup it discovers installed `okf-*` skill binaries, runs `<skill> schema` on each, and exposes every skill command (except `schema` itself) as an MCP tool named `<skill>__<command>` (e.g. `okf-sqlite__produce`). Any MCP-capable harness can then drive all of OKF Skills without per-skill glue.
 
 ## How it works
 

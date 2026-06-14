@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/go-git/go-git/v5 v5.11.0
-	github.com/savikne/okf-skills-registry/okf-go v0.0.0
+	github.com/savikne/okf-skills/okf-go v0.0.0
 )
 
 require (
@@ -34,4 +34,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/savikne/okf-skills-registry/okf-go => ../../okf-go
+replace github.com/savikne/okf-skills/okf-go => ../../okf-go

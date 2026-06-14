@@ -1,13 +1,13 @@
-# Open Knowledge Format (OKF) Skills Registry
+# Open Knowledge Format (OKF) Skills
 
-This repository is a central registry of standalone CLI skills for producing, ingesting, and visualizing Open Knowledge Format (OKF) bundles. OKF is a simple, human- and agent-friendly specification for documenting data assets (schemas, comments, constraints, and metrics) as a directory of Markdown files with YAML frontmatter.
+This repository is a central collection of standalone CLI skills for producing, ingesting, and visualizing Open Knowledge Format (OKF) bundles. OKF is a simple, human- and agent-friendly specification for documenting data assets (schemas, comments, constraints, and metrics) as a directory of Markdown files with YAML frontmatter.
 
 Most skills are self-contained Go modules that compile to a single portable binary; the agent-guidance skills are instructions-only (`SKILL.md`, no binary).
 
-## Registry Structure
+## Repository Structure
 
 ```
-okf-skills-registry/
+okf-skills/
 ├── AGENTS.md                      # Developer agent guide
 ├── README.md                      # This documentation
 ├── LICENSE                        # Apache License 2.0
@@ -185,11 +185,11 @@ The root `skills.sh.json` manifest groups the skills for the [skills.sh](https:/
 
 ## 9. Producer Generator Skill (`okf-producer-generator`)
 
-Located in `skills/okf-producer-generator/`, this is an instructions-only skill (`SKILL.md`) — no binary. It is the "write a producer" on-ramp for the registry: it ships a copy of the OKF spec (`okf-SPEC.md`), an `okf-go` library API reference (`okf-go-api.md`), and a step-by-step guide for authoring a new connector that matches the existing six rather than reverse-engineering them.
+Located in `skills/okf-producer-generator/`, this is an instructions-only skill (`SKILL.md`) — no binary. It is the "write a producer" on-ramp for the project: it ships a copy of the OKF spec (`okf-SPEC.md`), an `okf-go` library API reference (`okf-go-api.md`), and a step-by-step guide for authoring a new connector that matches the existing six rather than reverse-engineering them.
 
 It covers the architectural principles (deterministic extraction with **no embedded LLM**, `okf-go` as the single source of OKF types, `schema` as the MCP-discovery contract), the `produce`/`ingest`/`schema` command surface, the secret-handling and `--sync` conventions, and the full registration checklist (`go.work`, `Makefile`, `skills.sh`, `skills.sh.json`, docs, and tests).
 
-Load it when extending the registry to a source it doesn't yet cover — e.g. MongoDB, Redis, Kafka, a CSV directory, or an HTTP API.
+Load it when extending the project to a source it doesn't yet cover — e.g. MongoDB, Redis, Kafka, a CSV directory, or an HTTP API.
 
 ---
 

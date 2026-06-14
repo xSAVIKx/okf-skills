@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/savikne/okf-skills-registry/okf-go"
+	"github.com/savikne/okf-skills/okf-go"
 )
 
 // toolName builds the MCP tool name for a skill command. Skill names contain a

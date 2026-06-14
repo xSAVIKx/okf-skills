@@ -1,4 +1,4 @@
-module github.com/savikne/okf-skills-registry/okf-go
+module github.com/savikne/okf-skills/okf-go
 
 go 1.20
 

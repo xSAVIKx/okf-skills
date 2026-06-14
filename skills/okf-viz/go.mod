@@ -3,7 +3,7 @@ module okf-viz
 go 1.24.0
 
 require (
-	github.com/savikne/okf-skills-registry/okf-go v0.0.0
+	github.com/savikne/okf-skills/okf-go v0.0.0
 	github.com/yuin/goldmark v1.8.2
 )
 
@@ -12,4 +12,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/savikne/okf-skills-registry/okf-go => ../../okf-go
+replace github.com/savikne/okf-skills/okf-go => ../../okf-go

@@ -1,6 +1,6 @@
 package main
 
-import "github.com/savikne/okf-skills-registry/okf-go"
+import "github.com/savikne/okf-skills/okf-go"
 
 // buildSchema returns the machine-readable self-description of the okf-bigquery skill.
 func buildSchema() okf.SkillSchema {

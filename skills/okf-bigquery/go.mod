@@ -4,11 +4,11 @@ go 1.24.0
 
 require (
 	cloud.google.com/go/bigquery v1.56.0
-	github.com/savikne/okf-skills-registry/okf-go v0.0.0
+	github.com/savikne/okf-skills/okf-go v0.0.0
 	google.golang.org/api v0.149.0
 )
 
-replace github.com/savikne/okf-skills-registry/okf-go => ../../okf-go
+replace github.com/savikne/okf-skills/okf-go => ../../okf-go
 
 require (
 	cloud.google.com/go v0.110.8 // indirect

@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/lib/pq v1.10.9
-	github.com/savikne/okf-skills-registry/okf-go v0.0.0
+	github.com/savikne/okf-skills/okf-go v0.0.0
 )
 
 require (
@@ -12,4 +12,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/savikne/okf-skills-registry/okf-go => ../../okf-go
+replace github.com/savikne/okf-skills/okf-go => ../../okf-go

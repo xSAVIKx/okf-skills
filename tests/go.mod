@@ -1,4 +1,4 @@
-module github.com/savikne/okf-skills-registry/tests
+module github.com/savikne/okf-skills/tests
 
 go 1.24.0
 
