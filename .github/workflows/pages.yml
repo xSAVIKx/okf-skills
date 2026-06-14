@@ -6,16 +6,18 @@ name: OKF Catalog (Pages)
 # Cost model — kept deliberately low:
 #   * produce (okf-fs) + render (okf-viz) are pure-Go and deterministic: free.
 #   * Only git-tracked files are checked out, so the catalog is clean by design.
-#   * Enrichment runs ONLY when a GEMINI_KEY secret exists, and only on concepts
-#     whose description is still a placeholder. Enriched descriptions are cached
-#     in .okf-metadata.yaml (Actions cache, rolling key) and reused by okf-fs on
-#     later runs — so steady-state API usage approaches zero.
+#   * Enrichment runs ONLY when a GEMINI_KEY secret exists. It is driven by the
+#     Antigravity CLI (`agy`) executing our own okf-enrich skill — okf-enrich is
+#     instruction-only by design (no binary, no embedded LLM in the connectors),
+#     so an agent harness is exactly what it expects. The agent only rewrites
+#     placeholder descriptions, so combined with the .okf-metadata.yaml cache
+#     below, steady-state token usage approaches zero.
 #   * Publishing uses the official Pages actions: no gh-pages branch, no commits
 #     to master (honouring the repo's PR-only workflow).
 #
-# One-time setup: repo Settings -> Pages -> "Build and deployment" Source =
-# "GitHub Actions". Optionally add a repository secret GEMINI_KEY to enable
-# enrichment (and GEMINI_MODEL var to override the default cheap flash model).
+# One-time setup: optionally add a repository secret GEMINI_KEY to enable
+# enrichment (and a GEMINI_MODEL repo variable if your agy version honours it).
+# Pages is enabled automatically by configure-pages below.
 
 on:
   push:
@@ -41,7 +43,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
-      GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
     steps:
       - uses: actions/checkout@v6
 
@@ -50,6 +51,11 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: "**/go.sum"
 
+      - name: Configure Pages (enables Pages if not already)
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
       - name: Build okf-fs and okf-viz (outside the worktree)
         run: |
           mkdir -p "$RUNNER_TEMP/bin"
@@ -57,8 +63,8 @@ jobs:
           ( cd skills/okf-viz && go build -o "$RUNNER_TEMP/bin/okf-viz" . )
 
       # Restore the enriched-description store so okf-fs reuses prior work and
-      # Gemini only sees genuinely new files. Rolling key: always saves a fresh
-      # cache (run_id is unique) while restoring the most recent prior one.
+      # the agent only sees genuinely new files. Rolling key: always saves a
+      # fresh cache (run_id is unique) while restoring the most recent prior one.
       - name: Restore description cache
         if: env.GEMINI_KEY != ''
         uses: actions/cache@v4
@@ -72,13 +78,44 @@ jobs:
         run: |
           "$RUNNER_TEMP/bin/okf-fs" produce --dir . --out "$RUNNER_TEMP/bundle"
 
-      - name: Enrich descriptions (only when GEMINI_KEY is set)
+      # Enrichment: drive our own okf-enrich skill via the Antigravity CLI.
+      # Best-effort — a CLI/auth hiccup must publish placeholders, not fail the
+      # site (continue-on-error). Verify flag names against `agy --help` for your
+      # installed version if this step ever no-ops unexpectedly.
+      - name: Enrich descriptions via Antigravity CLI + okf-enrich skill
         if: env.GEMINI_KEY != ''
+        continue-on-error: true
+        env:
+          # Sources disagree on the var name; set both so either is honoured.
+          GEMINI_API_KEY: ${{ secrets.GEMINI_KEY }}
+          ANTIGRAVITY_API_KEY: ${{ secrets.GEMINI_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          BUNDLE: ${{ runner.temp }}/bundle
         run: |
-          python3 .github/scripts/enrich_okf.py "$RUNNER_TEMP/bundle"
-          # Persist freshly enriched descriptions into .okf-metadata.yaml so the
-          # cache (saved at job end) carries them to the next run.
-          "$RUNNER_TEMP/bin/okf-fs" ingest --dir . --bundle "$RUNNER_TEMP/bundle" --sync
+          set -euo pipefail
+          # 1. Install the Antigravity CLI (`agy`).
+          curl -fsSL https://antigravity.google/cli/install.sh | bash
+          export PATH="$HOME/.antigravity/bin:$HOME/.local/bin:$HOME/.gemini/antigravity-cli/bin:$PATH"
+          command -v agy
+
+          # 2. Expose our own skills to the agent as workspace skills.
+          mkdir -p .agents/skills
+          cp -r skills/okf-enrich .agents/skills/okf-enrich
+          cp -r skills/okf-reader .agents/skills/okf-reader
+
+          # 3. Run headless: enrich only placeholder descriptions, surgically.
+          PROMPT="Use the okf-enrich skill to enrich the Open Knowledge Format bundle at ${BUNDLE}. \
+          It is an okf-fs bundle: concept docs are *.md files with YAML frontmatter whose 'type' is File or Directory. \
+          For EVERY concept doc whose frontmatter 'description' is still the connector placeholder (exactly 'File <name>' or 'Directory <name>'), \
+          write one concise description grounded only in the path, name and extension: grain first (what it is), then purpose, following the okf-enrich quality rules. \
+          Edit ONLY the frontmatter 'description:' field; preserve type/title/resource/tags/timestamp and the entire body byte-for-byte. \
+          Never modify index.md or log.md, and never touch any file outside ${BUNDLE}. \
+          Skip concepts that already have a substantive (non-placeholder) description. Work fully autonomously without asking for confirmation."
+          agy -p "$PROMPT" --yes --no-color < /dev/null
+
+          # 4. Persist enriched descriptions into .okf-metadata.yaml so the
+          #    rolling cache carries them to the next run (incremental cost).
+          "$RUNNER_TEMP/bin/okf-fs" ingest --dir . --bundle "$BUNDLE" --sync
 
       - name: Render self-contained HTML catalog
         run: |
