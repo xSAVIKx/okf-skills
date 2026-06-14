@@ -1,6 +1,6 @@
 package main
 
-import "github.com/savikne/okf-skills/okf-go"
+import "github.com/xSAVIKx/okf-skills/okf-go"
 
 // buildSchema returns the machine-readable self-description of the okf-fs skill.
 func buildSchema() okf.SkillSchema {

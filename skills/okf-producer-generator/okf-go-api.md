@@ -8,7 +8,7 @@ round-trippable by `ingest` and `okf-enrich`.
 ## Import & module wiring
 
 ```go
-import "github.com/savikne/okf-skills/okf-go" // package name: okf
+import "github.com/xSAVIKx/okf-skills/okf-go" // package name: okf
 ```
 
 In the skill's `go.mod` (copy the toolchain line and the `replace` from an
@@ -19,10 +19,10 @@ module okf-<name>
 
 go 1.24.0
 
-require github.com/savikne/okf-skills/okf-go v0.0.0
+require github.com/xSAVIKx/okf-skills/okf-go v0.0.0
 
 // Local path mapping so the skill builds in a cloned/sandboxed checkout.
-replace github.com/savikne/okf-skills/okf-go => ../../okf-go
+replace github.com/xSAVIKx/okf-skills/okf-go => ../../okf-go
 ```
 
 ---

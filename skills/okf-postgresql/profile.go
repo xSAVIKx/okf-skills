@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/savikne/okf-skills/okf-go"
+	"github.com/xSAVIKx/okf-skills/okf-go"
 )
 
 // quoteIdent double-quotes a PostgreSQL identifier, escaping embedded quotes.

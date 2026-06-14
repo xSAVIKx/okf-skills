@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/savikne/okf-skills/okf-go"
+	"github.com/xSAVIKx/okf-skills/okf-go"
 )
 
 func main() {

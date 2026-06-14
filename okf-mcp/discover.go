@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/savikne/okf-skills/okf-go"
+	"github.com/xSAVIKx/okf-skills/okf-go"
 )
 
 // exeSuffix returns the platform executable suffix ("" on Unix, ".exe" on Windows).

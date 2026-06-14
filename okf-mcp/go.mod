@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/modelcontextprotocol/go-sdk v1.4.0
-	github.com/savikne/okf-skills/okf-go v0.0.0
+	github.com/xSAVIKx/okf-skills/okf-go v0.0.0
 )
 
 require (
@@ -18,4 +18,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/savikne/okf-skills/okf-go => ../okf-go
+replace github.com/xSAVIKx/okf-skills/okf-go => ../okf-go

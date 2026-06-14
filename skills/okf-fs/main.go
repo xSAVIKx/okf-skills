@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/savikne/okf-skills/okf-go"
+	"github.com/xSAVIKx/okf-skills/okf-go"
 )
 
 // main is the CLI entrypoint for filesystem connector.

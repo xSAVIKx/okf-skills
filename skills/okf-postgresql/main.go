@@ -15,7 +15,7 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
-	"github.com/savikne/okf-skills/okf-go"
+	"github.com/xSAVIKx/okf-skills/okf-go"
 )
 
 

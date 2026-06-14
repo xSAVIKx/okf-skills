@@ -3,7 +3,7 @@ module okf-sqlite
 go 1.24.0
 
 require (
-	github.com/savikne/okf-skills/okf-go v0.0.0
+	github.com/xSAVIKx/okf-skills/okf-go v0.0.0
 	modernc.org/sqlite v1.29.5
 )
 
@@ -26,4 +26,4 @@ require (
 	modernc.org/token v1.1.0 // indirect
 )
 
-replace github.com/savikne/okf-skills/okf-go => ../../okf-go
+replace github.com/xSAVIKx/okf-skills/okf-go => ../../okf-go

@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/savikne/okf-skills/okf-go"
+	"github.com/xSAVIKx/okf-skills/okf-go"
 )
 
 func TestToolName(t *testing.T) {

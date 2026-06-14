@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/savikne/okf-skills/okf-go"
+	"github.com/xSAVIKx/okf-skills/okf-go"
 	"google.golang.org/api/iterator"
 )
 

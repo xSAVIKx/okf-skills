@@ -51,7 +51,7 @@ okf-skills/
 ## 2. Shared Library (`okf-go`) Guidelines
 
 All core OKF schemas and parsing helper functions live under `okf-go/`.
-- **Do Not Duplicate Structs**: The `Frontmatter` and `ConceptDoc` structs must not be defined in individual skills. Import `github.com/savikne/okf-skills/okf-go` instead.
+- **Do Not Duplicate Structs**: The `Frontmatter` and `ConceptDoc` structs must not be defined in individual skills. Import `github.com/xSAVIKx/okf-skills/okf-go` instead.
 - **Spec Compliance**: OKF concepts are Markdown files with YAML frontmatter.
   - Subdirectory `index.md` files must contain **no frontmatter**.
   - The bundle-root `index.md` is the only index permitted to contain frontmatter, and it should only declare `okf_version: "0.1"` (omit `type`, `title`, and `description` from the YAML block; place them directly inside the Markdown body).
@@ -74,7 +74,7 @@ The connector skills compile to standalone Go CLI binaries, each exposing three 
 - **Portability**: Write skills in pure Go with zero runtime dependencies. To guarantee CGO-free compilation for SQLite, use `modernc.org/sqlite` instead of `github.com/mattn/go-sqlite3`.
 - **Local Module Imports**: When referencing `okf-go` in a skill's `go.mod`, map it locally via a relative replacement path:
   ```go
-  replace github.com/savikne/okf-skills/okf-go => ../../okf-go
+  replace github.com/xSAVIKx/okf-skills/okf-go => ../../okf-go
   ```
   This ensures compatibility when the repository is cloned for execution in a sandbox environment.
 - **Subcommand Flag Parsing**: Always register flags on subcommand FlagSets (e.g. `fs := flag.NewFlagSet("ingest", ...)`) rather than using global flags (`flag.Bool(...)`).

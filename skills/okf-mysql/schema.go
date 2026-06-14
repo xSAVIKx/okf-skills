@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/savikne/okf-skills/okf-go"
+	"github.com/xSAVIKx/okf-skills/okf-go"
 )
 
 // resolvePassword returns the explicit flag value if set, otherwise the
