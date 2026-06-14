@@ -124,9 +124,19 @@
   }
   function resolveHref(srcId, href) {
     href = href.split("#")[0].split("?")[0];
-    var p = href.charAt(0) === "/" ? href.slice(1)
+    var combined = href.charAt(0) === "/"
+      ? href.slice(1)
       : (srcId.indexOf("/") >= 0 ? srcId.slice(0, srcId.lastIndexOf("/") + 1) : "") + href;
-    return p.replace(/\.md$/, "").replace(/\/\.\//g, "/");
+    // Normalize "." and ".." segments so parent-relative links resolve correctly
+    // (mirrors path.Clean on the Go side).
+    var parts = combined.split("/"), out = [];
+    for (var i = 0; i < parts.length; i++) {
+      var seg = parts[i];
+      if (seg === "" || seg === ".") continue;
+      if (seg === "..") { out.pop(); continue; }
+      out.push(seg);
+    }
+    return out.join("/").replace(/\.md$/, "");
   }
 
   // ---- nav tree + filters ----
