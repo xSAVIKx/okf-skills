@@ -1,10 +1,10 @@
-module okf-mcp
+module github.com/xSAVIKx/okf-skills/okf-mcp
 
 go 1.24.0
 
 require (
 	github.com/modelcontextprotocol/go-sdk v1.4.0
-	github.com/xSAVIKx/okf-skills/okf-go v0.0.0
+	github.com/xSAVIKx/okf-skills/okf-go v0.1.0
 )
 
 require (
@@ -17,5 +17,3 @@ require (
 	golang.org/x/sys v0.40.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/xSAVIKx/okf-skills/okf-go => ../okf-go

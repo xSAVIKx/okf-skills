@@ -1,14 +1,12 @@
-module okf-bigquery
+module github.com/xSAVIKx/okf-skills/skills/okf-bigquery
 
 go 1.24.0
 
 require (
 	cloud.google.com/go/bigquery v1.56.0
-	github.com/xSAVIKx/okf-skills/okf-go v0.0.0
+	github.com/xSAVIKx/okf-skills/okf-go v0.1.0
 	google.golang.org/api v0.149.0
 )
-
-replace github.com/xSAVIKx/okf-skills/okf-go => ../../okf-go
 
 require (
 	cloud.google.com/go v0.110.8 // indirect

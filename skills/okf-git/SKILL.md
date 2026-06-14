@@ -18,6 +18,10 @@ This skill produces and ingests OKF bundles documenting Git repository file tree
 The connector is written in Go and requires Go 1.24+ to build from source:
 
 ```bash
+# Install the published binary (Go 1.24+) — no clone needed:
+go install github.com/xSAVIKx/okf-skills/skills/okf-git@v0.1.0
+
+# …or build from a clone of the repository:
 cd skills/okf-git
 go build -o okf-git .
 ```

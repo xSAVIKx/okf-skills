@@ -73,15 +73,16 @@ These are not obvious from reading one connector. Internalize them before writin
 
 5. **Portable, pure Go.** Zero CGO — verify any source driver you add is pure Go
    (e.g. `modernc.org/sqlite` not `mattn/go-sqlite3`; MongoDB's
-   `go.mongodb.org/mongo-driver` is cgo-free). One binary named `okf-<name>`. Map
-   `okf-go` with a local `replace` directive so it builds in a fresh clone.
+   `go.mongodb.org/mongo-driver` is cgo-free). One binary named `okf-<name>`. Give
+   the module its full publishable path and require `okf-go` at its published
+   version — no `replace`; `go.work` maps it locally (see below).
 
 ## Anatomy of a producer skill
 
 ```
 skills/okf-<name>/
 ├── SKILL.md        # frontmatter (spec-compliant) + When to Use / Setup / produce / ingest / schema
-├── go.mod          # module okf-<name>; go 1.24.0; replace okf-go => ../../okf-go
+├── go.mod          # module github.com/xSAVIKx/okf-skills/skills/okf-<name>; go 1.24.0; require okf-go v0.1.0 (no replace; go.work maps it locally)
 ├── main.go         # main() router + runProduce + runIngest + source-specific helpers
 ├── schema.go       # buildSchema() okf.SkillSchema
 └── *_test.go       # schema_test.go (asserts name + commands) + a pure-function test
@@ -102,10 +103,12 @@ and the **`Resource` URI** scheme that uniquely identifies each asset
 URI** before putting it in `Resource` — it is written to disk.
 
 ### 2. Scaffold the module
-Copy `okf-sqlite` to `skills/okf-<name>/`, rename the module in `go.mod`, and keep
-the toolchain line and `replace` exactly as the source skill has them (copy
-`go 1.24.0` verbatim — do not invent a version; the workspace `go.work` line is
-separate and you don't edit it per-skill). Add any pure-Go driver you need.
+Copy `okf-sqlite` to `skills/okf-<name>/`, then set the module path to
+`github.com/xSAVIKx/okf-skills/skills/okf-<name>` in `go.mod`. Keep the toolchain
+line and the `require github.com/xSAVIKx/okf-skills/okf-go v0.1.0` line exactly as
+the source skill has them (copy `go 1.24.0` verbatim — do not invent a version).
+There is **no per-skill `replace`**; instead register the module in the workspace
+with `go work use ./skills/okf-<name>`. Add any pure-Go driver you need.
 
 ### 3. Implement `produce`
 For each asset, build one `ConceptDoc` and write it with `okf.WriteConceptDoc`:
@@ -207,7 +210,7 @@ Full reference: **[`okf-go-api.md`](./okf-go-api.md)**. Most-used:
 
 Adding the source files is not enough. Wire it in:
 
-- [ ] `skills/okf-<name>/` exists with `go.mod` (+ `replace`), `main.go`, `schema.go`, `SKILL.md`, tests.
+- [ ] `skills/okf-<name>/` exists with `go.mod` (full module path, `require okf-go v0.1.0`, no `replace`), `main.go`, `schema.go`, `SKILL.md`, tests.
 - [ ] **`go.work`** — add `./skills/okf-<name>` to the `use (…)` block (keep it alphabetical).
 - [ ] **`Makefile`** — add `okf-<name>` to `SKILLS :=`.
 - [ ] **`skills.sh`** — add `okf-<name>` to `SKILLS=`.

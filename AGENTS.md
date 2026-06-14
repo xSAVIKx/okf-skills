@@ -72,11 +72,7 @@ The connector skills compile to standalone Go CLI binaries, each exposing three 
 
 ### Best Practices for Skills:
 - **Portability**: Write skills in pure Go with zero runtime dependencies. To guarantee CGO-free compilation for SQLite, use `modernc.org/sqlite` instead of `github.com/mattn/go-sqlite3`.
-- **Local Module Imports**: When referencing `okf-go` in a skill's `go.mod`, map it locally via a relative replacement path:
-  ```go
-  replace github.com/xSAVIKx/okf-skills/okf-go => ../../okf-go
-  ```
-  This ensures compatibility when the repository is cloned for execution in a sandbox environment.
+- **Shared-library imports**: Give each skill a full, publishable module path (`module github.com/xSAVIKx/okf-skills/skills/okf-<name>`) and require the shared library at its published version (`require github.com/xSAVIKx/okf-skills/okf-go v0.1.0`). Do **not** add a per-module `replace` directive — the root `go.work` already maps `okf-go` to the on-disk copy for local development, so edits are picked up without republishing, and the clean `go.mod` lets the skill be `go install`ed standalone.
 - **Subcommand Flag Parsing**: Always register flags on subcommand FlagSets (e.g. `fs := flag.NewFlagSet("ingest", ...)`) rather than using global flags (`flag.Bool(...)`).
 - **MySQL DDL Escaping**: MySQL does not support query placeholders (`?`) in DDL statements (like `ALTER TABLE ... COMMENT`). Escaping single quotes (`'`) and backslashes (`\`) manually using `strings.ReplaceAll` is required before formatting comments directly into DDL strings:
   ```go

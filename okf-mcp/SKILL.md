@@ -19,6 +19,16 @@ metadata:
 2. **Reflection** — reads each skill's machine-readable `schema` output and turns its flags into a JSON-Schema tool input.
 3. **Invocation** — a tool call is translated back into the skill's CLI (`<command> --flag value ...`) and run with a per-call timeout. Flags that advertise an `env` binding (e.g. database passwords) are passed via the child environment, never argv. The skill's stdout is returned as the tool result.
 
+## Install
+
+Install the published server binary (Go 1.24+) — no clone needed:
+
+```bash
+go install github.com/xSAVIKx/okf-skills/okf-mcp@v0.1.0
+```
+
+This drops an `okf-mcp` binary into `$(go env GOPATH)/bin`. Alternatively, build from a clone: `cd okf-mcp && go build -o okf-mcp .`
+
 ## Running
 
 ```bash

@@ -11,19 +11,22 @@ round-trippable by `ingest` and `okf-enrich`.
 import "github.com/xSAVIKx/okf-skills/okf-go" // package name: okf
 ```
 
-In the skill's `go.mod` (copy the toolchain line and the `replace` from an
-existing skill such as `skills/okf-sqlite/go.mod`):
+In the skill's `go.mod` (copy the toolchain line from an existing skill such as
+`skills/okf-sqlite/go.mod`):
 
 ```go
-module okf-<name>
+module github.com/xSAVIKx/okf-skills/skills/okf-<name>
 
 go 1.24.0
 
-require github.com/xSAVIKx/okf-skills/okf-go v0.0.0
-
-// Local path mapping so the skill builds in a cloned/sandboxed checkout.
-replace github.com/xSAVIKx/okf-skills/okf-go => ../../okf-go
+require github.com/xSAVIKx/okf-skills/okf-go v0.1.0
 ```
+
+Use the **full, publishable module path** (not a bare `okf-<name>`) so the skill
+can be `go install`ed standalone. Do **not** add a `replace` directive: the root
+`go.work` maps `okf-go` to the on-disk copy for local development, and the clean
+`go.mod` resolves the published `okf-go` when the skill is installed on its own.
+After creating the module, add it to `go.work` (`go work use ./skills/okf-<name>`).
 
 ---
 

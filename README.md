@@ -72,9 +72,13 @@ All connectors support three subcommands:
 - **`ingest`**: Reads an OKF bundle and compares/synchronizes descriptions back to the source.
 - **`schema`**: Emits a JSON description of the skill's commands, flags, and parameters.
 
-### How to Build a Skill
+### How to Install or Build a Skill
 
-Navigate to the skill directory and run:
+Each skill is a published Go module, so the simplest install needs no clone (Go 1.24+):
+```bash
+go install github.com/xSAVIKx/okf-skills/skills/okf-sqlite@v0.1.0   # → $(go env GOPATH)/bin/okf-sqlite
+```
+Or build from a clone — navigate to the skill directory and run:
 ```bash
 go build ./...
 ```
@@ -121,13 +125,22 @@ The `okf-go` module provides shared Go types and helpers used by all skills:
 - `IgnoreMatcher` for `.okfignore` wildcard support
 - `ReadFolderMetadata` / `WriteFolderMetadata` for `.okf-metadata.yaml`
 
-All skills import this module via a local `replace` directive in their `go.mod`.
+All skills import this module at its published version (`github.com/xSAVIKx/okf-skills/okf-go v0.1.0`). Local development resolves it from disk via the `go.work` workspace, so edits to `okf-go` are picked up without republishing — no per-module `replace` directive is needed.
 
 ---
 
 ## 6. Installing Skills
 
-Use `skills.sh` (or `make install`) to build all skills and install them into a directory:
+Install any single skill (or the `okf-mcp` server) straight from the published module — no clone required (Go 1.24+):
+
+```bash
+go install github.com/xSAVIKx/okf-skills/skills/okf-sqlite@v0.1.0
+go install github.com/xSAVIKx/okf-skills/okf-mcp@v0.1.0
+```
+
+The binary lands in `$(go env GOPATH)/bin` (ensure it is on your `PATH`).
+
+To build and install **all** skills at once from a clone, use `skills.sh` (or `make install`):
 
 ```bash
 # Install to $HOME/.local/bin (default)

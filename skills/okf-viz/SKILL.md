@@ -18,6 +18,10 @@ a navigator (tree + type/tag filters + search), and a rendered concept reader.
 ## Setup
 
 ```bash
+# Install the published binary (Go 1.24+) — no clone needed:
+go install github.com/xSAVIKx/okf-skills/skills/okf-viz@v0.1.0
+
+# …or build from a clone of the repository:
 cd skills/okf-viz && go build -o okf-viz .
 ```
 

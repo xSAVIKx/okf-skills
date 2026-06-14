@@ -1,10 +1,10 @@
-module okf-git
+module github.com/xSAVIKx/okf-skills/skills/okf-git
 
 go 1.24.0
 
 require (
 	github.com/go-git/go-git/v5 v5.11.0
-	github.com/xSAVIKx/okf-skills/okf-go v0.0.0
+	github.com/xSAVIKx/okf-skills/okf-go v0.1.0
 )
 
 require (
@@ -33,5 +33,3 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/xSAVIKx/okf-skills/okf-go => ../../okf-go

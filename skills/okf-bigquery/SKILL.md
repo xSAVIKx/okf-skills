@@ -24,6 +24,10 @@ Use this skill when you need to:
 The connector requires Go 1.24+ and utilizes the official Google Cloud BigQuery Client:
 
 ```bash
+# Install the published binary (Go 1.24+) — no clone needed:
+go install github.com/xSAVIKx/okf-skills/skills/okf-bigquery@v0.1.0
+
+# …or build from a clone of the repository:
 cd skills/okf-bigquery
 go build -o okf-bigquery .
 ```

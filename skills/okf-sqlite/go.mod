@@ -1,9 +1,9 @@
-module okf-sqlite
+module github.com/xSAVIKx/okf-skills/skills/okf-sqlite
 
 go 1.24.0
 
 require (
-	github.com/xSAVIKx/okf-skills/okf-go v0.0.0
+	github.com/xSAVIKx/okf-skills/okf-go v0.1.0
 	modernc.org/sqlite v1.29.5
 )
 
@@ -25,5 +25,3 @@ require (
 	modernc.org/strutil v1.2.0 // indirect
 	modernc.org/token v1.1.0 // indirect
 )
-
-replace github.com/xSAVIKx/okf-skills/okf-go => ../../okf-go
