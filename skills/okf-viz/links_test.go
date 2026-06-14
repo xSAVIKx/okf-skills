@@ -2,7 +2,62 @@ package main
 
 import (
 	"testing"
+
+	"github.com/xSAVIKx/okf-skills/okf-go"
 )
+
+func TestRelationExtraction(t *testing.T) {
+	m := &Model{concepts: map[string]*okf.ConceptDoc{}}
+	add := func(id, body string) {
+		m.Nodes = append(m.Nodes, Node{ID: id, Kind: "concept"})
+		m.concepts[id] = &okf.ConceptDoc{Body: body}
+	}
+	add("a", "# Relationships\n\n- FK on x [b](b.md)\n\n# Joins\n\n[c](c.md)\n\n# Columns\n\n[d](d.md) and [fk](e.md)\n")
+	add("b", "")
+	add("c", "")
+	add("d", "")
+	add("e", "")
+	addCrossLinks(m)
+
+	rel := map[string]string{}
+	for _, e := range m.Edges {
+		if e.Kind == "crosslink" {
+			rel[e.Target] = e.Relation
+		}
+	}
+	if rel["b"] != "references" {
+		t.Errorf("link under # Relationships should be references, got %q", rel["b"])
+	}
+	if rel["c"] != "joins-with" {
+		t.Errorf("link under # Joins should be joins-with, got %q", rel["c"])
+	}
+	if rel["d"] != "" {
+		t.Errorf("link under # Columns should be a generic crosslink, got %q", rel["d"])
+	}
+	if rel["e"] != "references" {
+		t.Errorf("[fk] annotation should override to references, got %q", rel["e"])
+	}
+}
+
+func TestRelationSortDeterministic(t *testing.T) {
+	m := &Model{concepts: map[string]*okf.ConceptDoc{}}
+	for _, id := range []string{"a", "b", "c"} {
+		m.Nodes = append(m.Nodes, Node{ID: id, Kind: "concept"})
+		m.concepts[id] = &okf.ConceptDoc{}
+	}
+	m.concepts["a"] = &okf.ConceptDoc{Body: "# Joins\n\n[b](b.md)\n\n# Relationships\n\n[c](c.md)\n"}
+	addCrossLinks(m)
+	// edges sorted by (Kind, Relation, Source, Target): joins-with < references.
+	var rels []string
+	for _, e := range m.Edges {
+		if e.Kind == "crosslink" {
+			rels = append(rels, e.Relation)
+		}
+	}
+	if len(rels) != 2 || rels[0] != "joins-with" || rels[1] != "references" {
+		t.Fatalf("edges not sorted by relation: %v", rels)
+	}
+}
 
 func TestCrossLinks(t *testing.T) {
 	m, err := BuildModel("testdata/linked")

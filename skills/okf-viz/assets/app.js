@@ -22,8 +22,11 @@
     elements.push({ data: { id: n.id, label: n.title, kind: n.kind, ntype: n.type || "", degree: n.degree || 1 } });
   });
   edges.forEach(function (e) {
-    elements.push({ data: { id: e.source + "|" + e.target + "|" + e.kind, source: e.source, target: e.target, kind: e.kind } });
+    var rel = e.relation || "";
+    elements.push({ data: { id: e.source + "|" + e.target + "|" + e.kind + "|" + rel, source: e.source, target: e.target, kind: e.kind, relation: rel } });
   });
+  // relation -> CSS variable name for its edge color (see app.css).
+  var relationVars = { "references": "--rel-references", "joins-with": "--rel-joins-with", "see-also": "--rel-see-also", "co-changes": "--rel-co-changes" };
 
   var palette = ["#4f86c6","#3fae6b","#c6864f","#9b59b6","#e0556e","#1abc9c","#e08e3f","#7f8c8d"];
   var typeColors = {}; var ci = 0;
@@ -62,7 +65,24 @@
         "width": 2, "line-color": crosslink, "curve-style": "bezier",
         "target-arrow-color": crosslink, "target-arrow-shape": "triangle" } },
       { selector: "edge.hidden", style: { "display": "none" } },
-    ]);
+    ].concat(relationStyles()));
+  }
+
+  // relationStyles produces one style rule per known relation, coloring its edges
+  // distinctly (theme-aware via CSS vars) and varying the arrow shape so FK,
+  // join, see-also, and co-change edges read differently. Unknown relations fall
+  // back to the generic crosslink style above.
+  function relationStyles() {
+    var crosslink = cssVar("--crosslink") || "#c64f86";
+    var shapes = { "references": "triangle", "joins-with": "triangle-tee", "see-also": "vee", "co-changes": "diamond" };
+    var out = [];
+    Object.keys(relationVars).forEach(function (rel) {
+      var color = cssVar(relationVars[rel]) || crosslink;
+      out.push({ selector: 'edge[relation="' + rel + '"]', style: {
+        "line-color": color, "target-arrow-color": color,
+        "target-arrow-shape": shapes[rel] || "triangle" } });
+    });
+    return out;
   }
 
   function runLayout(name) {
@@ -75,18 +95,29 @@
   }
   document.getElementById("layout").addEventListener("change", function (e) { runLayout(e.target.value); });
 
-  // edge-kind toggles via legend checkboxes
+  // edge toggles via legend checkboxes: one for structure, plus one per observed
+  // relation among the crosslink edges (generic, relation-less links read as
+  // "cross-links"). Generated from the data so a new relation appears automatically.
   function addLegend() {
     var el = document.createElement("div"); el.className = "legend";
-    el.innerHTML =
-      '<label><input type="checkbox" id="show-cont" checked> structure</label> ' +
-      '<label><input type="checkbox" id="show-link" checked> cross-links</label>';
+    var rels = Array.from(new Set(edges.filter(function (e) { return e.kind === "crosslink"; })
+      .map(function (e) { return e.relation || ""; }))).sort();
+    var html = '<label><input type="checkbox" id="show-cont" checked> structure</label> ';
+    rels.forEach(function (r) {
+      var label = r || "cross-links";
+      var cid = "show-rel-" + (r ? r.replace(/\W/g, "-") : "generic");
+      html += '<label><input type="checkbox" class="rel-toggle" data-rel="' + (r || "") + '" id="' + cid + '" checked> ' + escapeHtml(label) + '</label> ';
+    });
+    el.innerHTML = html;
     document.getElementById("graph").appendChild(el);
     el.querySelector("#show-cont").addEventListener("change", function (e) {
       cy.edges('[kind="containment"]').toggleClass("hidden", !e.target.checked);
     });
-    el.querySelector("#show-link").addEventListener("change", function (e) {
-      cy.edges('[kind="crosslink"]').toggleClass("hidden", !e.target.checked);
+    el.querySelectorAll(".rel-toggle").forEach(function (cb) {
+      cb.addEventListener("change", function (ev) {
+        var r = ev.target.getAttribute("data-rel");
+        cy.edges('edge[kind="crosslink"][relation="' + r + '"]').toggleClass("hidden", !ev.target.checked);
+      });
     });
   }
 
