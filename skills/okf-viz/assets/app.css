@@ -3,6 +3,7 @@
   --accent:#4f86c6; --crosslink:#c64f86; --containment:#c2c8d2;
   --rel-references:#c64f86; --rel-joins-with:#2e8b57; --rel-see-also:#8a6d3b; --rel-co-changes:#7048b6;
   --cov-placeholder:#d9534f; --cov-enriched:#3fae6b;
+  --diff-added:#3fae6b; --diff-removed:#d9534f; --diff-changed:#e0a106;
 }
 :root[data-theme="dark"]{
   --bg:#11151b; --surface:#1a2029; --text:#e6eaf0; --muted:#9aa4b2; --border:#2a313c;

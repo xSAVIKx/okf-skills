@@ -137,6 +137,58 @@ func TestOkfVizLazyScale(t *testing.T) {
 	}
 }
 
+func TestOkfVizDiffAndFederation(t *testing.T) {
+	bin := getBinaryPath("okf-viz")
+	if _, err := os.Stat(bin); err != nil {
+		t.Skipf("okf-viz binary not built: %v", err)
+	}
+	mk := func(dir string, files map[string]string) {
+		for rel, body := range files {
+			p := filepath.Join(dir, rel)
+			if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(p, []byte(body), 0644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	idx := "---\nokf_version: \"0.1\"\n---\n# Demo\n"
+	older := t.TempDir()
+	mk(older, map[string]string{
+		"index.md":         idx,
+		"tables/orders.md": "---\ntype: SQLite Table\ntitle: orders\ncontent_hash: AAA\n---\n# Columns\n\n| id |\n",
+		"tables/legacy.md": "---\ntype: SQLite Table\ntitle: legacy\ncontent_hash: OLD\n---\n# Columns\n\n| id |\n",
+	})
+	newer := t.TempDir()
+	mk(newer, map[string]string{
+		"index.md":         idx,
+		"tables/orders.md": "---\ntype: SQLite Table\ntitle: orders\ncontent_hash: BBB\n---\n# Columns\n\n| id |\n| email |\n", // changed hash
+		"tables/fresh.md":  "---\ntype: SQLite Table\ntitle: fresh\ncontent_hash: NEW\n---\n# Columns\n\n| id |\n",             // added
+	})
+
+	out := filepath.Join(newer, "index.html")
+	if err := exec.Command(bin, "render", "--bundle", newer, "--out", out, "--diff", older).Run(); err != nil {
+		t.Fatalf("render --diff failed: %v", err)
+	}
+	s, _ := os.ReadFile(out)
+	for _, want := range []string{"\"diff\":\"changed\"", "\"diff\":\"added\"", "\"diff\":\"removed\""} {
+		if !strings.Contains(string(s), want) {
+			t.Errorf("diff output missing %q", want)
+		}
+	}
+
+	// Federation: namespaced IDs from two bundles.
+	out2 := filepath.Join(newer, "fed.html")
+	if err := exec.Command(bin, "render", "--bundle", newer, "--out", out2, "--bundles", older).Run(); err != nil {
+		t.Fatalf("render --bundles failed: %v", err)
+	}
+	f, _ := os.ReadFile(out2)
+	if !strings.Contains(string(f), "\"bundle\":") {
+		t.Errorf("federation output missing per-node bundle key")
+	}
+}
+
 func TestOkfVizCoverage(t *testing.T) {
 	bin := getBinaryPath("okf-viz")
 	if _, err := os.Stat(bin); err != nil {
