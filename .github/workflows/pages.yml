@@ -41,6 +41,10 @@ concurrency:
 env:
   GO_VERSION: "1.26"
   CATALOG_TITLE: "okf-skills knowledge catalog"
+  # These Pages/cache actions are the latest majors but still ship on Node 20;
+  # run them on Node 24 (becomes the runner default 2026-06-16) to clear the
+  # deprecation warning and stay future-proof.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   build:
@@ -93,9 +97,11 @@ jobs:
           key: antigravity-agy-${{ runner.os }}-v1
 
       # Self-test: drive the whole pipeline through our OWN skills via `agy`.
+      # Flags verified against `agy --help` (v1.0.8): -p/--print runs one prompt
+      # non-interactively; --dangerously-skip-permissions auto-approves tool use;
+      # --add-dir grants access to the bundle outside the workspace.
       # Best-effort — a CLI/auth hiccup must not fail the site; the fallback
-      # step below still publishes. Verify flag names against `agy --help` for
-      # your installed version if this ever no-ops unexpectedly.
+      # step below still publishes.
       - name: Self-test pipeline via Antigravity CLI (okf-fs + okf-enrich + okf-viz)
         if: env.GEMINI_KEY != ''
         continue-on-error: true
@@ -108,33 +114,33 @@ jobs:
           set -euo pipefail
           export PATH="$HOME/.local/bin:$HOME/.antigravity/bin:$HOME/.gemini/antigravity-cli/bin:$PATH"
           # 1. Install the Antigravity CLI (`agy`) unless restored from cache.
+          #    install.sh only supports `--dir`; pin it to the cached location.
           if ! command -v agy >/dev/null 2>&1; then
-            curl -fsSL https://antigravity.google/cli/install.sh | bash -s -- --skip-path --skip-aliases
+            curl -fsSL https://antigravity.google/cli/install.sh | bash -s -- --dir "$HOME/.local/bin"
           fi
           command -v agy
 
-          # 2. Install our own skills globally so the agent discovers them
-          #    (global dir avoids polluting the worktree / the produced bundle).
-          rm -rf "$HOME/.gemini/antigravity-cli/skills"
-          mkdir -p "$HOME/.gemini/antigravity-cli/skills"
-          cp -r skills/okf-fs skills/okf-viz skills/okf-enrich skills/okf-reader \
-                "$HOME/.gemini/antigravity-cli/skills/"
-
-          # 3. One headless run drives EVERY okf-skill call through agy:
+          # 2. One headless run drives EVERY okf-skill call through agy:
           #    produce -> enrich -> render -> ingest (persist for the cache).
+          #    The repo root is the agent's workspace, so it reads our skill
+          #    guidance directly (skills/okf-enrich/SKILL.md). The bundle lives
+          #    outside the workspace, so it is added with --add-dir below.
           cat > "$RUNNER_TEMP/prompt.txt" <<EOF
           You are running headlessly in CI as an end-to-end self-test of our OKF skills.
           The okf-fs and okf-viz skill binaries are ALREADY built and on PATH as 'okf-fs' and 'okf-viz' — do NOT build, clone, or 'go install' them; just run their commands. The working directory is the repository root.
 
           Using our own skills, perform the full pipeline in order:
           1. okf-fs (produce): run 'okf-fs produce --dir . --out ${BUNDLE}'. okf-fs automatically reuses descriptions from .okf-metadata.yaml.
-          2. okf-enrich (enrich): for EVERY concept doc in ${BUNDLE} whose frontmatter 'description' is still the placeholder (exactly 'File <name>' or 'Directory <name>'), write one concise description grounded only in the path, name and extension — grain first (what it is), then purpose — per the okf-enrich quality rules. Edit ONLY the frontmatter 'description:' field; preserve type/title/resource/tags/timestamp and the whole body byte-for-byte; never modify index.md or log.md. Skip concepts that already have a substantive description.
+          2. okf-enrich (enrich): for EVERY concept doc in ${BUNDLE} whose frontmatter 'description' is still the placeholder (exactly 'File <name>' or 'Directory <name>'), write one concise description grounded only in the path, name and extension — grain first (what it is), then purpose — per the okf-enrich quality rules in skills/okf-enrich/SKILL.md. Edit ONLY the frontmatter 'description:' field; preserve type/title/resource/tags/timestamp and the whole body byte-for-byte; never modify index.md or log.md. Skip concepts that already have a substantive description.
           3. okf-viz (render): run 'okf-viz render --bundle ${BUNDLE} --offline --title "${CATALOG_TITLE}"'.
           4. okf-fs (ingest): run 'okf-fs ingest --dir . --bundle ${BUNDLE} --sync' to persist your enriched descriptions into .okf-metadata.yaml.
 
           Do not touch any files outside ${BUNDLE} and .okf-metadata.yaml. Work fully autonomously without asking for confirmation. Finish by confirming ${BUNDLE}/index.html exists.
           EOF
-          agy -p "$(cat "$RUNNER_TEMP/prompt.txt")" --yes --no-color < /dev/null
+          agy -p "$(cat "$RUNNER_TEMP/prompt.txt")" \
+            --dangerously-skip-permissions \
+            --add-dir "$BUNDLE" \
+            --print-timeout 20m < /dev/null
 
       # Safety net: guarantee a published catalog. When GEMINI_KEY is set the
       # agy path above already produced/rendered, so these direct binary calls
