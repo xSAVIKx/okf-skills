@@ -35,8 +35,7 @@ func TestEmit_DefaultUsesCDNWithIntegrity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// NOTE (Task 7): assert CDN presence; integrity= assertion added in Task 8 once hashes exist.
-	for _, want := range []string{`id="okf-data"`, `id="panes"`, "cytoscape", "cdn.jsdelivr.net/npm/cytoscape"} {
+	for _, want := range []string{`id="okf-data"`, `id="panes"`, "cytoscape", "cdn.jsdelivr.net/npm/cytoscape", "integrity="} {
 		if !strings.Contains(html, want) {
 			t.Errorf("default output missing %q", want)
 		}
@@ -55,5 +54,25 @@ func TestEmit_OfflineInlinesLib(t *testing.T) {
 	}
 	if strings.Contains(html, "https://cdn") || strings.Contains(html, "integrity=") {
 		t.Error("offline output must have no CDN/integrity references")
+	}
+}
+
+func TestRenderOfflineHasNoNetwork(t *testing.T) {
+	m, _ := BuildModel("testdata/linked")
+	addCrossLinks(m)
+	html, err := Emit(m, EmitOptions{Title: "Shop", Theme: "dark", Offline: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// No fetched network resources: no CDN <script src> tags and no integrity= attributes.
+	// (Vendored JS files may contain http:// in comments/string literals, which is harmless.)
+	if strings.Contains(html, `src="https://`) || strings.Contains(html, "https://cdn") {
+		t.Error("offline output must not reference any fetched CDN resource")
+	}
+	if strings.Contains(html, "integrity=") {
+		t.Error("offline output must not contain integrity= (CDN SRI attr)")
+	}
+	if !strings.Contains(html, "cytoscape") {
+		t.Error("offline output must inline cytoscape")
 	}
 }

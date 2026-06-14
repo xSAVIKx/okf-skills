@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"embed"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"text/template"
 
@@ -123,24 +124,33 @@ func Emit(m *Model, opt EmitOptions) (string, error) {
 	return buf.String(), err
 }
 
+// vendorOrder lists the pinned vendor JS files in dependency-first load order:
+// cytoscape core → layout-base → cose-base → fcose → webcola → cytoscape-cola
+// → dagre → cytoscape-dagre.
+var vendorOrder = []string{
+	"cytoscape.min.js",
+	"layout-base.min.js",
+	"cose-base.min.js",
+	"cytoscape-fcose.min.js",
+	"cola.min.js",
+	"cytoscape-cola.min.js",
+	"dagre.min.js",
+	"cytoscape-dagre.min.js",
+}
+
 // libraryTag returns CDN <script> tags (default) or inlined library <script>
-// blocks (offline). The exact CDN URLs/integrity and vendor filenames are set
-// in Task 8; until then offline returns a clearly-marked stub.
+// blocks (offline), emitting vendored files in dependency-first order.
 func libraryTag(offline bool) (string, error) {
 	if !offline {
 		return cdnTags(), nil
 	}
-	entries, err := vendorFS.ReadDir("assets/vendor")
-	if err != nil {
-		return "", err
-	}
 	var b strings.Builder
 	b.WriteString("<!-- OKF_INLINE_LIB -->\n")
-	for _, e := range entries {
-		if !strings.HasSuffix(e.Name(), ".js") {
-			continue
+	for _, name := range vendorOrder {
+		js, err := vendorFS.ReadFile("assets/vendor/" + name)
+		if err != nil {
+			return "", fmt.Errorf("vendored lib missing: %s (run Task 8 download)", name)
 		}
-		js, _ := vendorFS.ReadFile("assets/vendor/" + e.Name())
 		b.WriteString("<script>")
 		b.Write(js)
 		b.WriteString("</script>\n")
