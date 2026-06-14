@@ -69,6 +69,7 @@ func runProduce(args []string) {
 	tablesStr := fs.String("tables", "", "Comma-separated list of tables to extract (optional)")
 	sample := fs.Int("sample", 0, "Number of sample rows to embed per table (0 = none)")
 	profile := fs.Bool("profile", false, "Compute per-column statistics and embed a Data Profile section")
+	relationships := fs.Bool("relationships", false, "Extract foreign-key constraints into a Relationships section")
 	fs.Parse(args)
 
 	if *dbPath == "" || *outDir == "" {
@@ -142,6 +143,13 @@ func runProduce(args []string) {
 		}
 
 		bodyStr := body.String()
+		if *relationships {
+			fks, err := getForeignKeys(db, table)
+			if err != nil {
+				log.Fatalf("Failed to read foreign keys for table %s: %v", table, err)
+			}
+			bodyStr = okf.AppendRelationshipsSection(bodyStr, "Relationships", foreignKeyRelationships(fks))
+		}
 		if *profile {
 			profiles, err := profileTable(db, table, cols)
 			if err != nil {

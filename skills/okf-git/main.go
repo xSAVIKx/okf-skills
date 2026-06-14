@@ -111,6 +111,9 @@ func runProduce(args []string) {
 	fsSet := flag.NewFlagSet("produce", flag.ExitOnError)
 	repoPath := fsSet.String("repo", "", "Git repository path (required)")
 	outDir := fsSet.String("out", "", "Output bundle directory (required)")
+	relationships := fsSet.Bool("relationships", false, "Extract file co-change edges into a Related Files section")
+	cochangeMin := fsSet.Int("cochange-min", 2, "Minimum co-change count for a Related Files edge")
+	cochangeTop := fsSet.Int("cochange-top", 10, "Maximum Related Files partners per file (0 = unlimited)")
 	fsSet.Parse(args)
 
 	if *repoPath == "" || *outDir == "" {
@@ -161,6 +164,21 @@ func runProduce(args []string) {
 	})
 	if err != nil {
 		log.Fatalf("Filesystem walk failed: %v", err)
+	}
+
+	// Optionally compute file co-change edges once over the whole history.
+	var coIdx *coChangeIndex
+	existsConcept := func(string) bool { return true }
+	if *relationships {
+		coIdx, err = buildCoChangeIndex(repo, im)
+		if err != nil {
+			log.Fatalf("Failed to compute co-change index: %v", err)
+		}
+		pathSet := make(map[string]bool, len(paths))
+		for _, p := range paths {
+			pathSet[filepath.ToSlash(p)] = true
+		}
+		existsConcept = func(c string) bool { return pathSet[c] }
 	}
 
 	for _, rel := range paths {
@@ -219,6 +237,12 @@ func runProduce(args []string) {
 			}
 		}
 
+		bodyStr := body.String()
+		if *relationships && !fi.IsDir() {
+			rels := coIdx.relationshipsFor(filepath.ToSlash(rel), *cochangeMin, *cochangeTop, existsConcept)
+			bodyStr = okf.AppendRelationshipsSection(bodyStr, "Related Files", rels)
+		}
+
 		doc := okf.ConceptDoc{
 			Frontmatter: okf.Frontmatter{
 				Type:        conceptType,
@@ -228,7 +252,7 @@ func runProduce(args []string) {
 				Tags:        []string{"git", strings.ToLower(strings.Fields(conceptType)[1])},
 				Timestamp:   lastCommitTime.Format(time.RFC3339),
 			},
-			Body: body.String(),
+			Body: bodyStr,
 		}
 
 		conceptPath := filepath.Join(*outDir, rel+".md")

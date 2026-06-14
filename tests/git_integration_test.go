@@ -113,3 +113,63 @@ func TestGitIntegration(t *testing.T) {
 		t.Errorf(".okf-metadata.yaml was not updated: %s", string(newMetaBytes))
 	}
 }
+
+func TestGitCoChangeRelationships(t *testing.T) {
+	binaryPath := getBinaryPath("okf-git")
+	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
+		t.Skipf("Git binary not found at %s. Build it first.", binaryPath)
+	}
+
+	tempDir, err := os.MkdirTemp("", "okf-git-cochange-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	repoDir := filepath.Join(tempDir, "repo")
+	bundleDir := filepath.Join(tempDir, "bundle")
+	if err := os.MkdirAll(repoDir, 0755); err != nil {
+		t.Fatalf("failed to create repo dir: %v", err)
+	}
+
+	runCmd := func(name string, args ...string) {
+		cmd := exec.Command(name, args...)
+		cmd.Dir = repoDir
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("command failed: %s %v: %v", name, args, err)
+		}
+	}
+	runCmd("git", "init")
+	runCmd("git", "config", "user.name", "Test Author")
+	runCmd("git", "config", "user.email", "test@example.com")
+
+	// Commit a.txt and b.txt together repeatedly so they co-change.
+	for i := 0; i < 3; i++ {
+		for _, f := range []string{"a.txt", "b.txt"} {
+			if err := os.WriteFile(filepath.Join(repoDir, f), []byte(strings.Repeat("x", i+1)), 0644); err != nil {
+				t.Fatalf("failed to write %s: %v", f, err)
+			}
+		}
+		runCmd("git", "add", "a.txt", "b.txt")
+		runCmd("git", "commit", "-m", "co-change commit")
+	}
+
+	cmd := exec.Command(binaryPath, "produce", "--repo", repoDir, "--out", bundleDir, "--relationships", "--cochange-min", "2")
+	var stderr bytesBuffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("git produce --relationships failed: %v. Stderr: %s", err, stderr.String())
+	}
+
+	aDoc, err := os.ReadFile(filepath.Join(bundleDir, "a.txt.md"))
+	if err != nil {
+		t.Fatalf("failed to read a.txt.md: %v", err)
+	}
+	body := string(aDoc)
+	if !strings.Contains(body, "# Related Files") {
+		t.Errorf("a.txt.md missing # Related Files section:\n%s", body)
+	}
+	if !strings.Contains(body, "[b.txt](/b.txt.md)") {
+		t.Errorf("a.txt.md missing co-change link to b.txt:\n%s", body)
+	}
+}

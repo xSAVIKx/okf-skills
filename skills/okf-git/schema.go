@@ -14,6 +14,9 @@ func buildSchema() okf.SkillSchema {
 				Flags: []okf.FlagSchema{
 					{Name: "repo", Type: "string", Description: "Git repository path.", Required: true},
 					{Name: "out", Type: "string", Description: "Output OKF bundle directory.", Required: true},
+					{Name: "relationships", Type: "bool", Description: "Extract file co-change edges into a Related Files section.", Default: "false"},
+					{Name: "cochange-min", Type: "int", Description: "Minimum co-change count for a Related Files edge.", Default: "2"},
+					{Name: "cochange-top", Type: "int", Description: "Maximum Related Files partners per file (0 = unlimited).", Default: "10"},
 				},
 			},
 			{
