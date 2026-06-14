@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/xSAVIKx/okf-skills/okf-go"
 )
@@ -87,6 +88,8 @@ func runRender(args []string) {
 	lang := fs.String("lang", "en", "UI-chrome language code")
 	theme := fs.String("theme", "system", "Initial theme: light, dark, or system")
 	title := fs.String("title", "", "Page title (default derived from bundle)")
+	inlineAll := fs.Bool("inline-all", false, "Always inline every concept body (single file, regardless of size)")
+	threshold := fs.Int("threshold", 0, "Concept count above which bodies are written as lazy sibling fragments (0 = default)")
 	_ = fs.Parse(args)
 
 	if *bundle == "" {
@@ -103,7 +106,10 @@ func runRender(args []string) {
 	if pageTitle == "" {
 		pageTitle = m.RootTitle
 	}
-	html, err := Emit(m, EmitOptions{Title: pageTitle, Theme: *theme, Offline: *offline, Lang: *lang})
+	html, fragments, err := Emit(m, EmitOptions{
+		Title: pageTitle, Theme: *theme, Offline: *offline, Lang: *lang,
+		InlineAll: *inlineAll, Threshold: *threshold,
+	})
 	if err != nil {
 		log.Fatalf("Failed to render: %v", err)
 	}
@@ -114,5 +120,26 @@ func runRender(args []string) {
 	if err := os.WriteFile(outPath, []byte(html), 0644); err != nil {
 		log.Fatalf("Failed to write %s: %v", outPath, err)
 	}
-	fmt.Printf("Rendered %d concepts to %s\n", len(m.concepts), outPath)
+	// Lazy mode: write the per-concept body fragments next to index.html. Filenames
+	// are deterministic and sorted, so re-running yields byte-identical output.
+	outDir := filepath.Dir(outPath)
+	fragPaths := make([]string, 0, len(fragments))
+	for rel := range fragments {
+		fragPaths = append(fragPaths, rel)
+	}
+	sort.Strings(fragPaths)
+	for _, rel := range fragPaths {
+		fp := filepath.Join(outDir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(fp), 0755); err != nil {
+			log.Fatalf("Failed to create fragment dir: %v", err)
+		}
+		if err := os.WriteFile(fp, []byte(fragments[rel]), 0644); err != nil {
+			log.Fatalf("Failed to write fragment %s: %v", fp, err)
+		}
+	}
+	mode := "single-file"
+	if len(fragments) > 0 {
+		mode = fmt.Sprintf("lazy (%d fragments)", len(fragments))
+	}
+	fmt.Printf("Rendered %d concepts to %s [%s]\n", len(m.concepts), outPath, mode)
 }

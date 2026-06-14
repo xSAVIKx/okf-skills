@@ -75,6 +75,54 @@ func TestOkfVizERColumns(t *testing.T) {
 	}
 }
 
+func TestOkfVizLazyScale(t *testing.T) {
+	bin := getBinaryPath("okf-viz")
+	if _, err := os.Stat(bin); err != nil {
+		t.Skipf("okf-viz binary not built: %v", err)
+	}
+	bundle := t.TempDir()
+	write := func(p, body string) {
+		if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(filepath.Join(bundle, "index.md"), "---\nokf_version: \"0.1\"\n---\n# Demo\n")
+	write(filepath.Join(bundle, "tables", "a.md"), "---\ntype: SQLite Table\ntitle: a\n---\n# Columns\n\nbody of A here.\n")
+	write(filepath.Join(bundle, "tables", "b.md"), "---\ntype: SQLite Table\ntitle: b\n---\n# Columns\n\nbody of B here.\n")
+
+	out := filepath.Join(bundle, "index.html")
+	// threshold 1 forces lazy with 2 concepts.
+	if err := exec.Command(bin, "render", "--bundle", bundle, "--out", out, "--threshold", "1").Run(); err != nil {
+		t.Fatalf("render failed: %v", err)
+	}
+	html, _ := os.ReadFile(out)
+	if !strings.Contains(string(html), "\"lazy\":true") {
+		t.Errorf("expected lazy payload above threshold")
+	}
+	if strings.Contains(string(html), "body of A here") {
+		t.Errorf("bodies must not be inlined in lazy mode")
+	}
+	// fragment written next to index.html and contains the body
+	frag := filepath.Join(bundle, "_okf", "tables", "a.html")
+	fb, err := os.ReadFile(frag)
+	if err != nil || !strings.Contains(string(fb), "body of A here") {
+		t.Errorf("body fragment missing or wrong: %v", err)
+	}
+
+	// --inline-all forces single file (no fragments) even above threshold.
+	out2 := filepath.Join(bundle, "full.html")
+	if err := exec.Command(bin, "render", "--bundle", bundle, "--out", out2, "--threshold", "1", "--inline-all").Run(); err != nil {
+		t.Fatalf("render --inline-all failed: %v", err)
+	}
+	h2, _ := os.ReadFile(out2)
+	if !strings.Contains(string(h2), "body of A here") {
+		t.Errorf("--inline-all must inline bodies")
+	}
+}
+
 func TestOkfVizCoverage(t *testing.T) {
 	bin := getBinaryPath("okf-viz")
 	if _, err := os.Stat(bin); err != nil {

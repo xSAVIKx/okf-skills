@@ -2,6 +2,8 @@
   "use strict";
   var data = JSON.parse(document.getElementById("okf-data").textContent || "{}");
   var nodes = data.nodes || [], edges = data.edges || [], docs = data.docs || {};
+  var manifest = data.manifest || {}; // id -> body-fragment path (lazy mode)
+  var bodyCache = {};                  // id -> fetched body HTML
 
   // ---- theme ----
   var themeSel = document.getElementById("theme");
@@ -81,9 +83,41 @@
     minZoom: 0.1, maxZoom: 4,
   });
   styleGraph(cy);
-  cy.on("tap", "node", function (evt) { select(evt.target.id()); });
+  cy.on("tap", "node", function (evt) {
+    var n = evt.target;
+    var k = n.data("kind");
+    if (clustered && (k === "directory" || k === "root")) {
+      var dirKey = k === "root" ? "" : n.id();
+      if (expandedDirs.has(dirKey)) expandedDirs.delete(dirKey); else expandedDirs.add(dirKey);
+      applyClusterDisplay();
+      return;
+    }
+    select(n.id());
+  });
   runLayout(document.getElementById("layout").value);
   addLegend();
+
+  // ---- directory clustering (scale) ----
+  // Collapse concepts into their directory super-nodes; tap a directory to reveal
+  // its concepts. Reuses the containment hierarchy already in the model (node.dir).
+  var clustered = false;
+  var expandedDirs = new Set();
+  var clusterCb = document.getElementById("cluster");
+  if (clusterCb) {
+    clusterCb.addEventListener("change", function () {
+      clustered = clusterCb.checked;
+      expandedDirs.clear();
+      if (clustered) applyClusterDisplay(); else applyFilter();
+    });
+  }
+  function applyClusterDisplay() {
+    cy.nodes('[kind="directory"], [kind="root"]').style("display", "element");
+    cy.nodes('[kind="concept"]').forEach(function (cn) {
+      var n = nodes.find(function (x) { return x.id === cn.id(); });
+      var show = n && expandedDirs.has(n.dir || "") && matches(n);
+      cn.style("display", show ? "element" : "none");
+    });
+  }
 
   // ER mode: rebuild the graph as column-listing table nodes (no-op visually for
   // bundles with no tabular concepts). dagre suits ER layouts.
@@ -204,22 +238,66 @@
     if (!d) { r.innerHTML = '<p class="empty">' + escapeHtml(id) + '</p>'; }
     else {
       var fm = [d.type, (d.tags || []).join(", "), d.timestamp].filter(Boolean).join(" · ");
-      r.innerHTML =
+      var head =
         "<h1>" + escapeHtml(d.title) + "</h1>" +
         (fm ? '<div class="fm">' + escapeHtml(fm) + "</div>" : "") +
         (d.description ? "<p>" + escapeHtml(d.description) + "</p>" : "") +
-        (d.resource ? '<div class="fm">resource: <code>' + escapeHtml(d.resource) + "</code></div>" : "") +
-        d.bodyHtml;
-      // intra-bundle links navigate within the viewer
-      r.querySelectorAll('a[href$=".md"]').forEach(function (a) {
-        a.addEventListener("click", function (ev) {
-          ev.preventDefault();
-          var t = resolveHref(id, a.getAttribute("href"));
-          if (docs[t]) location.hash = encodeURIComponent(t);
+        (d.resource ? '<div class="fm">resource: <code>' + escapeHtml(d.resource) + "</code></div>" : "");
+      // Body may be inlined (small bundles) or lazy-loaded from a sibling fragment.
+      var inlineBody = d.bodyHtml || bodyCache[id];
+      if (inlineBody) {
+        r.innerHTML = head + inlineBody;
+        wireReaderLinks(r, id);
+      } else if (manifest[id]) {
+        r.innerHTML = head + '<p class="empty">Loading…</p>';
+        loadFragment(manifest[id], function (htmlText, ok) {
+          if (!ok) { r.innerHTML = head + '<p class="empty">Body unavailable offline; serve the bundle over http to load it.</p>'; return; }
+          bodyCache[id] = htmlText;
+          r.innerHTML = head + htmlText;
+          wireReaderLinks(r, id);
         });
-      });
+      } else {
+        r.innerHTML = head;
+      }
     }
     if (location.hash.slice(1) !== encodeURIComponent(id)) location.hash = encodeURIComponent(id);
+  }
+
+  // wireReaderLinks makes intra-bundle .md links navigate within the viewer.
+  function wireReaderLinks(r, id) {
+    r.querySelectorAll('a[href$=".md"]').forEach(function (a) {
+      a.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        var t = resolveHref(id, a.getAttribute("href"));
+        if (docs[t]) location.hash = encodeURIComponent(t);
+      });
+    });
+  }
+
+  // loadFragment fetches a lazy body fragment. Tries fetch() then XHR so it works
+  // both over http and, where the browser permits, from a file:// open.
+  function loadFragment(path, cb) {
+    if (window.fetch) {
+      fetch(path).then(function (resp) {
+        if (!resp.ok) throw new Error("status " + resp.status);
+        return resp.text();
+      }).then(function (txt) { cb(txt, true); }).catch(function () { xhrFragment(path, cb); });
+    } else {
+      xhrFragment(path, cb);
+    }
+  }
+  function xhrFragment(path, cb) {
+    try {
+      var x = new XMLHttpRequest();
+      x.open("GET", path, true);
+      x.onreadystatechange = function () {
+        if (x.readyState === 4) {
+          if (x.status === 200 || x.status === 0 && x.responseText) cb(x.responseText, true);
+          else cb("", false);
+        }
+      };
+      x.send();
+    } catch (e) { cb("", false); }
   }
   function resolveHref(srcId, href) {
     href = href.split("#")[0].split("?")[0];
@@ -276,6 +354,7 @@
   }
   function applyFilter() {
     renderTree(matches);
+    if (clustered) { applyClusterDisplay(); return; }
     cy.nodes('[kind="concept"]').forEach(function (cn) {
       var n = nodes.find(function (x) { return x.id === cn.id(); });
       cn.style("display", n && matches(n) ? "element" : "none");

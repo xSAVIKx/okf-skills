@@ -68,10 +68,52 @@ func TestBuildDocs(t *testing.T) {
 	}
 }
 
+func TestEmit_LazyAboveThreshold(t *testing.T) {
+	m, _ := BuildModel("testdata/linked")
+	addCrossLinks(m)
+	html, frags, err := Emit(m, EmitOptions{Title: "Shop", Threshold: 1}) // 2 concepts > 1
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(frags) == 0 {
+		t.Fatal("lazy mode must emit body fragments")
+	}
+	if !strings.Contains(html, `"lazy":true`) || !strings.Contains(html, `"manifest"`) {
+		t.Errorf("lazy payload must carry lazy flag + manifest")
+	}
+	if strings.Contains(html, "FK to") {
+		t.Errorf("lazy mode must not inline bodies into index.html")
+	}
+	var bodyInFragment bool
+	for _, c := range frags {
+		if strings.Contains(c, "FK to") {
+			bodyInFragment = true
+		}
+	}
+	if !bodyInFragment {
+		t.Errorf("a fragment must contain the rendered body")
+	}
+}
+
+func TestEmit_InlineAllForcesSingleFile(t *testing.T) {
+	m, _ := BuildModel("testdata/linked")
+	addCrossLinks(m)
+	html, frags, err := Emit(m, EmitOptions{Title: "Shop", Threshold: 1, InlineAll: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(frags) != 0 {
+		t.Errorf("--inline-all must not produce fragments")
+	}
+	if !strings.Contains(html, "FK to") {
+		t.Errorf("--inline-all must inline bodies")
+	}
+}
+
 func TestEmit_DefaultUsesCDNWithIntegrity(t *testing.T) {
 	m, _ := BuildModel("testdata/linked")
 	addCrossLinks(m)
-	html, err := Emit(m, EmitOptions{Title: "Shop", Theme: "system", Offline: false})
+	html, _, err := Emit(m, EmitOptions{Title: "Shop", Theme: "system", Offline: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +130,7 @@ func TestEmit_DefaultUsesCDNWithIntegrity(t *testing.T) {
 func TestEmit_OfflineInlinesLib(t *testing.T) {
 	m, _ := BuildModel("testdata/linked")
 	addCrossLinks(m)
-	html, err := Emit(m, EmitOptions{Title: "Shop", Theme: "system", Offline: true})
+	html, _, err := Emit(m, EmitOptions{Title: "Shop", Theme: "system", Offline: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +142,7 @@ func TestEmit_OfflineInlinesLib(t *testing.T) {
 func TestRenderOfflineHasNoNetwork(t *testing.T) {
 	m, _ := BuildModel("testdata/linked")
 	addCrossLinks(m)
-	html, err := Emit(m, EmitOptions{Title: "Shop", Theme: "dark", Offline: true})
+	html, _, err := Emit(m, EmitOptions{Title: "Shop", Theme: "dark", Offline: true})
 	if err != nil {
 		t.Fatal(err)
 	}

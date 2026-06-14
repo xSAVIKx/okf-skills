@@ -164,28 +164,64 @@ func htmlEscape(s string) string {
 	return r.String()
 }
 
+// DefaultLazyThreshold is the concept count above which Emit defaults to lazy
+// payloads (graph + frontmatter inlined, bodies written as sibling fragments)
+// instead of inlining every rendered body. Below it, the single self-contained
+// file is the default.
+const DefaultLazyThreshold = 150
+
 // EmitOptions controls page generation.
 type EmitOptions struct {
-	Title   string
-	Theme   string // light|dark|system
-	Offline bool
-	Lang    string
+	Title     string
+	Theme     string // light|dark|system
+	Offline   bool
+	Lang      string
+	InlineAll bool // force full single-file output regardless of size
+	Threshold int  // concept-count lazy threshold (0 = DefaultLazyThreshold)
 }
 
 type pageData struct {
 	Title, CSS, AppJS, LibTag, DataJSON, InitTheme, Lang string
 }
 
-// Emit renders the full self-contained HTML for a model.
-func Emit(m *Model, opt EmitOptions) (string, error) {
+// Emit renders the self-contained HTML for a model and, in lazy mode, the set of
+// per-concept body fragments to write next to it (relative path -> HTML content).
+// In inline mode (small bundles or --inline-all) fragments is nil and the output
+// is byte-identical to the historical single-file behavior.
+func Emit(m *Model, opt EmitOptions) (string, map[string]string, error) {
 	css, _ := assetFS.ReadFile("assets/app.css")
 	appjs, _ := assetFS.ReadFile("assets/app.js")
 	tmplBytes, _ := assetFS.ReadFile("assets/page.tmpl.html")
 
-	payload := map[string]any{"nodes": m.Nodes, "edges": m.Edges, "docs": buildDocs(m)}
+	threshold := opt.Threshold
+	if threshold <= 0 {
+		threshold = DefaultLazyThreshold
+	}
+	lazy := !opt.InlineAll && len(m.concepts) > threshold
+
+	var payload map[string]any
+	var fragments map[string]string
+	docs := buildDocs(m)
+	if lazy {
+		// Inline graph + lightweight docs (frontmatter + columns, no body); write
+		// bodies as deterministic sibling fragments referenced by a manifest.
+		manifest := map[string]string{}
+		fragments = map[string]string{}
+		light := map[string]Doc{}
+		for id, d := range docs {
+			frag := "_okf/" + id + ".html"
+			fragments[frag] = d.BodyHTML
+			manifest[id] = frag
+			d.BodyHTML = "" // dropped from the inline payload
+			light[id] = d
+		}
+		payload = map[string]any{"nodes": m.Nodes, "edges": m.Edges, "docs": light, "manifest": manifest, "lazy": true}
+	} else {
+		payload = map[string]any{"nodes": m.Nodes, "edges": m.Edges, "docs": docs}
+	}
 	dataJSON, err := json.Marshal(payload)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	theme := opt.Theme
 	if theme != "light" && theme != "dark" {
@@ -197,18 +233,18 @@ func Emit(m *Model, opt EmitOptions) (string, error) {
 	}
 	libTag, err := libraryTag(opt.Offline)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	tmpl, err := template.New("page").Parse(string(tmplBytes))
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	var buf strings.Builder
 	err = tmpl.Execute(&buf, pageData{
 		Title: opt.Title, CSS: string(css), AppJS: string(appjs),
 		LibTag: libTag, DataJSON: string(dataJSON), InitTheme: theme, Lang: lang,
 	})
-	return buf.String(), err
+	return buf.String(), fragments, err
 }
 
 // vendorOrder lists the pinned vendor JS files in dependency-first load order:
