@@ -262,6 +262,13 @@ if existing == nil { kind, action = "Creation", "Established" }
 okf.AppendLogEntry(outDir, today, kind, fmt.Sprintf("%s [%s](%s).", action, title, bundlePath))
 ```
 
+### `IsPlaceholderDescription(desc string) bool`
+
+Reports whether a description is an unenriched connector placeholder (or
+empty/whitespace), matched against an anchored catalog in `okf-go/placeholder.go`.
+**When you add a connector, add its fallback description's pattern here** so the
+coverage report and triage stay precise. Used by `okf-viz coverage`.
+
 ### `AppendLogEntry(bundleDir, date, kind, message string) error`
 
 Appends an OKF-SPEC §7 entry to `<bundle>/log.md`: newest-first `## YYYY-MM-DD`

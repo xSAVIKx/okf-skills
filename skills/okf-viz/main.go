@@ -3,6 +3,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -20,6 +21,8 @@ func main() {
 	switch os.Args[1] {
 	case "render":
 		runRender(os.Args[2:])
+	case "coverage":
+		runCoverage(os.Args[2:])
 	case "schema":
 		if err := okf.PrintSchema(os.Stdout, buildSchema()); err != nil {
 			log.Fatalf("Failed to print schema: %v", err)
@@ -34,9 +37,46 @@ func main() {
 func printUsage() {
 	fmt.Println("Usage: okf-viz <command> [options]")
 	fmt.Println("Commands:")
-	fmt.Println("  render  - Render an OKF bundle to a self-contained index.html")
-	fmt.Println("  schema  - Print this skill's machine-readable JSON self-description")
+	fmt.Println("  render    - Render an OKF bundle to a self-contained index.html")
+	fmt.Println("  coverage  - Report deterministic enrichment coverage for a bundle")
+	fmt.Println("  schema    - Print this skill's machine-readable JSON self-description")
 	fmt.Println("\nRun 'okf-viz render -h' for options.")
+}
+
+// runCoverage implements the 'coverage' subcommand: a deterministic, no-LLM,
+// read-only enrichment coverage report with an optional CI gating threshold.
+func runCoverage(args []string) {
+	fs := flag.NewFlagSet("coverage", flag.ExitOnError)
+	bundle := fs.String("bundle", "", "Path to the OKF bundle directory (required)")
+	minPct := fs.Float64("min", 0, "Fail (exit 1) if enriched %% is below this threshold (0 = no gate)")
+	asJSON := fs.Bool("json", false, "Emit the report as JSON instead of text")
+	_ = fs.Parse(args)
+
+	if *bundle == "" {
+		fs.Usage()
+		os.Exit(1)
+	}
+	m, err := BuildModel(*bundle)
+	if err != nil {
+		log.Fatalf("Failed to read bundle: %v", err)
+	}
+	addCrossLinks(m)
+	cov := ComputeCoverage(m)
+
+	if *asJSON {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(cov); err != nil {
+			log.Fatalf("Failed to encode report: %v", err)
+		}
+	} else {
+		fmt.Print(cov.Report())
+	}
+
+	if *minPct > 0 && cov.EnrichedPct < *minPct {
+		fmt.Fprintf(os.Stderr, "coverage gate failed: %.1f%% enriched < %.1f%% required\n", cov.EnrichedPct, *minPct)
+		os.Exit(1)
+	}
 }
 
 func runRender(args []string) {

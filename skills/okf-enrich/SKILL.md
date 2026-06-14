@@ -58,6 +58,8 @@ Your enrichment target is the frontmatter **`description`** field. For sources t
 ### 1. Discover concepts (index-first)
 Follow the `okf-reader` rules: read `index.md` first and use it to locate concept files; route directly to the files you need. Do **not** recursively read the whole bundle.
 
+To see exactly what still needs work — and to **re-measure after enriching** — run the deterministic, no-LLM coverage report: `okf-viz coverage --bundle <dir>` (add `--json` for machine output, `--min <pct>` to gate in CI). It reports the percentage of non-placeholder descriptions, columns commented, broken cross-links, concepts missing a `type`, and orphan nodes.
+
 ### 2. Decide what to enrich
 Enrich a concept when its `description` is empty or a generic placeholder the connector inserted (e.g. `"SQLite table orders"`, `"File config.yaml"`, `"No description available"`, `"Git file main.go"`). Do **not** overwrite a substantive, human- or source-authored description unless the user explicitly asks you to regenerate. This keeps the operation idempotent and safe to re-run.
 
