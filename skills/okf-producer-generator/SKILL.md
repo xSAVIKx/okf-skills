@@ -3,7 +3,7 @@ name: okf-producer-generator
 description: Guidance and the bundled OKF specification for building a new Open Knowledge Format (OKF) producer/connector skill in this project — the architectural principles, the okf-go library contract, the produce/ingest/schema command surface, the secret-handling and sync conventions, and the exact registration steps. Use when creating a new OKF connector or producer for a data source the project does not yet cover (e.g. MongoDB, Redis, Kafka, CSV, an HTTP API), scaffolding an okf-* skill, or extending the project to a new source. Instructions-only; no binary required.
 license: Apache-2.0
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   author: Yurii Serhiichuk
   tags: "okf, producer, connector, skill-authoring, scaffolding, schema, agent-guidance, documentation, code-generation"
 ---

@@ -4,7 +4,7 @@ description: Local filesystem connector that produces and ingests Open Knowledge
 license: Apache-2.0
 compatibility: Requires the Go toolchain (1.24+) to build the connector binary.
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
   author: Yurii Serhiichuk
   tags: "okf, knowledge-catalog, filesystem, documentation"
 ---

@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/go-sql-driver/mysql v1.7.1
-	github.com/xSAVIKx/okf-skills/okf-go v0.4.0
+	github.com/xSAVIKx/okf-skills/okf-go v0.5.0
 )
 
 require (
