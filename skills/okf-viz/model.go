@@ -23,10 +23,16 @@ type Node struct {
 }
 
 // Edge connects two nodes. Kind is "containment" (dashed) or "crosslink" (solid).
+// Relation carries the semantic kind of a crosslink (references / joins-with /
+// see-also / co-changes), derived from the section the link sits under or an
+// explicit link-text annotation; it is empty for a generic crosslink, keeping
+// un-upgraded bundles byte-identical. Label is an optional human edge label.
 type Edge struct {
-	Source string `json:"source"`
-	Target string `json:"target"`
-	Kind   string `json:"kind"`
+	Source   string `json:"source"`
+	Target   string `json:"target"`
+	Kind     string `json:"kind"`
+	Relation string `json:"relation,omitempty"`
+	Label    string `json:"label,omitempty"`
 }
 
 // Model is the full graph plus the bundle root label.
