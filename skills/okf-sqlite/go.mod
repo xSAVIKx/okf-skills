@@ -3,7 +3,7 @@ module github.com/xSAVIKx/okf-skills/skills/okf-sqlite
 go 1.24.0
 
 require (
-	github.com/xSAVIKx/okf-skills/okf-go v0.2.0
+	github.com/xSAVIKx/okf-skills/okf-go v0.5.0
 	modernc.org/sqlite v1.29.5
 )
 

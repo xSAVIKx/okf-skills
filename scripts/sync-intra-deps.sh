@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
-# sync-intra-deps.sh — bump the intra-repo okf-go pin in every consumer module
-# to the lockstep release version and refresh each go.sum.
+# sync-intra-deps.sh — on the release PR, bump the intra-repo okf-go pin in every
+# consumer module to the lockstep release version, refresh each go.sum, and sync
+# every skill's SKILL.md metadata.version to its released version.
 #
 # Runs on the release-please PR branch (see release.yml / RELEASING.md strategy
 # B). The okf-go tag for the new version does not exist on the remote yet, so we
@@ -76,4 +77,19 @@ if [ "$fail" -ne 0 ]; then
   exit 1
 fi
 
-echo "sync-intra-deps: okf-go pinned at v$V across $count module(s); all build standalone"
+# Sync each skill's SKILL.md metadata.version to its released version. SKILL.md
+# is the single source of truth that skills.sh stamps into the binary (--version)
+# and the install manifest; this keeps it in lockstep with the release. Each
+# component is keyed in the manifest, so lockstep Go skills get V and the
+# independently-versioned instruction-only skills get their own version.
+skillcount=0
+while IFS= read -r comp; do
+  vk="$(jq -r --arg c "$comp" '.[$c]' "$MANIFEST" | tr -d '\r')"
+  md="$comp/SKILL.md"
+  [ -f "$md" ] || continue
+  sed -i -E "s/^([[:space:]]*version:[[:space:]]*\")[0-9]+\.[0-9]+\.[0-9]+(\")/\1${vk}\2/" "$md"
+  echo "  SKILL.md $md -> $vk"
+  skillcount=$((skillcount + 1))
+done < <(jq -r 'keys[]' "$MANIFEST" | tr -d '\r')
+
+echo "sync-intra-deps: okf-go pinned at v$V across $count module(s); all build standalone; $skillcount SKILL.md version(s) synced"

@@ -4,7 +4,7 @@ description: Visualizer that renders an Open Knowledge Format (OKF) bundle into 
 license: Apache-2.0
 compatibility: Requires the Go toolchain (1.24+) to build the binary. The default output references the Cytoscape library from a CDN; use --offline for a fully isolated file.
 metadata:
-  version: "0.1.0"
+  version: "0.5.0"
   author: Yurii Serhiichuk
   tags: "okf, knowledge-catalog, visualization, graph, cytoscape, html, consumer"
 ---

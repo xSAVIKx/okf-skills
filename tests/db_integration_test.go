@@ -330,6 +330,17 @@ func TestSQLiteRicherGrounding(t *testing.T) {
 			t.Errorf("accounts.md missing %q:\n%s", want, s)
 		}
 	}
+
+	// Re-produce on the unchanged DB: the profile and its derived semantic tags
+	// must be byte-identical, so the value-set sampling stays deterministic and the
+	// incremental-produce hash holds under --profile.
+	if err := exec.Command(binaryPath, "produce", "--db", dbPath, "--out", outDir, "--profile").Run(); err != nil {
+		t.Fatalf("second produce --profile failed: %v", err)
+	}
+	body2, _ := os.ReadFile(filepath.Join(outDir, "tables", "accounts.md"))
+	if string(body2) != s {
+		t.Errorf("accounts.md not byte-stable across a --profile re-produce:\nfirst:\n%s\nsecond:\n%s", s, string(body2))
+	}
 }
 
 func TestMySQLIntegration(t *testing.T) {
