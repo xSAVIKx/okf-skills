@@ -47,13 +47,33 @@ trap 'git config --global --unset "url.file://$REPO_ROOT.insteadOf" >/dev/null 2
 
 # Every module that requires okf-go (okf-mcp + the skills; not okf-go itself).
 count=0
+dirs=()
 while IFS= read -r gomod; do
   gomod="${gomod#./}"
   dir="$(dirname "$gomod")"
   echo "== $dir =="
   sed -i -E "s#(${MODULE}) v[0-9]+\.[0-9]+\.[0-9]+#\1 v${V}#" "$gomod"
   ( cd "$dir" && go mod tidy )
+  dirs+=("$dir")
   count=$((count + 1))
 done < <(grep -rl "${MODULE} v" --include=go.mod . | tr -d '\r')
 
-echo "sync-intra-deps: okf-go pinned at v$V across $count module(s)"
+# Verify the synced state builds standalone (GOWORK=off, against the local
+# okf-go tag) BEFORE the release PR can be merged. The normal CI build runs
+# inside go.work and so cannot catch a bad pin/go.sum; this is the pre-merge
+# equivalent of the post-release verify-install gate. A failure here fails the
+# release run, flagging the release PR instead of letting a broken module ship.
+fail=0
+for dir in "${dirs[@]}"; do
+  echo "== build (standalone) $dir =="
+  if ! ( cd "$dir" && go build ./... ); then
+    echo "  FAILED: $dir does not build standalone against okf-go v$V" >&2
+    fail=1
+  fi
+done
+if [ "$fail" -ne 0 ]; then
+  echo "sync-intra-deps: synced pins do not build standalone — release is broken" >&2
+  exit 1
+fi
+
+echo "sync-intra-deps: okf-go pinned at v$V across $count module(s); all build standalone"
