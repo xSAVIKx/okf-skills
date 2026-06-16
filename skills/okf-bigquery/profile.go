@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"cloud.google.com/go/bigquery"
@@ -35,12 +36,53 @@ func profileTable(ctx context.Context, client *bigquery.Client, projectID, datas
 		if err := it.Next(&row); err != nil && err != iterator.Done {
 			return nil, fmt.Errorf("read profile %s.%s: %w", table, f.Name, err)
 		}
+		// Pull up to LowCardinalityN+1 distinct values (LIMIT-bounded, no full scan)
+		// to drive semantic-type detection and the literal value set. A failure here
+		// is non-fatal: warn and proceed without semantic/values rather than aborting
+		// the whole produce.
+		distinctVals, err := distinctValues(ctx, client, ref, f.Name, okf.LowCardinalityN+1)
+		if err != nil {
+			log.Printf("Warning: distinct values unavailable for column %s.%s: %v", table, f.Name, err)
+			distinctVals = nil
+		}
+		semantic, values := okf.ClassifyColumn(f.Name, distinctVals, row.DistinctCt)
 		profiles = append(profiles, okf.ColumnProfile{
 			Column: f.Name, NonNull: row.NonNull, Null: row.Nulls, Distinct: row.DistinctCt,
-			Min: row.MinV, Max: row.MaxV,
+			Min: row.MinV, Max: row.MaxV, Semantic: semantic, Values: values,
 		})
 	}
 	return profiles, nil
+}
+
+// distinctValues returns up to limit distinct non-null values of a column as text.
+// The LIMIT bounds the scan on high-cardinality columns; the ORDER BY makes WHICH
+// values the LIMIT returns deterministic across runs, so the derived semantic tag
+// (and thus the concept body) is byte-stable.
+func distinctValues(ctx context.Context, client *bigquery.Client, ref, col string, limit int) ([]string, error) {
+	q := client.Query(fmt.Sprintf(
+		"SELECT DISTINCT CAST(`%[1]s` AS STRING) AS v FROM %[2]s WHERE `%[1]s` IS NOT NULL ORDER BY 1 LIMIT %[3]d",
+		col, ref, limit))
+	it, err := q.Read(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var out []string
+	for {
+		var row struct {
+			V bigquery.NullString `bigquery:"v"`
+		}
+		err := it.Next(&row)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if row.V.Valid {
+			out = append(out, row.V.StringVal)
+		}
+	}
+	return out, nil
 }
 
 // sampleTable returns up to limit rows from a BigQuery table as string headers + cells.

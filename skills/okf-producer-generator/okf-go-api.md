@@ -128,7 +128,28 @@ type ColumnProfile struct {
 ### `RenderProfileSection(profiles []ColumnProfile) string`
 
 Renders `| Column | Non-Null | Null | Distinct | Min | Max |`. Feed the result
-to `UpsertSection(body, "Data Profile", …)`.
+to `UpsertSection(body, "Data Profile", …)`. When any profile carries a
+`Semantic` tag, a `Semantic` column is added and low-cardinality columns get a
+`col ∈ {…}` line beneath the table; otherwise the legacy six-column table renders
+unchanged (byte-stable for semantic-free bundles).
+
+### Semantic grounding: `DetectSemanticType` / `ClassifyColumn`
+
+`ColumnProfile` carries `Semantic string` and `Values []string`. Populate them
+from values you already read — no second scan: pull up to `okf.LowCardinalityN+1`
+(=13) distinct values per column (`SELECT DISTINCT col … LIMIT 13`) and call:
+
+```go
+semantic, values := okf.ClassifyColumn(col.Name, distinctVals, distinct)
+prof.Semantic, prof.Values = semantic, values
+```
+
+`ClassifyColumn` layers the connector's structural knowledge (column name, distinct
+count) onto the pure value verdict of `DetectSemanticType(samples) string`
+(`email`/`uuid`/`iso-timestamp`/`monetary`/`boolean` by ≥90% majority match, else
+`""`): it adds `enum` for `0 < distinct ≤ N`, advisory `fk-ish` for an id-shaped
+name with all-integer values, and returns the sorted distinct set for
+low-cardinality columns. All deterministic, no LLM.
 
 ### `RenderSampleSection(headers []string, rows [][]string) string`
 
