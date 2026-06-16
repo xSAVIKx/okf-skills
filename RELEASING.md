@@ -139,6 +139,32 @@ branch (manual), or release `okf-go` first and bump consumers the next cycle
 > until the release PR merges, so the pin would reference an unpublished version.
 > The bump belongs in the release PR, which `sync-pins` handles.
 
+## Skill versions (`SKILL.md`, `--version`, manifest)
+
+Each skill's version lives in **one place: `SKILL.md` → `metadata.version`**. Everything
+else derives from it:
+
+- **Releases keep it current.** `sync-intra-deps.sh` (the `sync-pins` job) rewrites
+  every component's `SKILL.md` version to its `.release-please-manifest.json` value on
+  the release PR — alongside the `okf-go` pin sync. No annotations needed.
+- **Binaries carry it.** [`skills.sh`](skills.sh) reads each `SKILL.md` version and
+  injects it via `-ldflags "-X main.version=…"`, so `okf-sqlite --version` (also
+  `version` / `-v`) reports it; okf-mcp reports it as its MCP server version. Plain
+  `go build` yields `dev`.
+- **Installs are traceable.** `skills.sh` writes `name<TAB>version<TAB>changelog` for
+  every installed skill into `okf-skills-manifest.txt`.
+
+Two versioning tracks:
+
+- **Go skills** (7 connectors + `okf-mcp`) move in **lockstep** with the Go modules
+  (same release version).
+- **Instruction-only skills** (`okf-enrich`, `okf-reader`, `okf-producer-generator`)
+  have no Go module. They are release-please **`simple`** packages that version
+  **independently** — a `feat(okf-enrich): …` / `fix(okf-reader): …` commit scoped to
+  the skill's directory bumps it and updates its own `CHANGELOG.md`. They are excluded
+  from the lockstep `linked-versions` group, and `verify-install` skips them (nothing
+  to `go install`).
+
 ## One-time repository setup
 
 - **Settings → Actions → General → Workflow permissions:** enable
