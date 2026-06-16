@@ -152,6 +152,91 @@ func TestSQLiteRelationships(t *testing.T) {
 	}
 }
 
+func TestSQLiteIncrementalProduce(t *testing.T) {
+	binaryPath := getBinaryPath("okf-sqlite")
+	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
+		t.Skipf("SQLite binary not found at %s. Build it first.", binaryPath)
+	}
+
+	tempDir, err := os.MkdirTemp("", "okf-sqlite-incr-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	dbPath := filepath.Join(tempDir, "test.db")
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatalf("failed to create sqlite db: %v", err)
+	}
+	defer db.Close()
+	if _, err := db.Exec("CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT NOT NULL)"); err != nil {
+		t.Fatalf("failed to create users table: %v", err)
+	}
+
+	outDir := filepath.Join(tempDir, "bundle")
+	produce := func() {
+		t.Helper()
+		cmd := exec.Command(binaryPath, "produce", "--db", dbPath, "--out", outDir)
+		var stderr bytesBuffer
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("produce failed: %v. Stderr: %s", err, stderr.String())
+		}
+	}
+
+	usersFile := filepath.Join(outDir, "tables", "users.md")
+
+	// 1. First produce stamps a content_hash and a log.md Creation entry.
+	produce()
+	first, err := os.ReadFile(usersFile)
+	if err != nil {
+		t.Fatalf("failed to read users.md: %v", err)
+	}
+	if !strings.Contains(string(first), "content_hash:") {
+		t.Errorf("users.md missing content_hash after first produce:\n%s", string(first))
+	}
+	logFile := filepath.Join(outDir, "log.md")
+	if logBytes, _ := os.ReadFile(logFile); !strings.Contains(string(logBytes), "**Creation**") {
+		t.Errorf("log.md missing Creation entry:\n%s", string(logBytes))
+	}
+
+	// 2. Hand-edit the description (simulating okf-enrich), then re-produce the
+	//    UNCHANGED source: the edited description must survive byte-for-byte.
+	enriched := strings.Replace(string(first), "description: SQLite table users",
+		"description: The application's user accounts.", 1)
+	if enriched == string(first) {
+		t.Fatalf("test setup: description line not found to edit:\n%s", string(first))
+	}
+	if err := os.WriteFile(usersFile, []byte(enriched), 0644); err != nil {
+		t.Fatalf("failed to write enriched users.md: %v", err)
+	}
+
+	produce()
+	afterUnchanged, _ := os.ReadFile(usersFile)
+	if string(afterUnchanged) != enriched {
+		t.Errorf("re-produce over unchanged source must preserve the file byte-for-byte.\nwant:\n%s\ngot:\n%s", enriched, string(afterUnchanged))
+	}
+
+	// 3. Alter the structure (add a column): only this concept is rewritten, the
+	//    enriched description still survives, and a log.md Update entry is appended.
+	if _, err := db.Exec("ALTER TABLE users ADD COLUMN email TEXT"); err != nil {
+		t.Fatalf("failed to alter users table: %v", err)
+	}
+	produce()
+	afterChange, _ := os.ReadFile(usersFile)
+	body := string(afterChange)
+	if !strings.Contains(body, "The application's user accounts.") {
+		t.Errorf("enriched description must survive a structural change:\n%s", body)
+	}
+	if !strings.Contains(body, "email") {
+		t.Errorf("new column must appear after structural change:\n%s", body)
+	}
+	if logBytes, _ := os.ReadFile(logFile); !strings.Contains(string(logBytes), "**Update**") {
+		t.Errorf("log.md missing Update entry after structural change:\n%s", string(logBytes))
+	}
+}
+
 // assertCompositeFKEdges verifies a composite (multi-column) foreign key to
 // product_variants renders as exactly one edge per referencing column with no
 // duplicates. It is the regression guard for the information_schema cross-join

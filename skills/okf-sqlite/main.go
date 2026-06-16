@@ -118,6 +118,7 @@ func runProduce(args []string) {
 
 	absDbPath, _ := filepath.Abs(*dbPath)
 	timestamp := time.Now().Format(time.RFC3339)
+	today := time.Now().Format("2006-01-02")
 
 	// 2. Generate concept documents for each table
 	for _, table := range tables {
@@ -165,7 +166,7 @@ func runProduce(args []string) {
 			bodyStr = okf.UpsertSection(bodyStr, "Sample", okf.RenderSampleSection(headers, sampleRows))
 		}
 
-		doc := okf.ConceptDoc{
+		fresh := okf.ConceptDoc{
 			Frontmatter: okf.Frontmatter{
 				Type:        "SQLite Table",
 				Title:       table,
@@ -178,8 +179,26 @@ func runProduce(args []string) {
 		}
 
 		filePath := filepath.Join(tablesDir, table+".md")
-		if err := okf.WriteConceptDoc(filePath, doc); err != nil {
+		// Incremental produce: preserve an unchanged concept byte-for-byte (keeping
+		// any enriched description/body), rewrite only when the structure changed.
+		var existing *okf.ConceptDoc
+		if e, err := okf.ReadConceptDoc(filePath); err == nil {
+			existing = e
+		}
+		merged, changed := okf.MergeConcept(existing, fresh)
+		if !changed {
+			fmt.Printf("Unchanged, preserved: %s\n", filePath)
+			continue
+		}
+		if err := okf.WriteConceptDoc(filePath, merged); err != nil {
 			log.Fatalf("Failed to write concept doc for %s: %v", table, err)
+		}
+		kind, action := "Update", "Structure changed for"
+		if existing == nil {
+			kind, action = "Creation", "Established"
+		}
+		if err := okf.AppendLogEntry(*outDir, today, kind, fmt.Sprintf("%s [%s](/tables/%s.md).", action, table, table)); err != nil {
+			log.Fatalf("Failed to append log entry: %v", err)
 		}
 		fmt.Printf("Produced concept doc: %s\n", filePath)
 	}

@@ -181,6 +181,55 @@ bodyStr = okf.AppendRelationshipsSection(bodyStr, "Relationships", rels)
 
 ---
 
+## Incremental produce (don't clobber enrichment)
+
+Every `produce` is a full re-extraction. Without care it overwrites the enriched
+`description` an agent wrote and churns git diffs on unchanged concepts. Use these
+helpers in your produce loop so a re-run preserves unchanged concepts **byte-for-byte**
+and rewrites only what structurally changed.
+
+### `Frontmatter.ContentHash` (`content_hash`)
+
+A per-concept structural hash, stamped by `MergeConcept`. Excluded from the hash
+itself; set it via the merge helpers, don't compute it by hand.
+
+### `ConceptStructuralHash(doc ConceptDoc) string`
+
+SHA-256 over the concept **body** (line-endings normalized), deliberately ignoring
+`Description`/`Timestamp`/`ContentHash` (all frontmatter). A description- or
+timestamp-only change yields the **same** hash; a column/profile/relationship
+change yields a different one.
+
+### `MergeConcept(existing *ConceptDoc, fresh ConceptDoc) (ConceptDoc, bool)`
+
+The core of the loop. Returns `(docToWrite, changed)`:
+
+- `existing == nil` → returns `fresh` with `ContentHash` stamped, `changed == true`.
+- structure unchanged → returns the existing doc, `changed == false`; **skip the write**.
+- structure changed → returns a merged doc (fresh body + new hash/timestamp) that
+  carries over the agent's `Description`, the union of `Tags`, and any agent-added
+  body sections; `changed == true`.
+
+```go
+fresh := okf.ConceptDoc{ /* …deterministic extraction… */ }
+var existing *okf.ConceptDoc
+if e, err := okf.ReadConceptDoc(filePath); err == nil { existing = e }
+merged, changed := okf.MergeConcept(existing, fresh)
+if !changed { continue }                 // preserved byte-for-byte
+okf.WriteConceptDoc(filePath, merged)
+kind, action := "Update", "Structure changed for"
+if existing == nil { kind, action = "Creation", "Established" }
+okf.AppendLogEntry(outDir, today, kind, fmt.Sprintf("%s [%s](%s).", action, title, bundlePath))
+```
+
+### `AppendLogEntry(bundleDir, date, kind, message string) error`
+
+Appends an OKF-SPEC §7 entry to `<bundle>/log.md`: newest-first `## YYYY-MM-DD`
+date headings with `* **<Kind>**: <message>` bullets. Pass `date` =
+`time.Now().Format("2006-01-02")`.
+
+---
+
 ## File-like sources: ignore rules & sidecar metadata
 
 For filesystem/VCS-style producers (`okf-fs`, `okf-git`).
@@ -255,6 +304,8 @@ case "schema":
 | Isolate the `# Columns` table before parsing | `GetSectionAny(body, "Columns")` |
 | Attach an optional `## Data Profile` / `## Sample` | `UpsertSection` + `RenderProfileSection` / `RenderSampleSection` |
 | Emit deterministic typed edges (FKs, co-change) | `AppendRelationshipsSection` + `RenderRelationshipsSection` |
+| Preserve enrichment across re-produce | `MergeConcept` (+ `ConceptStructuralHash`) |
+| Record a change to the bundle | `AppendLogEntry` |
 | Make a cell safe | `SanitizeCell` |
 | Skip ignored paths (fs/git) | `NewIgnoreMatcher` + `Matches` |
 | Sync descriptions for a comment-less, file-like source | `ReadFolderMetadata` / `WriteFolderMetadata` |
