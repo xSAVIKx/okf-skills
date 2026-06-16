@@ -2,7 +2,7 @@ module github.com/xSAVIKx/okf-skills/skills/okf-fs
 
 go 1.20
 
-require github.com/xSAVIKx/okf-skills/okf-go v0.3.0
+require github.com/xSAVIKx/okf-skills/okf-go v0.4.0
 
 require (
 	github.com/kr/text v0.2.0 // indirect

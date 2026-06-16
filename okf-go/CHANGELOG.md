@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/xSAVIKx/okf-skills/compare/okf-go/v0.3.0...okf-go/v0.4.0) (2026-06-16)
+
+
+### Features
+
+* richer deterministic grounding — semantic types & value sets ([#9](https://github.com/xSAVIKx/okf-skills/issues/9)) ([534327a](https://github.com/xSAVIKx/okf-skills/commit/534327ad57f382bb5e29f12d7c969598212b5762))
+
 ## [0.3.0](https://github.com/xSAVIKx/okf-skills/compare/okf-go/v0.2.0...okf-go/v0.3.0) (2026-06-16)
 
 
