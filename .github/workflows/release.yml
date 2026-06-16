@@ -38,6 +38,7 @@ jobs:
     outputs:
       releases_created: ${{ steps.rp.outputs.releases_created }}
       paths_released: ${{ steps.rp.outputs.paths_released }}
+      pr: ${{ steps.rp.outputs.pr }}
     steps:
       - uses: googleapis/release-please-action@v5
         id: rp
@@ -45,6 +46,45 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  sync-pins:
+    name: Sync intra-repo okf-go pins into the release PR
+    needs: release-please
+    # Runs when release-please opened/updated a release PR (not on the tag-cut
+    # run). Bumps each consumer's `require okf-go` to the new lockstep version
+    # and refreshes go.sum, then commits it back to the release PR — so the
+    # tagged commit is internally consistent and installs standalone. Strategy B
+    # in RELEASING.md; the okf-go tag is resolved locally (it is not pushed yet).
+    if: needs.release-please.outputs.pr != '' && needs.release-please.outputs.pr != 'null'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve release PR branch
+        id: pr
+        env:
+          PR: ${{ needs.release-please.outputs.pr }}
+        run: echo "head=$(echo "$PR" | jq -r '.headBranchName')" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.pr.outputs.head }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: "**/go.sum"
+      - name: Bump okf-go pins + refresh go.sum
+        run: bash scripts/sync-intra-deps.sh
+      - name: Commit back to the release PR if anything changed
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "pins already in sync — nothing to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: sync okf-go pins + go.sum for release"
+          git push origin "HEAD:${{ steps.pr.outputs.head }}"
 
   warm-proxy:
     name: Prime Go module proxy

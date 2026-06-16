@@ -80,32 +80,42 @@ not per-PR** on purpose: a PR that adds okf-go API and consumes it in the same
 change cannot build standalone until okf-go is released, so gating PRs on it
 would block the normal stacked-PR workflow.
 
-### Bumping the pin + `go.sum`
+### Bumping the pin + `go.sum` — automated (`sync-pins`)
 
 There is a chicken-and-egg: a connector's `go.sum` needs `okf-go@vNEW`'s hash,
 but that hash is only resolvable once `okf-go@vNEW` is tagged — the very release
-being built. Go module hashes are **content-based, not SHA-based**, so a `go.sum`
-computed on the release-PR branch stays valid for the eventual tag. Strategies,
-in increasing automation:
+being built. The escape: Go module hashes are **content-based, not SHA-based**,
+so a `go.sum` computed against a *locally* created tag on the release-PR branch
+is identical to the one the real pushed tag yields.
 
-- **(A) Manual, in the release PR — recommended.** On the release-please PR
-  branch, set each connector's `require okf-go` to the new version and run
-  `go mod tidy` per module, then commit `go.mod`/`go.sum`. Least machinery,
-  keeps lockstep, and `verify-install` makes a mistake impossible to merge
-  unnoticed.
-- **(B) Automated in the release PR.** A workflow rewrites pins, tags okf-go
-  locally, `go mod tidy`s, and commits `go.sum` back to the PR. Resolving an
-  *unpushed* tag needs `git config url."file://…".insteadOf …` + `GOPROXY=direct`
-  + `GOSUMDB=off`; fiddly and not yet validated on Linux — dry-run before
-  adopting.
-- **(C) Two-phase (vanilla).** Release `okf-go` first, bump consumers next cycle.
-  Zero custom tooling, but consumers lag okf-go by one release — in tension with
-  lockstep.
+The **`sync-pins`** job in [`release.yml`](.github/workflows/release.yml) does
+this automatically. When release-please opens/updates the release PR, the job
+checks out that branch and runs
+[`scripts/sync-intra-deps.sh`](scripts/sync-intra-deps.sh), which:
+
+1. reads the new lockstep version from `.release-please-manifest.json`;
+2. creates the `okf-go/vNEW` tag **locally** (not pushed — release-please tags
+   the same commit on merge);
+3. sets `GOPRIVATE=github.com/xSAVIKx/okf-skills` and
+   `git config url."file://<repo>".insteadOf https://github.com/xSAVIKx/okf-skills`
+   so `go mod tidy` resolves the unpushed tag from the working tree;
+4. rewrites every consumer's `require okf-go` to `vNEW` and `go mod tidy`s each;
+
+then commits the `go.mod`/`go.sum` changes back to the release PR. It is
+idempotent (pins already at `vNEW` → no commit). On merge, the tagged commit is
+internally consistent, and `verify-install` confirms it.
+
+> Validated on Linux via [`scripts/dryrun-pin-sync.sh`](scripts/dryrun-pin-sync.sh)
+> (run in a `golang` container): all consumers re-pin, `go.sum` refreshes, and
+> every module builds standalone against the unpushed tag.
+
+Fallbacks if you ever disable `sync-pins`: do step 4 by hand on the release PR
+branch (manual), or release `okf-go` first and bump consumers the next cycle
+(two-phase, but consumers then lag okf-go by one release).
 
 > Do **not** bump `require okf-go vNEW` in a *feature* PR: `vNEW` does not exist
 > until the release PR merges, so the pin would reference an unpublished version.
-> The bump belongs in the release PR (strategy A), where the tag is about to
-> exist.
+> The bump belongs in the release PR, which `sync-pins` handles.
 
 ## One-time repository setup
 
