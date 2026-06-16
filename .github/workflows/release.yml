@@ -62,7 +62,13 @@ jobs:
         id: pr
         env:
           PR: ${{ needs.release-please.outputs.pr }}
-        run: echo "head=$(echo "$PR" | jq -r '.headBranchName')" >> "$GITHUB_OUTPUT"
+        run: |
+          # The release-please `pr` output is a JSON PullRequest object. Fall
+          # back to release-please's default branch name if the field is absent.
+          head="$(echo "$PR" | jq -r '.headBranchName // empty')"
+          [ -z "$head" ] && head="release-please--branches--${GITHUB_REF_NAME}"
+          echo "Release PR branch: $head"
+          echo "head=$head" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v6
         with:
           ref: ${{ steps.pr.outputs.head }}
