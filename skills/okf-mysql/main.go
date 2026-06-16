@@ -75,6 +75,7 @@ func runProduce(args []string) {
 	sample := fs.Int("sample", 0, "Number of sample rows to embed per table (0 = none)")
 	profile := fs.Bool("profile", false, "Compute per-column statistics and embed a Data Profile section")
 	relationships := fs.Bool("relationships", false, "Extract foreign-key relationships and embed a Relationships section")
+	stats := fs.Bool("stats", false, "Compute row-count and freshness statistics (Stats section)")
 	fs.Parse(args)
 	*password = resolvePassword(*password)
 
@@ -98,8 +99,9 @@ func runProduce(args []string) {
 		}
 	}
 
-	// 1. Get base tables in schema
-	rows, err := db.Query("SELECT TABLE_NAME, COALESCE(TABLE_COMMENT, '') FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE'", *dbName)
+	// 1. Get base tables and views in schema. TABLE_TYPE distinguishes a VIEW from
+	// a BASE TABLE so the bundle can label each entity and emit a view definition.
+	rows, err := db.Query("SELECT TABLE_NAME, TABLE_TYPE, COALESCE(TABLE_COMMENT, '') FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_TYPE IN ('BASE TABLE', 'VIEW')", *dbName)
 	if err != nil {
 		log.Fatalf("Failed to query tables: %v", err)
 	}
@@ -113,6 +115,7 @@ func runProduce(args []string) {
 	type TableInfo struct {
 		Name    string
 		Comment string
+		IsView  bool
 	}
 	var tables []TableInfo
 
@@ -120,8 +123,8 @@ func runProduce(args []string) {
 	today := time.Now().Format("2006-01-02")
 
 	for rows.Next() {
-		var name, comment string
-		if err := rows.Scan(&name, &comment); err != nil {
+		var name, tableType, comment string
+		if err := rows.Scan(&name, &tableType, &comment); err != nil {
 			log.Fatalf("Failed to scan table info: %v", err)
 		}
 		// Strip InnoDB partition comments from MySQL
@@ -134,7 +137,7 @@ func runProduce(args []string) {
 		comment = strings.TrimSpace(comment)
 
 		if filterTables == nil || filterTables[name] {
-			tables = append(tables, TableInfo{Name: name, Comment: comment})
+			tables = append(tables, TableInfo{Name: name, Comment: comment, IsView: tableType == "VIEW"})
 		}
 	}
 
@@ -188,6 +191,30 @@ func runProduce(args []string) {
 			}
 			bodyStr = okf.AppendRelationshipsSection(bodyStr, "Relationships", foreignKeyRelationships(fks))
 		}
+		// Constraints & indexes are cheap catalog reads, emitted by default.
+		indexes, err := getIndexes(db, *dbName, tInfo.Name)
+		if err != nil {
+			log.Fatalf("Failed to read indexes for %s: %v", tInfo.Name, err)
+		}
+		cons, err := getConstraints(db, *dbName, tInfo.Name)
+		if err != nil {
+			log.Fatalf("Failed to read constraints for %s: %v", tInfo.Name, err)
+		}
+		if s := okf.RenderConstraintsSection(cons); s != "" {
+			bodyStr = okf.UpsertSection(bodyStr, "Constraints", s)
+		}
+		if s := okf.RenderIndexesSection(indexes); s != "" {
+			bodyStr = okf.UpsertSection(bodyStr, "Indexes", s)
+		}
+		if tInfo.IsView {
+			viewSQL, err := getViewDefinition(db, *dbName, tInfo.Name)
+			if err != nil {
+				log.Fatalf("Failed to read view definition for %s: %v", tInfo.Name, err)
+			}
+			if s := okf.RenderViewDefinition(viewSQL); s != "" {
+				bodyStr = okf.UpsertSection(bodyStr, "View Definition", s)
+			}
+		}
 		if *profile {
 			profiles, err := profileTable(db, tInfo.Name, cols)
 			if err != nil {
@@ -202,14 +229,35 @@ func runProduce(args []string) {
 			}
 			bodyStr = okf.UpsertSection(bodyStr, "Sample", okf.RenderSampleSection(headers, sampleRows))
 		}
+		if *stats {
+			ts, err := getTableStats(db, tInfo.Name, cols)
+			if err != nil {
+				log.Fatalf("Failed to compute stats for %s: %v", tInfo.Name, err)
+			}
+			if s := okf.RenderStatsSection(ts); s != "" {
+				bodyStr = okf.UpsertSection(bodyStr, "Stats", s)
+			}
+		}
 
+		conceptType := "MySQL Table"
+		kindTag := "table"
+		if tInfo.IsView {
+			conceptType = "MySQL View"
+			kindTag = "view"
+		}
+		// Preserve comment-driven descriptions: a table/view COMMENT, when present,
+		// remains the description; otherwise fall back to a typed default.
+		description := tInfo.Comment
+		if description == "" {
+			description = fmt.Sprintf("MySQL %s %s", kindTag, tInfo.Name)
+		}
 		fresh := okf.ConceptDoc{
 			Frontmatter: okf.Frontmatter{
-				Type:        "MySQL Table",
+				Type:        conceptType,
 				Title:       tInfo.Name,
-				Description: tInfo.Comment,
+				Description: description,
 				Resource:    fmt.Sprintf("mysql://%s:%d/%s/%s", *host, *port, *dbName, tInfo.Name),
-				Tags:        []string{"mysql", "table"},
+				Tags:        []string{"mysql", kindTag},
 				Timestamp:   timestamp,
 			},
 			Body: bodyStr,
@@ -246,9 +294,13 @@ func runProduce(args []string) {
 	indexBody.WriteString("This OKF bundle represents the tables and comments extracted from MySQL.\n\n")
 	indexBody.WriteString("## Tables\n\n")
 	for _, tInfo := range tables {
+		kind := "table"
+		if tInfo.IsView {
+			kind = "view"
+		}
 		desc := tInfo.Comment
 		if desc == "" {
-			desc = "No description available"
+			desc = fmt.Sprintf("MySQL %s %s", kind, tInfo.Name)
 		}
 		fmt.Fprintf(&indexBody, "- [%s](tables/%s.md) - %s\n", tInfo.Name, tInfo.Name, desc)
 	}

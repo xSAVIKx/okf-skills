@@ -70,6 +70,7 @@ func runProduce(args []string) {
 	sample := fs.Int("sample", 0, "Number of sample rows to embed per table (0 = none)")
 	profile := fs.Bool("profile", false, "Compute per-column statistics and embed a Data Profile section")
 	relationships := fs.Bool("relationships", false, "Extract foreign-key constraints into a Relationships section")
+	stats := fs.Bool("stats", false, "Compute row-count and freshness statistics (Stats section)")
 	fs.Parse(args)
 
 	if *projectID == "" || *datasetID == "" || *outDir == "" {
@@ -105,7 +106,13 @@ func runProduce(args []string) {
 
 	timestamp := time.Now().Format(time.RFC3339)
 	today := time.Now().Format("2006-01-02")
-	var tables []string
+	// tableEntry records each discovered entity's name and kind ("table"/"view")
+	// so the index can label views distinctly from regular tables.
+	type tableEntry struct {
+		Name string
+		Kind string
+	}
+	var tables []tableEntry
 
 	// List tables in dataset
 	it := ds.Tables(ctx)
@@ -127,7 +134,16 @@ func runProduce(args []string) {
 			log.Fatalf("Failed to get table metadata for %s: %v", t.TableID, err)
 		}
 
-		tables = append(tables, t.TableID)
+		// View awareness: BigQuery's table metadata already tells us whether this
+		// is a logical view (Type == ViewTable) and, if so, holds the defining SQL
+		// in ViewQuery — no extra INFORMATION_SCHEMA round-trip is needed.
+		isView := tMeta.Type == bigquery.ViewTable
+
+		kind := "table"
+		if isView {
+			kind = "view"
+		}
+		tables = append(tables, tableEntry{Name: t.TableID, Kind: kind})
 
 		var body bytes.Buffer
 		body.WriteString("# Columns\n\n")
@@ -152,6 +168,21 @@ func runProduce(args []string) {
 			}
 			bodyStr = okf.AppendRelationshipsSection(bodyStr, "Relationships", foreignKeyRelationships(fks))
 		}
+		// Constraints are a cheap catalog read (UNIQUE / PRIMARY KEY informational
+		// constraints). BigQuery has no CHECK constraints and no secondary indexes,
+		// so there is no Indexes section.
+		cons, err := getConstraints(ctx, client, *projectID, *datasetID, t.TableID)
+		if err != nil {
+			log.Fatalf("Failed to read constraints for table %s: %v", t.TableID, err)
+		}
+		if s := okf.RenderConstraintsSection(cons); s != "" {
+			bodyStr = okf.UpsertSection(bodyStr, "Constraints", s)
+		}
+		if isView {
+			if s := okf.RenderViewDefinition(tMeta.ViewQuery); s != "" {
+				bodyStr = okf.UpsertSection(bodyStr, "View Definition", s)
+			}
+		}
 		if *profile {
 			profiles, err := profileTable(ctx, client, *projectID, *datasetID, t.TableID, tMeta.Schema)
 			if err != nil {
@@ -166,14 +197,29 @@ func runProduce(args []string) {
 			}
 			bodyStr = okf.UpsertSection(bodyStr, "Sample", okf.RenderSampleSection(headers, sampleRows))
 		}
+		if *stats {
+			ts, err := getTableStats(ctx, client, *projectID, *datasetID, t.TableID, tMeta.NumRows, tMeta.Schema)
+			if err != nil {
+				log.Fatalf("Failed to compute stats for %s: %v", t.TableID, err)
+			}
+			if s := okf.RenderStatsSection(ts); s != "" {
+				bodyStr = okf.UpsertSection(bodyStr, "Stats", s)
+			}
+		}
 
+		conceptType := "BigQuery Table"
+		kindTag := "table"
+		if isView {
+			conceptType = "BigQuery View"
+			kindTag = "view"
+		}
 		fresh := okf.ConceptDoc{
 			Frontmatter: okf.Frontmatter{
-				Type:        "BigQuery Table",
+				Type:        conceptType,
 				Title:       t.TableID,
 				Description: tMeta.Description,
 				Resource:    fmt.Sprintf("bigquery://%s/%s/%s", *projectID, *datasetID, t.TableID),
-				Tags:        []string{"bigquery", "table"},
+				Tags:        []string{"bigquery", kindTag},
 				Timestamp:   timestamp,
 			},
 			Body: bodyStr,
@@ -214,7 +260,7 @@ func runProduce(args []string) {
 	}
 	indexBody.WriteString("## Tables\n\n")
 	for _, table := range tables {
-		fmt.Fprintf(&indexBody, "- [%s](tables/%s.md) - BigQuery table %s\n", table, table, table)
+		fmt.Fprintf(&indexBody, "- [%s](tables/%s.md) - BigQuery %s %s\n", table.Name, table.Name, table.Kind, table.Name)
 	}
 
 	indexDoc := okf.ConceptDoc{

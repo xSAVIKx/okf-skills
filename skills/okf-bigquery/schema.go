@@ -19,6 +19,7 @@ func buildSchema() okf.SkillSchema {
 					{Name: "sample", Type: "int", Description: "Sample rows to embed per table (0 = none).", Default: "0"},
 					{Name: "profile", Type: "bool", Description: "Embed a per-column Data Profile section.", Default: "false"},
 					{Name: "relationships", Type: "bool", Description: "Extract foreign-key constraints into a Relationships section.", Default: "false"},
+					{Name: "stats", Type: "bool", Description: "Compute row-count and freshness statistics (Stats section).", Default: "false"},
 				},
 			},
 			{
