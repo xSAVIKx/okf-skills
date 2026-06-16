@@ -103,10 +103,22 @@ checks out that branch and runs
    `git config url."file://<repo>".insteadOf https://github.com/xSAVIKx/okf-skills`
    so `go mod tidy` resolves the unpushed tag from the working tree;
 4. rewrites every consumer's `require okf-go` to `vNEW` and `go mod tidy`s each;
+5. **builds every consumer standalone** (`GOWORK=off`) against the local tag, so
+   the run fails here if the synced pins/`go.sum` don't actually compile.
 
 then commits the `go.mod`/`go.sum` changes back to the release PR. It is
 idempotent (pins already at `vNEW` → no commit). On merge, the tagged commit is
-internally consistent, and `verify-install` confirms it.
+internally consistent, and `verify-install` confirms it against the real tags.
+
+> **Why the release PR needs its own verification.** Its commits are authored by
+> `GITHUB_TOKEN`, which by design does not trigger `ci.yml` — and even if it did,
+> `ci.yml` builds *inside* `go.work` and so cannot see a bad pin. Step 5 above is
+> therefore the real pre-merge check: it runs in the `sync-pins` job (part of the
+> `release.yml` run that updates the PR) and verifies the exact synced state
+> standalone. `verify-install` is the post-merge backstop against the published
+> tags. (If you also want the full `ci.yml` suite on the release PR, push the
+> `sync-pins` commit with a PAT instead of `GITHUB_TOKEN` so it triggers a
+> `pull_request` run.)
 
 > Validated on Linux via [`scripts/dryrun-pin-sync.sh`](scripts/dryrun-pin-sync.sh)
 > (run in a `golang` container): all consumers re-pin, `go.sum` refreshes, and
