@@ -31,5 +31,22 @@
     "skills/okf-fs": { "component": "skills/okf-fs" },
     "skills/okf-git": { "component": "skills/okf-git" },
     "skills/okf-viz": { "component": "skills/okf-viz" }
-  }
+  },
+  "plugins": [
+    {
+      "type": "linked-versions",
+      "groupName": "okf-skills",
+      "components": [
+        "okf-go",
+        "okf-mcp",
+        "skills/okf-sqlite",
+        "skills/okf-mysql",
+        "skills/okf-postgresql",
+        "skills/okf-bigquery",
+        "skills/okf-fs",
+        "skills/okf-git",
+        "skills/okf-viz"
+      ]
+    }
+  ]
 }

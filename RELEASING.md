@@ -54,7 +54,10 @@ That is produced by these `release-please-config.json` settings:
 Versioning is **lockstep**: every release bumps all modules to the same version
 and tags them at the same commit. So `skills/okf-sqlite@v0.2.0` requires
 `okf-go@v0.2.0` and both exist at the same SHA — no skew between a connector and
-the okf-go it was built against.
+the okf-go it was built against. This is enforced by the **`linked-versions`**
+plugin in [`release-please-config.json`](release-please-config.json), which bumps
+every listed component to the same version when any one of them changes (so even
+modules untouched by a release still re-release to carry the new okf-go pin).
 
 Two facts make this non-trivial, and both are **hidden by [`go.work`](go.work)**.
 During development the workspace makes every `require okf-go vX` resolve to
