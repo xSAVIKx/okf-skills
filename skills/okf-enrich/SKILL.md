@@ -190,6 +190,16 @@ Enrichment is the same procedure for every source — only three things differ p
 | `okf-fs` | `File` / `Directory` | frontmatter `description` only | `.okf-metadata.yaml` | path, extension, size — infer role from name/type (no data content) |
 | `okf-git` | `Git File` / `Git Directory` | frontmatter `description` only | `.okf-metadata.yaml` | path + last commit author/date/**message** in the body |
 
+## Evaluating descriptions (optional)
+
+Coverage (`okf-viz coverage`) counts *how much* is enriched; it cannot judge *how
+well*. For quality, an optional **LLM-as-judge** workflow lives in
+[`eval/`](eval/README.md): score a description's grounding, specificity, and
+conciseness against the [rubric](eval/rubric.md), using labelled
+[fixtures](eval/fixtures/cases.yaml) as a regression baseline. It is run by your own
+model (no binary, no embedded model) and is **advisory** — use it to regression-test
+`SKILL.md` guidance changes and to flag low-confidence descriptions for human review.
+
 ## Quality rules (summary)
 
 1. **Ground, don't guess** — evidence in the document backs every word you write.
