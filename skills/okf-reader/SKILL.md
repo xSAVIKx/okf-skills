@@ -3,7 +3,7 @@ name: okf-reader
 description: Guidance for AI agents on how to parse, traverse, and query Open Knowledge Format (OKF) bundles efficiently — minimizing token usage and avoiding slow recursive directory walks. Use when reading, navigating, analyzing, or answering questions about an existing OKF bundle. Instructions-only; no binary required.
 license: Apache-2.0
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   author: Yurii Serhiichuk
   tags: "okf, knowledge-catalog, agent-guidance, documentation, prompt-engineering"
 ---

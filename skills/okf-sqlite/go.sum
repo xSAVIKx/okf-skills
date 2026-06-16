@@ -23,8 +23,8 @@ github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/rogpeppe/go-internal v1.11.0 h1:cWPaGQEPrBb5/AsnsZesgZZ9yb1OQ+GOISoDNXVBh4M=
 github.com/rogpeppe/go-internal v1.11.0/go.mod h1:ddIwULY96R17DhadqLgMfk9H9tvdUzkipdSkR5nkCZA=
-github.com/xSAVIKx/okf-skills/okf-go v0.4.0 h1:AaFAHfZHGvDajjz6RNd8GAsqy4arV5zLU5IOYfpU8eU=
-github.com/xSAVIKx/okf-skills/okf-go v0.4.0/go.mod h1:cxuOEOxX+mj8GJctWAeXj4QXjji3lnpwzPeHEBtdufI=
+github.com/xSAVIKx/okf-skills/okf-go v0.5.0 h1:SqPmpOZOD6sm4WSjTEUjtqBBzrtc1KC6wVJDLNdlOAU=
+github.com/xSAVIKx/okf-skills/okf-go v0.5.0/go.mod h1:cxuOEOxX+mj8GJctWAeXj4QXjji3lnpwzPeHEBtdufI=
 golang.org/x/mod v0.32.0 h1:9F4d3PHLljb6x//jOyokMv3eX+YDeepZSEo3mFJy93c=
 golang.org/x/mod v0.32.0/go.mod h1:SgipZ/3h2Ci89DlEtEXWUk/HteuRin+HHhN+WbNhguU=
 golang.org/x/sync v0.19.0 h1:vV+1eWNmZ5geRlYjzm2adRgW2/mcpevXNg50YZtPCE4=
