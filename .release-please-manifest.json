@@ -1,11 +1,11 @@
 {
-  "okf-go": "0.2.0",
-  "okf-mcp": "0.2.0",
-  "skills/okf-sqlite": "0.2.0",
-  "skills/okf-mysql": "0.2.0",
-  "skills/okf-postgresql": "0.2.0",
-  "skills/okf-bigquery": "0.2.0",
-  "skills/okf-fs": "0.2.0",
-  "skills/okf-git": "0.2.0",
-  "skills/okf-viz": "0.2.0"
+  "okf-go": "0.3.0",
+  "okf-mcp": "0.3.0",
+  "skills/okf-sqlite": "0.3.0",
+  "skills/okf-mysql": "0.3.0",
+  "skills/okf-postgresql": "0.3.0",
+  "skills/okf-bigquery": "0.3.0",
+  "skills/okf-fs": "0.3.0",
+  "skills/okf-git": "0.3.0",
+  "skills/okf-viz": "0.3.0"
 }
