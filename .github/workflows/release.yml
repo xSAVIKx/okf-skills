@@ -12,6 +12,9 @@ name: Release
 #   3. The warm-proxy job primes proxy.golang.org for each freshly tagged module
 #      so `go install ...@latest` resolves immediately instead of after the
 #      module mirror's indexing lag.
+#   4. The verify-install job reproduces an end user's `go install <module>@vX`
+#      WITHOUT the go.work workspace, catching a stale intra-repo okf-go pin or
+#      go.sum that the workspace hides during normal CI. See RELEASING.md.
 on:
   push:
     branches: [master]
@@ -24,6 +27,10 @@ permissions:
 concurrency:
   group: release-please
   cancel-in-progress: false
+
+env:
+  # Match the toolchain pinned in go.work so workspace resolution is exact.
+  GO_VERSION: "1.26"
 
 jobs:
   release-please:
@@ -64,3 +71,22 @@ jobs:
               && echo "  indexed" \
               || echo "  still indexing (will resolve automatically shortly)"
           done
+
+  verify-install:
+    name: Verify standalone installability
+    needs: release-please
+    if: needs.release-please.outputs.releases_created == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: "**/go.sum"
+      - name: Install each released module without the workspace
+        # Reproduces an end user's `go install <module>@vX`. go.work shadows the
+        # intra-repo okf-go pin during dev, so this is the first place a stale
+        # pin or go.sum surfaces. The script uses GOPROXY=direct (avoids proxy
+        # indexing lag right after tagging) and GOSUMDB=off (skips the lagging
+        # checksum DB) while still verifying each module's committed go.sum.
+        run: bash scripts/verify-release.sh

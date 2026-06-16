@@ -10,7 +10,7 @@ or publish a Go module by hand.
 |---|---|---|
 | [`ci.yml`](.github/workflows/ci.yml) | PRs + pushes to `master` | gofmt, `go vet`, build every module, unit tests, and the Docker-backed integration suite. |
 | [`pr-title.yml`](.github/workflows/pr-title.yml) | PR opened/edited | Lints the PR title against Conventional Commits (it becomes the squash-merge commit). |
-| [`release.yml`](.github/workflows/release.yml) | pushes to `master` | release-please maintains a release PR; merging it tags + releases each changed module, then warms the Go proxy. |
+| [`release.yml`](.github/workflows/release.yml) | pushes to `master` | release-please maintains a release PR; merging it tags + releases each changed module, warms the Go proxy, then `verify-install` confirms every released module installs standalone. |
 
 ## How a release happens
 
@@ -49,13 +49,63 @@ That is produced by these `release-please-config.json` settings:
 // => tag: skills/okf-fs/v<version>
 ```
 
-## Cross-module dependency note
+## Cross-module dependency: the `okf-go` pin (lockstep)
 
-The skills require `github.com/xSAVIKx/okf-skills/okf-go` at a pinned version.
-release-please does **not** auto-rewrite that `require` line when `okf-go` is
-released. When you ship an `okf-go` change that skills should adopt, bump the
-requirement in the same PR with a `deps:` commit, e.g.
-`deps(okf-sqlite): use okf-go v0.2.0`, so the skill re-releases against it.
+Versioning is **lockstep**: every release bumps all modules to the same version
+and tags them at the same commit. So `skills/okf-sqlite@v0.2.0` requires
+`okf-go@v0.2.0` and both exist at the same SHA — no skew between a connector and
+the okf-go it was built against.
+
+Two facts make this non-trivial, and both are **hidden by [`go.work`](go.work)**.
+During development the workspace makes every `require okf-go vX` resolve to
+working-tree source, ignoring the pin, and `go.sum` is not consulted for
+workspace modules. As a result a normal `go build`/`go test` in CI runs *inside*
+the workspace and **cannot** catch:
+
+1. a stale **pin** — `require okf-go vX` drifting from the version the code needs
+   (e.g. a connector using new okf-go API while still pinned to the old release);
+2. a missing **`go.sum`** entry for the okf-go version a real install resolves.
+
+Both only surface in an end user's `go install <module>@vX`.
+
+### Safety net: the `verify-install` gate
+
+After tags are pushed, the `verify-install` job runs
+[`scripts/verify-release.sh`](scripts/verify-release.sh), which `go install`s
+each released module with `GOWORK=off` (no workspace), `GOPROXY=direct` (no proxy
+indexing lag), and `GOSUMDB=off` (the public checksum DB lags new tags) while
+still verifying each module's committed `go.sum`. A stale pin or missing `go.sum`
+fails the release loudly instead of failing a user. The gate is **post-release,
+not per-PR** on purpose: a PR that adds okf-go API and consumes it in the same
+change cannot build standalone until okf-go is released, so gating PRs on it
+would block the normal stacked-PR workflow.
+
+### Bumping the pin + `go.sum`
+
+There is a chicken-and-egg: a connector's `go.sum` needs `okf-go@vNEW`'s hash,
+but that hash is only resolvable once `okf-go@vNEW` is tagged — the very release
+being built. Go module hashes are **content-based, not SHA-based**, so a `go.sum`
+computed on the release-PR branch stays valid for the eventual tag. Strategies,
+in increasing automation:
+
+- **(A) Manual, in the release PR — recommended.** On the release-please PR
+  branch, set each connector's `require okf-go` to the new version and run
+  `go mod tidy` per module, then commit `go.mod`/`go.sum`. Least machinery,
+  keeps lockstep, and `verify-install` makes a mistake impossible to merge
+  unnoticed.
+- **(B) Automated in the release PR.** A workflow rewrites pins, tags okf-go
+  locally, `go mod tidy`s, and commits `go.sum` back to the PR. Resolving an
+  *unpushed* tag needs `git config url."file://…".insteadOf …` + `GOPROXY=direct`
+  + `GOSUMDB=off`; fiddly and not yet validated on Linux — dry-run before
+  adopting.
+- **(C) Two-phase (vanilla).** Release `okf-go` first, bump consumers next cycle.
+  Zero custom tooling, but consumers lag okf-go by one release — in tension with
+  lockstep.
+
+> Do **not** bump `require okf-go vNEW` in a *feature* PR: `vNEW` does not exist
+> until the release PR merges, so the pin would reference an unpublished version.
+> The bump belongs in the release PR (strategy A), where the tag is about to
+> exist.
 
 ## One-time repository setup
 
