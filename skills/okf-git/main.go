@@ -19,6 +19,10 @@ import (
 )
 
 // main is the CLI entrypoint for git connector.
+// version is the build version, injected via -ldflags "-X main.version=..." by
+// skills.sh; it defaults to "dev" for plain `go build`.
+var version = "dev"
+
 func main() {
 	if len(os.Args) < 2 {
 		printUsage()
@@ -35,6 +39,8 @@ func main() {
 		if err := okf.PrintSchema(os.Stdout, buildSchema()); err != nil {
 			log.Fatalf("Failed to print schema: %v", err)
 		}
+	case "version", "--version", "-v":
+		fmt.Println(version)
 	default:
 		fmt.Printf("Unknown command: %s\n", cmd)
 		printUsage()

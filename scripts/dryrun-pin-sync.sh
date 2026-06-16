@@ -6,7 +6,10 @@
 # against an okf-go tag that is NOT pushed anywhere.
 set -euo pipefail
 
-NEWVER="0.2.0"
+# A version that will never be a real published tag, so the locally-created tag
+# can't collide with one already fetched into this clone (a real release always
+# uses a brand-new version, so this collision can't happen in production).
+NEWVER="0.99.0"
 WORK=/work
 git clone -q /src "$WORK"
 cd "$WORK"
