@@ -154,6 +154,14 @@ func TestGitCoChangeRelationships(t *testing.T) {
 		runCmd("git", "commit", "-m", "co-change commit")
 	}
 
+	// A file only ever committed by itself never co-changes with anything, so it
+	// must emit no "Related Files" section (the emit-nothing-when-empty guarantee).
+	if err := os.WriteFile(filepath.Join(repoDir, "solo.txt"), []byte("alone"), 0644); err != nil {
+		t.Fatalf("failed to write solo.txt: %v", err)
+	}
+	runCmd("git", "add", "solo.txt")
+	runCmd("git", "commit", "-m", "solo commit")
+
 	cmd := exec.Command(binaryPath, "produce", "--repo", repoDir, "--out", bundleDir, "--relationships", "--cochange-min", "2")
 	var stderr bytesBuffer
 	cmd.Stderr = &stderr
@@ -171,5 +179,13 @@ func TestGitCoChangeRelationships(t *testing.T) {
 	}
 	if !strings.Contains(body, "[b.txt](/b.txt.md)") {
 		t.Errorf("a.txt.md missing co-change link to b.txt:\n%s", body)
+	}
+
+	soloDoc, err := os.ReadFile(filepath.Join(bundleDir, "solo.txt.md"))
+	if err != nil {
+		t.Fatalf("failed to read solo.txt.md: %v", err)
+	}
+	if strings.Contains(string(soloDoc), "# Related Files") {
+		t.Errorf("solo.txt.md should not have a Related Files section:\n%s", string(soloDoc))
 	}
 }

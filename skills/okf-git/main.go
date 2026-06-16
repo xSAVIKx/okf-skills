@@ -196,14 +196,18 @@ func runProduce(args []string) {
 		var lastCommitTime time.Time
 		var lastCommitMsg string
 
-		cIter, err := repo.Log(&git.LogOptions{FileName: &rel})
+		// Copy the loop variable: git.LogOptions retains the *string, and closing
+		// the iterator on each iteration (rather than deferring to function
+		// return) avoids leaking one open commit iterator per file on a large repo.
+		name := rel
+		cIter, err := repo.Log(&git.LogOptions{FileName: &name})
 		if err == nil {
-			defer cIter.Close()
 			if commit, err := cIter.Next(); err == nil {
 				lastAuthor = commit.Author.Name
 				lastCommitTime = commit.Author.When
 				lastCommitMsg = strings.TrimSpace(commit.Message)
 			}
+			cIter.Close()
 		}
 
 		if lastCommitTime.IsZero() {

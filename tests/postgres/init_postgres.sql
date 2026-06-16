@@ -41,3 +41,20 @@ COMMENT ON COLUMN orders.id IS 'Unique identifier for the order';
 COMMENT ON COLUMN orders.user_id IS 'Reference key to the ordering user';
 COMMENT ON COLUMN orders.total_amount IS 'Total cost of the order';
 COMMENT ON COLUMN orders.order_date IS 'Timestamp when the order was placed';
+
+-- Product variants keyed by a composite primary key, so the referencing table
+-- below carries a multi-column foreign key. This exercises composite-FK
+-- extraction: a naive information_schema join cross-products the N referencing
+-- columns with the N referenced columns and emits N*N duplicate edges.
+CREATE TABLE IF NOT EXISTS product_variants (
+    product_id INT NOT NULL,
+    sku VARCHAR(50) NOT NULL,
+    PRIMARY KEY (product_id, sku)
+);
+
+CREATE TABLE IF NOT EXISTS shipments (
+    id SERIAL PRIMARY KEY,
+    product_id INT NOT NULL,
+    sku VARCHAR(50) NOT NULL,
+    FOREIGN KEY (product_id, sku) REFERENCES product_variants(product_id, sku)
+);

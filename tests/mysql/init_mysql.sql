@@ -26,3 +26,19 @@ CREATE TABLE IF NOT EXISTS orders (
     order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Timestamp when the order was placed',
     FOREIGN KEY (user_id) REFERENCES users(id)
 ) COMMENT='Purchase transactions history';
+
+-- Product variants keyed by a composite primary key, so the referencing table
+-- below carries a multi-column foreign key. Guards composite-FK extraction
+-- against duplicate edges (one edge per referencing column, not per column pair).
+CREATE TABLE IF NOT EXISTS product_variants (
+    product_id INT NOT NULL,
+    sku VARCHAR(50) NOT NULL,
+    PRIMARY KEY (product_id, sku)
+) COMMENT='Sellable variants of a product';
+
+CREATE TABLE IF NOT EXISTS shipments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT NOT NULL,
+    sku VARCHAR(50) NOT NULL,
+    FOREIGN KEY (product_id, sku) REFERENCES product_variants(product_id, sku)
+) COMMENT='Dispatched product variants';

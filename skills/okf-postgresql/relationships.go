@@ -18,13 +18,23 @@ type foreignKey struct {
 // getForeignKeys reads the declared foreign keys of a table from the standard
 // information_schema catalog views. Purely a catalog read — no LLM, no data scan.
 func getForeignKeys(db *sql.DB, schema, table string) ([]foreignKey, error) {
+	// Pair each referencing column with the referenced column at the same
+	// position in the referenced unique/primary-key constraint. Joining
+	// key_column_usage to constraint_column_usage on the constraint name alone
+	// cross-products the N referencing columns with the N referenced columns of a
+	// composite FK, emitting N*N duplicate edges; matching on
+	// position_in_unique_constraint yields exactly one row per referencing column.
 	rows, err := db.Query(`
 		SELECT kcu.column_name, ccu.table_name AS ref_table, ccu.column_name AS ref_column
 		FROM information_schema.table_constraints tc
 		JOIN information_schema.key_column_usage kcu
-		  ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
-		JOIN information_schema.constraint_column_usage ccu
-		  ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
+		  ON kcu.constraint_name = tc.constraint_name AND kcu.constraint_schema = tc.constraint_schema
+		JOIN information_schema.referential_constraints rc
+		  ON rc.constraint_name = tc.constraint_name AND rc.constraint_schema = tc.constraint_schema
+		JOIN information_schema.key_column_usage ccu
+		  ON ccu.constraint_name = rc.unique_constraint_name
+		 AND ccu.constraint_schema = rc.unique_constraint_schema
+		 AND ccu.ordinal_position = kcu.position_in_unique_constraint
 		WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = $1 AND tc.table_name = $2
 		ORDER BY kcu.ordinal_position`, schema, table)
 	if err != nil {
