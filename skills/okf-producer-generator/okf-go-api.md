@@ -143,6 +143,44 @@ the schema table you build by hand.
 
 ---
 
+## Relationships (typed cross-links)
+
+Used by the optional `--relationships` flag. Extract structural edges your source
+already declares — foreign keys, file co-change pairs — **deterministically**, and
+emit them as ordinary bundle-relative markdown links. `okf-viz` picks them up as
+graph edges with no changes, and `okf-enrich` later explains what each edge
+*means* in prose. **Never embed an LLM to build a relationship** — the connector
+emits the edge as a fact; meaning is added downstream.
+
+### `type Relationship`
+
+```go
+type Relationship struct {
+    Label  string // e.g. "FK on customer_id", "co-changed (42x)"
+    Target string // bundle-relative link target, e.g. "/tables/customers.md"
+    Text   string // link text shown to the reader, e.g. "customers"
+}
+```
+
+### `RenderRelationshipsSection(rels []Relationship) string`
+
+Renders a markdown bullet list of `- <Label> [<Text>](<Target>)` links, **sorted
+by `(Target, Label, Text)`** so re-runs over the same input are byte-identical.
+
+### `AppendRelationshipsSection(body, heading string, rels []Relationship) string`
+
+Appends a level-1 `# <heading>` section (e.g. `# Relationships` for SQL FKs,
+`# Related Files` for git co-change) containing the rendered links. **Returns
+`body` unchanged when `rels` is empty** — a source with no relationships emits no
+section rather than an empty one. The level-1 heading mirrors `# Columns`, so both
+`GetSectionAny` and the structural hash pick it up.
+
+```go
+bodyStr = okf.AppendRelationshipsSection(bodyStr, "Relationships", rels)
+```
+
+---
+
 ## File-like sources: ignore rules & sidecar metadata
 
 For filesystem/VCS-style producers (`okf-fs`, `okf-git`).
@@ -216,6 +254,7 @@ case "schema":
 | Read a concept file (in `ingest`) | `ReadConceptDoc` |
 | Isolate the `# Columns` table before parsing | `GetSectionAny(body, "Columns")` |
 | Attach an optional `## Data Profile` / `## Sample` | `UpsertSection` + `RenderProfileSection` / `RenderSampleSection` |
+| Emit deterministic typed edges (FKs, co-change) | `AppendRelationshipsSection` + `RenderRelationshipsSection` |
 | Make a cell safe | `SanitizeCell` |
 | Skip ignored paths (fs/git) | `NewIgnoreMatcher` + `Matches` |
 | Sync descriptions for a comment-less, file-like source | `ReadFolderMetadata` / `WriteFolderMetadata` |
