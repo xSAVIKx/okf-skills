@@ -283,7 +283,9 @@ func runProduce(args []string) {
 			kind, action = "Creation", "Established"
 		}
 		bundlePath := "/" + filepath.ToSlash(rel) + ".md"
-		_ = okf.AppendLogEntry(*outDir, today, kind, fmt.Sprintf("%s [%s](%s).", action, filepath.Base(rel), bundlePath))
+		if err := okf.AppendLogEntry(*outDir, today, kind, fmt.Sprintf("%s [%s](%s).", action, filepath.Base(rel), bundlePath)); err != nil {
+			log.Fatalf("Failed to append log entry: %v", err)
+		}
 		fmt.Printf("Produced concept doc: %s\n", conceptPath)
 	}
 
