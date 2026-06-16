@@ -77,8 +77,41 @@ If the profile/sample sections are absent, enrich from the schema alone — but 
 - **Ground every claim** in the schema/profile/sample. Do not invent business meaning the evidence doesn't support. If the purpose is genuinely ambiguous, describe the structure and note what's uncertain rather than fabricating.
 - **Add meaning, don't restate**: don't just list the columns the reader can already see — convey what the schema alone doesn't tell them.
 
+#### 4a. Explain relationships (optional — only when a `# Relationships` section exists)
+The connector emits deterministic foreign-key edges as a `# Relationships` section
+(links to other concept files); SQL FKs and git co-change both land here. The edge
+is a *fact*; the *meaning* is missing — and supplying it is exactly the judgment the
+LLM is good at. For each edge, add one line of **semantics** grounded in the schema:
+- Read the `# Relationships` links, the local `# Columns` (which column carries the
+  FK), and the target concept's grain.
+- Write a one-line gloss stating cardinality and meaning, e.g. *"`customer_id` →
+  [customers](/tables/customers.md): each order is placed by exactly one customer; a
+  customer may have many orders."*
+- **Ground cardinality** in keys/uniqueness (a unique FK column → one-to-one; a
+  non-unique one → many-to-one). If the direction is genuinely ambiguous, state the
+  link factually and note the uncertainty — never invent a cardinality.
+- **Only describe edges the connector emitted** — never fabricate a relationship the
+  schema does not support.
+- **Surgical & idempotent**: add prose only for edges that lack a gloss; preserve the
+  deterministic link list (the connector owns it) and every existing human line. Do
+  not reorder or rewrite edges. Safe to re-run.
+
+#### 4b. Suggest tags (optional)
+Layer classification tags onto the connector's existing `tags` (e.g. `[sqlite, table]`):
+- **PII** — combine the `Semantic` type (`email`, `uuid`) with column-name heuristics
+  (`email`, `phone`, `ssn`, `dob`, `first_name`/`last_name`, `address`, `ip`). A
+  confident match suggests a `pii` tag on the concept. Keep the catalog
+  **conservative** — over-tagging `pii` erodes trust.
+- **Structural** — natural, well-supported classifications (e.g. a table that is all
+  FKs + a PK → `join-table`). Keep these advisory and few.
+- **Idempotent don't-clobber**: *add* tags to the existing set (union, deduplicated,
+  **sorted** for byte-stability); never remove or reorder connector- or human-set
+  tags. Re-running yields the same set.
+
 ### 5. Write back surgically
-- Set **only** the frontmatter `description` field. Preserve `type`, `title`, `resource`, `tags`, `timestamp`, and the **entire** markdown body (including the Columns, Data Profile, and Sample sections) unchanged.
+- Set **only** the frontmatter `description` field. Preserve `type`, `title`, `resource`, `timestamp`, and (apart from the additions in §4a/§4b) the markdown body — including the Columns, Data Profile, and Sample sections — unchanged.
+- **Relationship prose (§4a)**: write glosses *into the existing `# Relationships` section* alongside the connector's links; never touch the link list itself, and never create the section when the connector did not.
+- **Tags (§4b)**: edit only the frontmatter `tags` field as a sorted, deduplicated union; never reorder or drop existing tags.
 - Where the source carries per-column comments (see the **Source variations** table below), fill only the **empty** cells in that column; leave populated cells and every other cell untouched.
 - Never modify `index.md` or `log.md`.
 
@@ -162,3 +195,4 @@ Enrichment is the same procedure for every source — only three things differ p
 3. **Concise and purposeful** — grain plus purpose, never a restated schema.
 4. **Idempotent** — don't clobber real descriptions; the procedure is safe to re-run.
 5. **Spend tokens deliberately** — triage the hubs first, reuse the glossary instead of re-deriving a recurring term, batch per directory, and skip concepts whose `enriched_against` still matches their `content_hash`.
+6. **Enrich more than the description** — gloss the connector's relationship edges with grounded cardinality and suggest conservative tags (`pii`, `join-table`), always as surgical, idempotent, union-only edits that describe only what the evidence supports.
