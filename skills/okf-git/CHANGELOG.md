@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-git/v0.3.0...skills/okf-git/v0.4.0) (2026-06-16)
+
+
+### Miscellaneous Chores
+
+* **skills/okf-git:** Synchronize okf-skills versions
+
 ## [0.3.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-git/v0.2.0...skills/okf-git/v0.3.0) (2026-06-16)
 
 
