@@ -91,6 +91,57 @@ The full flow:
 <connector> produce --profile --sample   →   enrich (this skill)   →   <connector> ingest --sync
 ```
 
+## Cost & consistency
+
+The model in the loop is the cost center. These four strategies make each token
+count and keep wording stable across runs. They turn re-enrichment from
+`O(bundle)` into `O(changes)`.
+
+### Triage — enrich the valuable hubs first
+Before spending tokens, rank the unenriched concepts and work the top of the list;
+a partial pass is a valid, **resumable** state (coverage is re-measurable). Rank by
+deterministic signals, highest first:
+- **Graph degree / downstream FK references** — a concept many others link to (or
+  point a foreign key at) is read most and deserves a good description first. The
+  coverage report (run `okf-viz coverage`) can emit this ranked "enrich these first"
+  list so you don't recompute it.
+- **Row count** — large tables (from `## Stats` / `## Data Profile`) are usually core
+  entities.
+- **Missing / placeholder description** — only unenriched concepts are candidates.
+
+### Glossary reuse — define a recurring term once
+A term like `customer_id`, `created_at`, or `tenant_id` recurs across dozens of
+concepts. Define it **once** and reuse it for consistency and token savings.
+- The bundle may carry a glossary at its root: **`.okf-glossary.yaml`**, a flat
+  `term: definition` map (kept out of the rendered graph and trivially diffable).
+- **Rule:** before writing a column/description, check the glossary. If the term is
+  known and the local usage matches the canonical meaning, **reuse the glossary
+  definition verbatim**. Only write a fresh description when the term carries a
+  genuinely novel meaning here — and consider proposing it as a new glossary entry.
+- Reuse never overwrites a substantive existing description (don't-clobber holds).
+
+### Batching — one grounded pass per directory
+Enrich a **whole directory in one pass**: read the index plus the frontmatter of
+that directory's concepts (per `okf-reader`), then write all their descriptions —
+rather than file-by-file round-trips that reload context each time. This cuts
+redundant context loading and keeps wording consistent within a related group.
+
+### Idempotency markers — skip what hasn't changed
+Each concept carries a structural `content_hash` in its frontmatter (set by the
+connector). Record which hash a description was written against using the
+`enriched_against` frontmatter field:
+- **Skip** a concept when `enriched_against == content_hash` **and** its description
+  is non-placeholder — its structure is unchanged and its description is current.
+- After writing a description, set `enriched_against` to the concept's current
+  `content_hash`.
+- A structural change (new column, type change) bumps `content_hash`, so
+  `enriched_against` no longer matches and the concept automatically re-enters the
+  candidate set — no full-bundle re-run needed. (`produce` preserves
+  `enriched_against` across re-runs, so the marker survives.)
+
+Writing the marker is a **surgical frontmatter edit** (never a body rewrite),
+exactly like the `description` write in §5 — so it stays byte-stable.
+
 ## Source variations
 
 Enrichment is the same procedure for every source — only three things differ per connector: where a description can live, what `ingest --sync` persists it to, and what to lean on when writing it. This table is the single place that per-source knowledge lives; the connectors themselves stay deterministic extract/sync tools.
@@ -110,3 +161,4 @@ Enrichment is the same procedure for every source — only three things differ p
 2. **One field, surgical edits** — touch `description` (and empty comment cells); preserve everything else byte-for-byte.
 3. **Concise and purposeful** — grain plus purpose, never a restated schema.
 4. **Idempotent** — don't clobber real descriptions; the procedure is safe to re-run.
+5. **Spend tokens deliberately** — triage the hubs first, reuse the glossary instead of re-deriving a recurring term, batch per directory, and skip concepts whose `enriched_against` still matches their `content_hash`.
