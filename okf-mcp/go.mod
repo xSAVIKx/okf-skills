@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/modelcontextprotocol/go-sdk v1.4.0
-	github.com/xSAVIKx/okf-skills/okf-go v0.1.0
+	github.com/xSAVIKx/okf-skills/okf-go v0.2.0
 )
 
 require (
