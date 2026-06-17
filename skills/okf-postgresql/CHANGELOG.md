@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-postgresql/v0.5.0...skills/okf-postgresql/v0.6.0) (2026-06-17)
+
+
+### Miscellaneous Chores
+
+* **skills/okf-postgresql:** Synchronize okf-skills versions
+
 ## [0.5.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-postgresql/v0.4.0...skills/okf-postgresql/v0.5.0) (2026-06-16)
 
 

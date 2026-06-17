@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	cloud.google.com/go/bigquery v1.56.0
-	github.com/xSAVIKx/okf-skills/okf-go v0.5.0
+	github.com/xSAVIKx/okf-skills/okf-go v0.6.0
 	google.golang.org/api v0.149.0
 )
 

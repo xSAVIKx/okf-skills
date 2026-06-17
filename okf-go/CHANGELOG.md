@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.0](https://github.com/xSAVIKx/okf-skills/compare/okf-go/v0.5.0...okf-go/v0.6.0) (2026-06-17)
+
+
+### Features
+
+* deterministic enrichment coverage report ([#12](https://github.com/xSAVIKx/okf-skills/issues/12)) ([6d85333](https://github.com/xSAVIKx/okf-skills/commit/6d853336be4656d10f5d16b39e188b5f2d437c77))
+* enrichment cost & consistency guidance + enriched_against marker ([#10](https://github.com/xSAVIKx/okf-skills/issues/10)) ([7dd2e27](https://github.com/xSAVIKx/okf-skills/commit/7dd2e274a0c2b9088480e7be51d9f1327e4673cd))
+
 ## [0.5.0](https://github.com/xSAVIKx/okf-skills/compare/okf-go/v0.4.0...okf-go/v0.5.0) (2026-06-16)
 
 
