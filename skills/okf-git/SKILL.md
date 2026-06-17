@@ -4,7 +4,7 @@ description: Git repository connector that produces and ingests Open Knowledge F
 license: Apache-2.0
 compatibility: Requires the Go toolchain (1.24+) to build the connector binary, plus a local Git repository to read history from.
 metadata:
-  version: "0.5.0"
+  version: "0.6.0"
   author: Yurii Serhiichuk
   tags: "okf, knowledge-catalog, git, documentation"
 ---
