@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-enrich/v0.2.0...skills/okf-enrich/v0.3.0) (2026-06-17)
+
+
+### Features
+
+* deterministic enrichment coverage report ([#12](https://github.com/xSAVIKx/okf-skills/issues/12)) ([6d85333](https://github.com/xSAVIKx/okf-skills/commit/6d853336be4656d10f5d16b39e188b5f2d437c77))
+* enrichment cost & consistency guidance + enriched_against marker ([#10](https://github.com/xSAVIKx/okf-skills/issues/10)) ([7dd2e27](https://github.com/xSAVIKx/okf-skills/commit/7dd2e274a0c2b9088480e7be51d9f1327e4673cd))
+* **okf-enrich:** LLM-as-judge enrichment eval harness ([#13](https://github.com/xSAVIKx/okf-skills/issues/13)) ([9690da2](https://github.com/xSAVIKx/okf-skills/commit/9690da252f087d1a3385f6e5e9f7e1130b27f936))
+
 ## [0.2.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-enrich/v0.1.0...skills/okf-enrich/v0.2.0) (2026-06-16)
 
 
