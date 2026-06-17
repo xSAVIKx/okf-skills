@@ -78,7 +78,7 @@ if [ "$fail" -ne 0 ]; then
 fi
 
 # Sync each skill's SKILL.md metadata.version to its released version. SKILL.md
-# is the single source of truth that skills.sh stamps into the binary (--version)
+# is the single source of truth that install.sh stamps into the binary (--version)
 # and the install manifest; this keeps it in lockstep with the release. Each
 # component is keyed in the manifest, so lockstep Go skills get V and the
 # independently-versioned instruction-only skills get their own version.

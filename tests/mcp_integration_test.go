@@ -46,7 +46,7 @@ func TestConnectorSchemaContract(t *testing.T) {
 		t.Run(spec.name, func(t *testing.T) {
 			bin := getBinaryPath(spec.name)
 			if _, err := os.Stat(bin); os.IsNotExist(err) {
-				t.Skipf("%s not built at %s (run 'make build' or skills.sh first)", spec.name, bin)
+				t.Skipf("%s not built at %s (run 'make build' or install.sh first)", spec.name, bin)
 			}
 			out, err := exec.Command(bin, "schema").Output()
 			if err != nil {

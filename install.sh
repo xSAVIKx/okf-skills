@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# skills.sh — build all OKF skill binaries and install them into a directory.
+# install.sh — build all OKF skill binaries and install them into a directory.
 #
 # Usage:
-#   ./skills.sh [INSTALL_DIR]
+#   ./install.sh [INSTALL_DIR]
 # INSTALL_DIR defaults to $OKF_INSTALL_DIR, else $HOME/.local/bin.
 #
 # Each binary is stamped with its version (read from the skill's SKILL.md and
@@ -38,7 +38,7 @@ skillVersion() {
 mkdir -p "$INSTALL_DIR"
 MANIFEST="$INSTALL_DIR/okf-skills-manifest.txt"
 {
-  echo "# OKF skills installed by skills.sh"
+  echo "# OKF skills installed by install.sh"
   echo "# columns: name<TAB>version<TAB>changelog"
 } > "$MANIFEST"
 

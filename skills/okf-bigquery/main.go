@@ -29,7 +29,7 @@ type ColumnSpec struct {
 
 // main is the CLI entrypoint for BigQuery connector.
 // version is the build version, injected via -ldflags "-X main.version=..." by
-// skills.sh; it defaults to "dev" for plain `go build`.
+// install.sh; it defaults to "dev" for plain `go build`.
 var version = "dev"
 
 func main() {

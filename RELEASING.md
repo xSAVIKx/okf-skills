@@ -147,11 +147,11 @@ else derives from it:
 - **Releases keep it current.** `sync-intra-deps.sh` (the `sync-pins` job) rewrites
   every component's `SKILL.md` version to its `.release-please-manifest.json` value on
   the release PR — alongside the `okf-go` pin sync. No annotations needed.
-- **Binaries carry it.** [`skills.sh`](skills.sh) reads each `SKILL.md` version and
+- **Binaries carry it.** [`install.sh`](install.sh) reads each `SKILL.md` version and
   injects it via `-ldflags "-X main.version=…"`, so `okf-sqlite --version` (also
   `version` / `-v`) reports it; okf-mcp reports it as its MCP server version. Plain
   `go build` yields `dev`.
-- **Installs are traceable.** `skills.sh` writes `name<TAB>version<TAB>changelog` for
+- **Installs are traceable.** `install.sh` writes `name<TAB>version<TAB>changelog` for
   every installed skill into `okf-skills-manifest.txt`.
 
 Two versioning tracks:
