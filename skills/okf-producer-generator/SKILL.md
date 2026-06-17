@@ -213,7 +213,7 @@ Adding the source files is not enough. Wire it in:
 - [ ] `skills/okf-<name>/` exists with `go.mod` (full module path, `require okf-go v0.1.0`, no `replace`), `main.go`, `schema.go`, `SKILL.md`, tests.
 - [ ] **`go.work`** — add `./skills/okf-<name>` to the `use (…)` block (keep it alphabetical).
 - [ ] **`Makefile`** — add `okf-<name>` to `SKILLS :=`.
-- [ ] **`skills.sh`** — add `okf-<name>` to `SKILLS=`.
+- [ ] **`install.sh`** — add `okf-<name>` to `SKILLS=`.
 - [ ] **`skills.sh.json`** — add `okf-<name>` to the appropriate `groupings` entry (every `skills/` skill must appear in one).
 - [ ] **`README.md`** — add a row to the "Available Connectors" table (§1) and to the §8 group table.
 - [ ] **`AGENTS.md`** — list the directory in the §1 tree.
@@ -246,7 +246,7 @@ Write `description` as *what it does + when to use it* with searchable keywords.
 | Global `flag.Bool(...)` | `flag.NewFlagSet(<cmd>, …)` per subcommand |
 | CGO SQLite driver, or any cgo dep | Pure-Go drivers (`modernc.org/sqlite`) |
 | Top-level `version:`/`tags:` in `SKILL.md` | Nest under `metadata:` |
-| Forgetting `go.work` / `Makefile` / `skills.sh` / `skills.sh.json` | Follow the registration checklist |
+| Forgetting `go.work` / `Makefile` / `install.sh` / `skills.sh.json` | Follow the registration checklist |
 
 ## Verify before you call it done
 

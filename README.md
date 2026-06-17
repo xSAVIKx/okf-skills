@@ -2,18 +2,24 @@
 
 **Turn the structure your data already has — database schemas, column comments, foreign keys, file trees, commit history — into a browsable, agent-readable knowledge catalog.**
 
-OKF Skills are small, deterministic connectors that **produce** an [Open Knowledge Format](okf-go/okf-SPEC.md) bundle (a directory of Markdown + YAML) from any source, let an LLM **enrich** it with grounded descriptions, **visualize** it as an interactive graph, and **sync** descriptions back to the source. Extraction is pure and reproducible — no embedded model — so the only LLM in the loop is *your* agent's, guided by instructions. Every connector is a single portable binary that self-describes over MCP, so it drops into any agent harness.
+OKF Skills are small, deterministic connectors that **produce** an [Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) bundle (a directory of Markdown + YAML) from any source, let an LLM **enrich** it with grounded descriptions, **visualize** it as an interactive graph, and **sync** descriptions back to the source. Extraction is pure and reproducible — no embedded model — so the only LLM in the loop is *your* agent's, guided by instructions. Every connector is a single portable binary that self-describes over MCP, so it drops into any agent harness.
 
 ## 🚀 Get started
 
 ### 1. Install
 
-Install everything (all connectors + the `okf-mcp` server) into one directory:
+The quickest way — add the whole skill set to your agent through the [skills.sh](https://www.skills.sh) registry:
+
+```bash
+npx skills add xSAVIKx/okf-skills
+```
+
+…or build + install the binaries (all connectors + the `okf-mcp` server) from a clone:
 
 ```bash
 git clone https://github.com/xSAVIKx/okf-skills && cd okf-skills
-./skills.sh                       # builds + installs to ~/.local/bin
-# ./skills.sh /usr/local/bin      # …or a directory of your choice
+./install.sh                       # builds + installs to ~/.local/bin
+# ./install.sh /usr/local/bin      # …or a directory of your choice
 ```
 
 …or grab just what you need, no clone (Go 1.24+):
@@ -81,7 +87,7 @@ okf-skills/
 ├── LICENSE                        # Apache License 2.0
 ├── go.work                        # Go workspace mapping all sub-modules
 ├── Makefile                       # Build, test, install shortcuts
-├── skills.sh                      # Build and install all skills to a directory
+├── install.sh                     # Build and install all skills to a directory
 ├── skills.sh.json                 # skills.sh registry manifest (groups skills for discovery)
 ├── okf-go/                        # Shared Go library (OKF spec, YAML/MD serialization)
 │   ├── okf.go                     # Core types & helpers (Frontmatter, ConceptDoc)
@@ -208,14 +214,14 @@ go install github.com/xSAVIKx/okf-skills/okf-mcp@latest
 
 The binary lands in `$(go env GOPATH)/bin` (ensure it is on your `PATH`).
 
-To build and install **all** skills at once from a clone, use `skills.sh` (or `make install`):
+To build and install **all** skills at once from a clone, use `install.sh` (or `make install`):
 
 ```bash
 # Install to $HOME/.local/bin (default)
-./skills.sh
+./install.sh
 
 # Install to a custom directory
-./skills.sh /usr/local/bin
+./install.sh /usr/local/bin
 
 # Or via make
 make install
@@ -266,9 +272,9 @@ The root `skills.sh.json` manifest groups the skills for the [skills.sh](https:/
 
 ## 9. Producer Generator Skill (`okf-producer-generator`)
 
-Located in `skills/okf-producer-generator/`, this is an instructions-only skill (`SKILL.md`) — no binary. It is the "write a producer" on-ramp for the project: it ships a copy of the OKF spec (`okf-SPEC.md`), an `okf-go` library API reference (`okf-go-api.md`), and a step-by-step guide for authoring a new connector that matches the existing six rather than reverse-engineering them.
+Located in `skills/okf-producer-generator/`, this is an instructions-only skill (`SKILL.md`) — no binary. It is the "write a producer" on-ramp for the project: it ships a snapshot of the [official OKF spec](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) (`okf-SPEC.md`), an `okf-go` library API reference (`okf-go-api.md`), and a step-by-step guide for authoring a new connector that matches the existing six rather than reverse-engineering them.
 
-It covers the architectural principles (deterministic extraction with **no embedded LLM**, `okf-go` as the single source of OKF types, `schema` as the MCP-discovery contract), the `produce`/`ingest`/`schema` command surface, the secret-handling and `--sync` conventions, and the full registration checklist (`go.work`, `Makefile`, `skills.sh`, `skills.sh.json`, docs, and tests).
+It covers the architectural principles (deterministic extraction with **no embedded LLM**, `okf-go` as the single source of OKF types, `schema` as the MCP-discovery contract), the `produce`/`ingest`/`schema` command surface, the secret-handling and `--sync` conventions, and the full registration checklist (`go.work`, `Makefile`, `install.sh`, `skills.sh.json`, docs, and tests).
 
 Load it when extending the project to a source it doesn't yet cover — e.g. MongoDB, Redis, Kafka, a CSV directory, or an HTTP API.
 
