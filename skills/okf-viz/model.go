@@ -45,6 +45,16 @@ type Model struct {
 	concepts map[string]*okf.ConceptDoc
 }
 
+// Column is a parsed row of a concept's "# Columns" table, used by ER/schema mode
+// to draw each table with its columns. Populated only for tabular concepts.
+type Column struct {
+	Name     string `json:"name"`
+	Type     string `json:"type,omitempty"`
+	PK       bool   `json:"pk,omitempty"`
+	FK       bool   `json:"fk,omitempty"`
+	Nullable bool   `json:"nullable,omitempty"`
+}
+
 const rootNodeID = "__root__"
 
 // BuildModel walks an OKF bundle and builds the graph model (nodes + containment edges).

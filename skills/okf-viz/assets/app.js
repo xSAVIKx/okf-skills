@@ -17,16 +17,59 @@
   function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 
   // ---- cytoscape ----
-  var elements = [];
-  nodes.forEach(function (n) {
-    elements.push({ data: { id: n.id, label: n.title, kind: n.kind, ntype: n.type || "", degree: n.degree || 1 } });
-  });
-  edges.forEach(function (e) {
-    var rel = e.relation || "";
-    elements.push({ data: { id: e.source + "|" + e.target + "|" + e.kind + "|" + rel, source: e.source, target: e.target, kind: e.kind, relation: rel } });
-  });
   // relation -> CSS variable name for its edge color (see app.css).
   var relationVars = { "references": "--rel-references", "joins-with": "--rel-joins-with", "see-also": "--rel-see-also", "co-changes": "--rel-co-changes" };
+
+  // tabular[id] = column array for concepts that carry a parsed # Columns table.
+  var tabular = {};
+  nodes.forEach(function (n) {
+    var d = docs[n.id];
+    if (n.kind === "concept" && d && d.columns && d.columns.length) tabular[n.id] = d.columns;
+  });
+
+  function baseElements() {
+    var els = [];
+    nodes.forEach(function (n) {
+      els.push({ data: { id: n.id, label: n.title, kind: n.kind, ntype: n.type || "", degree: n.degree || 1 } });
+    });
+    edges.forEach(function (e) {
+      var rel = e.relation || "";
+      els.push({ data: { id: e.source + "|" + e.target + "|" + e.kind + "|" + rel, source: e.source, target: e.target, kind: e.kind, relation: rel } });
+    });
+    return els;
+  }
+
+  // erElements renders each tabular concept as a single column-listing node (a
+  // multi-line label: title + one line per column with PK/FK markers — a clean,
+  // dependency-free ER box) and re-types FK edges between two tables as crow's-foot
+  // `erfk` edges labeled with the FK column. Non-tabular nodes stay as normal nodes,
+  // so an okf-fs bundle is unaffected by the toggle.
+  function erElements() {
+    var els = [];
+    nodes.forEach(function (n) {
+      if (tabular[n.id]) {
+        var lines = [n.title];
+        tabular[n.id].forEach(function (c) {
+          var flags = (c.pk ? " 🔑" : "") + (c.fk ? " ↗" : "");
+          lines.push(c.name + (c.type ? " : " + c.type : "") + flags);
+        });
+        els.push({ data: { id: n.id, label: lines.join("\n"), kind: "er-table", ntype: n.type || "" } });
+      } else {
+        els.push({ data: { id: n.id, label: n.title, kind: n.kind, ntype: n.type || "", degree: n.degree || 1 } });
+      }
+    });
+    edges.forEach(function (e) {
+      var rel = e.relation || "";
+      if (e.kind === "crosslink" && rel === "references" && tabular[e.source] && tabular[e.target]) {
+        els.push({ data: { id: "erfk|" + e.source + "|" + e.target + "|" + (e.label || ""), source: e.source, target: e.target, kind: "crosslink", relation: "references", erfk: "1", label: e.label || "" } });
+      } else {
+        els.push({ data: { id: e.source + "|" + e.target + "|" + e.kind + "|" + rel, source: e.source, target: e.target, kind: e.kind, relation: rel } });
+      }
+    });
+    return els;
+  }
+
+  var erMode = false;
 
   var palette = ["#4f86c6","#3fae6b","#c6864f","#9b59b6","#e0556e","#1abc9c","#e08e3f","#7f8c8d"];
   var typeColors = {}; var ci = 0;
@@ -34,13 +77,25 @@
 
   var cy = window.cy = cytoscape({
     container: document.getElementById("graph"),
-    elements: elements,
+    elements: baseElements(),
     minZoom: 0.1, maxZoom: 4,
   });
   styleGraph(cy);
   cy.on("tap", "node", function (evt) { select(evt.target.id()); });
   runLayout(document.getElementById("layout").value);
   addLegend();
+
+  // ER mode: rebuild the graph as column-listing table nodes (no-op visually for
+  // bundles with no tabular concepts). dagre suits ER layouts.
+  var erCheckbox = document.getElementById("er-mode");
+  if (erCheckbox) {
+    erCheckbox.addEventListener("change", function () {
+      erMode = erCheckbox.checked;
+      cy.json({ elements: erMode ? erElements() : baseElements() });
+      styleGraph(cy);
+      runLayout(erMode ? "dagre" : document.getElementById("layout").value);
+    });
+  }
 
   function styleGraph(cy) {
     var structural = cssVar("--containment") || "#c2c8d2";
@@ -65,6 +120,19 @@
         "width": 2, "line-color": crosslink, "curve-style": "bezier",
         "target-arrow-color": crosslink, "target-arrow-shape": "triangle" } },
       { selector: "edge.hidden", style: { "display": "none" } },
+      // ER mode: column-listing table node (multi-line label) + crow's-foot FK edge.
+      { selector: 'node[kind="er-table"]', style: {
+        "shape": "round-rectangle", "label": "data(label)", "text-wrap": "wrap",
+        "text-valign": "center", "text-halign": "center", "text-justification": "left",
+        "font-size": 8, "padding": "8px", "width": "label", "height": "label",
+        "background-color": cssVar("--surface") || "#f6f7f9",
+        "border-width": 1, "border-color": cssVar("--border") || "#dfe3e8", "color": text } },
+      { selector: 'edge[erfk="1"]', style: {
+        "width": 2, "curve-style": "bezier", "label": "data(label)", "font-size": 7,
+        "color": cssVar("--muted") || "#5b6470", "text-rotation": "autorotate",
+        "line-color": cssVar("--rel-references") || crosslink,
+        "source-arrow-shape": "tee", "source-arrow-color": cssVar("--rel-references") || crosslink,
+        "target-arrow-shape": "triangle-tee", "target-arrow-color": cssVar("--rel-references") || crosslink } },
     ].concat(relationStyles()));
   }
 

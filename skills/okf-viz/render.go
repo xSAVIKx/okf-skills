@@ -8,6 +8,7 @@ import (
 	"strings"
 	"text/template"
 
+	okf "github.com/xSAVIKx/okf-skills/okf-go"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
 )
@@ -38,12 +39,32 @@ type Doc struct {
 	Tags        []string `json:"tags,omitempty"`
 	Timestamp   string   `json:"timestamp,omitempty"`
 	BodyHTML    string   `json:"bodyHtml"`
+	Columns     []Column `json:"columns,omitempty"`
 }
 
-// buildDocs renders every concept's body to HTML keyed by concept ID.
+// buildDocs renders every concept's body to HTML keyed by concept ID, and parses
+// the "# Columns" table into structured columns for ER mode (marking FK columns
+// from the references edges that originate at each concept).
 func buildDocs(m *Model) map[string]Doc {
+	// fkCols[srcID] = set of column names that are FK sources (from edges' Label).
+	fkCols := map[string]map[string]bool{}
+	for _, e := range m.Edges {
+		if e.Relation == "references" && e.Label != "" {
+			if fkCols[e.Source] == nil {
+				fkCols[e.Source] = map[string]bool{}
+			}
+			fkCols[e.Source][e.Label] = true
+		}
+	}
+
 	docs := map[string]Doc{}
 	for id, doc := range m.concepts {
+		cols := parseColumns(doc.Body)
+		for i := range cols {
+			if fkCols[id][cols[i].Name] {
+				cols[i].FK = true
+			}
+		}
 		docs[id] = Doc{
 			Title:       firstNonEmpty(doc.Frontmatter.Title, id),
 			Type:        doc.Frontmatter.Type,
@@ -52,9 +73,71 @@ func buildDocs(m *Model) map[string]Doc {
 			Tags:        doc.Frontmatter.Tags,
 			Timestamp:   doc.Frontmatter.Timestamp,
 			BodyHTML:    renderMarkdown(doc.Body),
+			Columns:     cols,
 		}
 	}
 	return docs
+}
+
+// parseColumns reads the "# Columns" GFM table (header: Name | Type | Primary Key
+// | Nullable | Default) into structured columns, preserving source order. Returns
+// nil when no recognizable Columns table is present (e.g. an okf-fs bundle), so ER
+// mode is a no-op for non-tabular concepts.
+func parseColumns(body string) []Column {
+	section, ok := okf.GetSectionAny(body, "Columns")
+	if !ok {
+		return nil
+	}
+	var cols []Column
+	var idx map[string]int
+	for _, line := range strings.Split(section, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "|") || !strings.HasSuffix(line, "|") {
+			continue
+		}
+		if strings.Contains(line, "---") {
+			continue
+		}
+		cells := splitTableRow(line)
+		if idx == nil {
+			// Header row: map column positions case-insensitively.
+			idx = map[string]int{}
+			for i, h := range cells {
+				idx[strings.ToLower(h)] = i
+			}
+			// A table without a Name column is not a recognizable schema table.
+			if _, has := idx["name"]; !has {
+				return nil
+			}
+			continue
+		}
+		get := func(key string) string {
+			if p, ok := idx[key]; ok && p < len(cells) {
+				return cells[p]
+			}
+			return ""
+		}
+		name := get("name")
+		if name == "" {
+			continue
+		}
+		cols = append(cols, Column{
+			Name:     name,
+			Type:     get("type"),
+			PK:       strings.EqualFold(get("primary key"), "yes"),
+			Nullable: strings.EqualFold(get("nullable"), "yes"),
+		})
+	}
+	return cols
+}
+
+// splitTableRow splits a "| a | b |" row into trimmed cells.
+func splitTableRow(row string) []string {
+	parts := strings.Split(strings.Trim(strings.TrimSpace(row), "|"), "|")
+	for i := range parts {
+		parts[i] = strings.TrimSpace(parts[i])
+	}
+	return parts
 }
 
 func firstNonEmpty(a, b string) string {
