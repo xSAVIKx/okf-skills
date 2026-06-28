@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-viz/v0.7.0...skills/okf-viz/v0.8.0) (2026-06-28)
+
+
+### Features
+
+* **okf-lint:** add deterministic bundle validator + shared okf-go scanner ([#36](https://github.com/xSAVIKx/okf-skills/issues/36)) ([fb7deb4](https://github.com/xSAVIKx/okf-skills/commit/fb7deb4c3fe00bfc69cf7eddca4c2f9f32041102))
+
 ## [0.7.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-viz/v0.6.0...skills/okf-viz/v0.7.0) (2026-06-28)
 
 
