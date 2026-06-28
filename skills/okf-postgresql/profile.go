@@ -45,11 +45,12 @@ func profileTable(db *sql.DB, schema, table string, cols []ColumnSpec) ([]okf.Co
 }
 
 // distinctValues returns up to limit distinct non-null values of a column as text.
-// The LIMIT lets PostgreSQL stop early on high-cardinality columns, so this stays
-// a cheap, bounded read rather than a full scan.
+// The LIMIT keeps this a cheap, bounded read on high-cardinality columns; the
+// ORDER BY makes WHICH values the LIMIT returns deterministic across runs, so the
+// derived semantic tag (and thus the concept body) is byte-stable.
 func distinctValues(db *sql.DB, schema, table, col string, limit int) ([]string, error) {
 	q := fmt.Sprintf(
-		"SELECT DISTINCT CAST(%s AS TEXT) FROM %s.%s WHERE %s IS NOT NULL LIMIT %d",
+		"SELECT DISTINCT CAST(%s AS TEXT) FROM %s.%s WHERE %s IS NOT NULL ORDER BY 1 LIMIT %d",
 		quoteIdent(col), quoteIdent(schema), quoteIdent(table), quoteIdent(col), limit)
 	rows, err := db.Query(q)
 	if err != nil {

@@ -50,6 +50,21 @@ func TestComputeCoverage(t *testing.T) {
 	if len(c.BrokenLinks) != 1 || !strings.Contains(c.BrokenLinks[0], "ghost") {
 		t.Fatalf("BrokenLinks = %v (want the /tables/ghost.md link)", c.BrokenLinks)
 	}
+	// Unenriched concepts ranked by degree (desc): customers (1) before orphan (0).
+	if len(c.EnrichFirst) != 2 || c.EnrichFirst[0] != "tables/customers" || c.EnrichFirst[1] != "tables/orphan" {
+		t.Fatalf("EnrichFirst = %v, want [tables/customers tables/orphan]", c.EnrichFirst)
+	}
+}
+
+func TestCommentStats_DataCellWithDashes(t *testing.T) {
+	// A data cell whose value is "---" must NOT be mistaken for the table divider
+	// and silently dropped from the column count.
+	body := "# Columns\n\n| Name | Type | Comment |\n| --- | --- | --- |\n" +
+		"| id | INT | the id |\n| status | TEXT | --- |\n"
+	total, commented := commentStats(body)
+	if total != 2 || commented != 2 {
+		t.Fatalf("commentStats = %d/%d, want 2/2 (the '---' comment row must be counted)", commented, total)
+	}
 }
 
 func TestComputeCoverage_Deterministic(t *testing.T) {

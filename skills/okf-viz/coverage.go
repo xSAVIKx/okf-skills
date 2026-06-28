@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -22,6 +23,7 @@ type Coverage struct {
 	BrokenLinks         []string `json:"broken_links"` // "source -> target", sorted
 	MissingType         []string `json:"missing_type"` // concept ids, sorted
 	Orphans             []string `json:"orphans"`      // degree-0 concept ids, sorted
+	EnrichFirst         []string `json:"enrich_first"` // placeholder concept ids, most-referenced (highest degree) first
 }
 
 // ComputeCoverage scans a built model (after addCrossLinks has set Degree) and
@@ -35,6 +37,15 @@ func ComputeCoverage(m *Model) Coverage {
 		degree[n.ID] = n.Degree
 	}
 
+	// candidate is an unenriched concept plus the signal we rank it by: a concept
+	// many others link to (or FK at) is read most, so it deserves a description
+	// first. This is the deterministic "enrich these first" list okf-enrich triages.
+	type candidate struct {
+		id     string
+		degree int
+	}
+	var candidates []candidate
+
 	for _, n := range m.Nodes {
 		if n.Kind != "concept" {
 			continue
@@ -42,6 +53,7 @@ func ComputeCoverage(m *Model) Coverage {
 		c.TotalConcepts++
 		if okf.IsPlaceholderDescription(n.Description) {
 			c.Placeholders++
+			candidates = append(candidates, candidate{id: n.ID, degree: n.Degree})
 		} else {
 			c.EnrichedConcepts++
 		}
@@ -70,6 +82,18 @@ func ComputeCoverage(m *Model) Coverage {
 	sort.Strings(c.BrokenLinks)
 	sort.Strings(c.MissingType)
 	sort.Strings(c.Orphans)
+
+	// Rank unenriched concepts: highest degree first, ties broken by id for a
+	// byte-stable order.
+	sort.Slice(candidates, func(i, j int) bool {
+		if candidates[i].degree != candidates[j].degree {
+			return candidates[i].degree > candidates[j].degree
+		}
+		return candidates[i].id < candidates[j].id
+	})
+	for _, cand := range candidates {
+		c.EnrichFirst = append(c.EnrichFirst, cand.id)
+	}
 	return c
 }
 
@@ -145,9 +169,25 @@ func splitRow(row string) []string {
 	return parts
 }
 
-// isDividerRow reports whether a table row is the |---|---| divider.
+// dividerCell matches a GFM table divider cell: dashes with optional alignment
+// colons (e.g. "---", ":--", "--:", ":-:").
+var dividerCell = regexp.MustCompile(`^:?-+:?$`)
+
+// isDividerRow reports whether a table row is the |---|---| divider — every cell
+// is a divider cell. A plain strings.Contains(row, "---") would also match a data
+// row whose cells legitimately contain "---" (a default value or comment),
+// silently dropping that column from the count.
 func isDividerRow(row string) bool {
-	return strings.Contains(row, "---")
+	cells := splitRow(row)
+	if len(cells) == 0 {
+		return false
+	}
+	for _, c := range cells {
+		if !dividerCell.MatchString(c) {
+			return false
+		}
+	}
+	return true
 }
 
 // Report renders a deterministic text summary suitable for CI logs.
@@ -164,6 +204,12 @@ func (c Coverage) Report() string {
 	fmt.Fprintf(&b, "- broken cross-links: %d\n", len(c.BrokenLinks))
 	for _, bl := range c.BrokenLinks {
 		fmt.Fprintf(&b, "    %s\n", bl)
+	}
+	if len(c.EnrichFirst) > 0 {
+		fmt.Fprintf(&b, "- enrich first (most-referenced placeholders): %d\n", len(c.EnrichFirst))
+		for _, id := range c.EnrichFirst {
+			fmt.Fprintf(&b, "    %s\n", id)
+		}
 	}
 	return b.String()
 }

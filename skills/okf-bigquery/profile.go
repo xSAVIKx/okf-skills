@@ -55,11 +55,12 @@ func profileTable(ctx context.Context, client *bigquery.Client, projectID, datas
 }
 
 // distinctValues returns up to limit distinct non-null values of a column as text.
-// The LIMIT lets BigQuery bound the scan on high-cardinality columns, so this stays
-// a cheap, bounded read rather than a full materialization.
+// The LIMIT bounds the scan on high-cardinality columns; the ORDER BY makes WHICH
+// values the LIMIT returns deterministic across runs, so the derived semantic tag
+// (and thus the concept body) is byte-stable.
 func distinctValues(ctx context.Context, client *bigquery.Client, ref, col string, limit int) ([]string, error) {
 	q := client.Query(fmt.Sprintf(
-		"SELECT DISTINCT CAST(`%[1]s` AS STRING) AS v FROM %[2]s WHERE `%[1]s` IS NOT NULL LIMIT %[3]d",
+		"SELECT DISTINCT CAST(`%[1]s` AS STRING) AS v FROM %[2]s WHERE `%[1]s` IS NOT NULL ORDER BY 1 LIMIT %[3]d",
 		col, ref, limit))
 	it, err := q.Read(ctx)
 	if err != nil {

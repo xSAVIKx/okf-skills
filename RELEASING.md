@@ -8,7 +8,7 @@ or publish a Go module by hand.
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| [`ci.yml`](.github/workflows/ci.yml) | PRs + pushes to `master` | gofmt, `go vet`, build every module, unit tests, and the Docker-backed integration suite. |
+| [`ci.yml`](.github/workflows/ci.yml) | PRs + pushes to `master` | gofmt, `go vet`, build every module, unit tests, and the Docker-backed integration suite. On the release PR it first runs [`scripts/ci-localize-okfgo.sh`](scripts/ci-localize-okfgo.sh) so the bumped-but-unpublished `okf-go` pin resolves (no-op elsewhere). |
 | [`pr-title.yml`](.github/workflows/pr-title.yml) | PR opened/edited | Lints the PR title against Conventional Commits (it becomes the squash-merge commit). |
 | [`release.yml`](.github/workflows/release.yml) | pushes to `master` | release-please maintains a release PR; merging it tags + releases each changed module, warms the Go proxy, then `verify-install` confirms every released module installs standalone. |
 
@@ -110,15 +110,22 @@ then commits the `go.mod`/`go.sum` changes back to the release PR. It is
 idempotent (pins already at `vNEW` → no commit). On merge, the tagged commit is
 internally consistent, and `verify-install` confirms it against the real tags.
 
-> **Why the release PR needs its own verification.** Its commits are authored by
-> `GITHUB_TOKEN`, which by design does not trigger `ci.yml` — and even if it did,
-> `ci.yml` builds *inside* `go.work` and so cannot see a bad pin. Step 5 above is
-> therefore the real pre-merge check: it runs in the `sync-pins` job (part of the
-> `release.yml` run that updates the PR) and verifies the exact synced state
-> standalone. `verify-install` is the post-merge backstop against the published
-> tags. (If you also want the full `ci.yml` suite on the release PR, push the
-> `sync-pins` commit with a PAT instead of `GITHUB_TOKEN` so it triggers a
-> `pull_request` run.)
+> **Why the release PR needs its own verification.** Step 5 above is the real
+> pre-merge check on the *standalone* (no-`go.work`) build: it runs in the
+> `sync-pins` job and verifies the exact synced state, and `verify-install` is
+> the post-merge backstop against the published tags. The full `ci.yml` suite
+> (gofmt, vet, unit + integration tests) *does* run on the release PR — the
+> `sync-pins` push triggers a `pull_request` event — but `ci.yml` builds *inside*
+> `go.work`, where the bumped `require okf-go vNEW` would otherwise fail to
+> resolve because `okf-go/vNEW` is not tagged until merge. Even in workspace mode
+> Go still selects `okf-go@vNEW` during module-graph resolution and reads its
+> `go.mod` from the tag. So each `ci.yml` job first runs
+> [`scripts/ci-localize-okfgo.sh`](scripts/ci-localize-okfgo.sh), which (only when
+> `okf-go/vNEW` is unpublished) creates that tag locally at `HEAD` and points
+> `GOPRIVATE` + `git insteadOf` at this checkout — the same resolution
+> `sync-intra-deps.sh` uses. The build then proceeds in `go.work` as normal. On
+> any other branch the pinned version is already published, so the script is a
+> no-op.
 
 > Validated on Linux via [`scripts/dryrun-pin-sync.sh`](scripts/dryrun-pin-sync.sh)
 > (run in a `golang` container): all consumers re-pin, `go.sum` refreshes, and
@@ -131,6 +138,32 @@ branch (manual), or release `okf-go` first and bump consumers the next cycle
 > Do **not** bump `require okf-go vNEW` in a *feature* PR: `vNEW` does not exist
 > until the release PR merges, so the pin would reference an unpublished version.
 > The bump belongs in the release PR, which `sync-pins` handles.
+
+## Skill versions (`SKILL.md`, `--version`, manifest)
+
+Each skill's version lives in **one place: `SKILL.md` → `metadata.version`**. Everything
+else derives from it:
+
+- **Releases keep it current.** `sync-intra-deps.sh` (the `sync-pins` job) rewrites
+  every component's `SKILL.md` version to its `.release-please-manifest.json` value on
+  the release PR — alongside the `okf-go` pin sync. No annotations needed.
+- **Binaries carry it.** [`install.sh`](install.sh) reads each `SKILL.md` version and
+  injects it via `-ldflags "-X main.version=…"`, so `okf-sqlite --version` (also
+  `version` / `-v`) reports it; okf-mcp reports it as its MCP server version. Plain
+  `go build` yields `dev`.
+- **Installs are traceable.** `install.sh` writes `name<TAB>version<TAB>changelog` for
+  every installed skill into `okf-skills-manifest.txt`.
+
+Two versioning tracks:
+
+- **Go skills** (7 connectors + `okf-mcp`) move in **lockstep** with the Go modules
+  (same release version).
+- **Instruction-only skills** (`okf-enrich`, `okf-reader`, `okf-producer-generator`)
+  have no Go module. They are release-please **`simple`** packages that version
+  **independently** — a `feat(okf-enrich): …` / `fix(okf-reader): …` commit scoped to
+  the skill's directory bumps it and updates its own `CHANGELOG.md`. They are excluded
+  from the lockstep `linked-versions` group, and `verify-install` skips them (nothing
+  to `go install`).
 
 ## One-time repository setup
 
