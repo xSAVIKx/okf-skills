@@ -8,6 +8,7 @@ use (
 	./skills/okf-fs
 	./skills/okf-git
 	./skills/okf-lint
+	./skills/okf-mongodb
 	./skills/okf-mysql
 	./skills/okf-openapi
 	./skills/okf-postgresql

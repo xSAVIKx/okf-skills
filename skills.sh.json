@@ -10,7 +10,8 @@
         "okf-mysql",
         "okf-postgresql",
         "okf-bigquery",
-        "okf-csv"
+        "okf-csv",
+        "okf-mongodb"
       ]
     },
     {

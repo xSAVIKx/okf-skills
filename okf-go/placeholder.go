@@ -16,6 +16,7 @@ var placeholderPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`^MySQL (table|view) .+$`),
 	regexp.MustCompile(`^PostgreSQL (table|view) .+$`),
 	regexp.MustCompile(`^BigQuery (table|view) .+$`),
+	regexp.MustCompile(`^MongoDB collection .+$`),
 	regexp.MustCompile(`^File .+$`),
 	regexp.MustCompile(`^Directory .+$`),
 	regexp.MustCompile(`^Git file .+$`),
