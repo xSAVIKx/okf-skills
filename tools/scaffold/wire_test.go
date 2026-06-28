@@ -107,6 +107,37 @@ func TestWireReadme(t *testing.T) {
 	}
 }
 
+func TestWireReleasePleaseConfig(t *testing.T) {
+	in := "{\n  \"packages\": {\n    \"okf-go\": { \"component\": \"okf-go\" },\n    \"skills/okf-sqlite\": { \"component\": \"skills/okf-sqlite\" },\n    \"skills/okf-git\": { \"component\": \"skills/okf-git\" }\n  }\n}\n"
+	out, err := wireReleasePleaseConfig(in, "okf-csv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, `"skills/okf-csv": { "component": "skills/okf-csv" },`) {
+		t.Fatalf("package not added:\n%s", out)
+	}
+	if again, _ := wireReleasePleaseConfig(out, "okf-csv"); again != out {
+		t.Fatal("not idempotent")
+	}
+	if _, err := wireReleasePleaseConfig("{}", "okf-csv"); err == nil {
+		t.Fatal("expected error when no skills package entry")
+	}
+}
+
+func TestWireReleasePleaseManifest(t *testing.T) {
+	in := "{\n  \"okf-go\": \"0.7.0\",\n  \"skills/okf-sqlite\": \"0.7.0\",\n  \"skills/okf-git\": \"0.7.0\"\n}\n"
+	out, err := wireReleasePleaseManifest(in, "okf-csv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, `"skills/okf-csv": "0.1.0",`) {
+		t.Fatalf("manifest entry not added:\n%s", out)
+	}
+	if again, _ := wireReleasePleaseManifest(out, "okf-csv"); again != out {
+		t.Fatal("not idempotent")
+	}
+}
+
 func TestWireAgents(t *testing.T) {
 	in := "│   ├── okf-sqlite/                # SQLite connector\n│   └── okf-viz/                   # Visualizer\n└── tests/\n"
 	out, err := wireAgents(in, "okf-csv", "CSV File")

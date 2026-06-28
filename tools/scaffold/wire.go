@@ -43,6 +43,8 @@ func planWiring(root, skill, typ, desc, group string) (*wiringPlan, error) {
 		{"skills.sh.json", func(c string) (string, error) { return wireSkillsJSON(c, skill, group) }},
 		{"README.md", func(c string) (string, error) { return wireReadme(c, skill, typ, group) }},
 		{"AGENTS.md", func(c string) (string, error) { return wireAgents(c, skill, typ) }},
+		{"release-please-config.json", func(c string) (string, error) { return wireReleasePleaseConfig(c, skill) }},
+		{".release-please-manifest.json", func(c string) (string, error) { return wireReleasePleaseManifest(c, skill) }},
 	}
 	var plan wiringPlan
 	for _, j := range jobs {
@@ -208,6 +210,41 @@ func wireAgents(content, skill, typ string) (string, error) {
 		return "", fmt.Errorf("skills/ tree entries not found in §1")
 	}
 	line := "\n│   ├── " + skill + "/                # " + typ + " connector"
+	return content[:loc[1]] + line + content[loc[1]:], nil
+}
+
+var reConfigPkg = regexp.MustCompile(`(?m)^(\s*)"skills/okf-[a-z0-9-]+": \{.*$`)
+
+// wireReleasePleaseConfig registers the skill as a release-please package, inserting
+// after the first existing skills/* package entry (which always carries a trailing
+// comma, keeping the JSON valid).
+func wireReleasePleaseConfig(content, skill string) (string, error) {
+	if strings.Contains(content, `"skills/`+skill+`":`) {
+		return content, nil
+	}
+	loc := reConfigPkg.FindStringSubmatchIndex(content)
+	if loc == nil {
+		return "", fmt.Errorf("no skills/* package entry found")
+	}
+	indent := content[loc[2]:loc[3]]
+	line := "\n" + indent + `"skills/` + skill + `": { "component": "skills/` + skill + `" },`
+	return content[:loc[1]] + line + content[loc[1]:], nil
+}
+
+var reManifestEntry = regexp.MustCompile(`(?m)^(\s*)"skills/okf-[a-z0-9-]+": ".*",$`)
+
+// wireReleasePleaseManifest adds the skill to the release-please manifest at 0.1.0,
+// inserting after the first skills/* entry (which carries a trailing comma).
+func wireReleasePleaseManifest(content, skill string) (string, error) {
+	if strings.Contains(content, `"skills/`+skill+`":`) {
+		return content, nil
+	}
+	loc := reManifestEntry.FindStringSubmatchIndex(content)
+	if loc == nil {
+		return "", fmt.Errorf("no skills/* manifest entry with a trailing comma found")
+	}
+	indent := content[loc[2]:loc[3]]
+	line := "\n" + indent + `"skills/` + skill + `": "0.1.0",`
 	return content[:loc[1]] + line + content[loc[1]:], nil
 }
 

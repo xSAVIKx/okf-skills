@@ -118,13 +118,16 @@ func run(name, typ, shape, subdir, desc string) error {
 // report prints the next-steps summary.
 func report(skill, refSlug, shape string, todos []string) {
 	fmt.Printf("✓ scaffolded %s (from %s, shape=%s)\n\n", skill, refSlug, shape)
-	fmt.Println("Wired into: go.work, Makefile, install.sh, skills.sh.json, README.md, AGENTS.md")
+	fmt.Println("Wired into: go.work, Makefile, install.sh, skills.sh.json, README.md, AGENTS.md,")
+	fmt.Println("            release-please-config.json, .release-please-manifest.json (0.1.0)")
 	fmt.Println("\nNext steps:")
 	fmt.Println("  1. make build                    # the skeleton already builds green")
 	fmt.Println("  2. replace the source logic at the TODO(okf-scaffold) markers:")
 	for _, t := range todos {
 		fmt.Printf("       %s\n", t)
 	}
-	fmt.Printf("  3. cd skills/%s && go mod tidy   # drop the reference's now-unused source driver\n", skill)
-	fmt.Printf("  4. skills-ref validate skills/%s\n", skill)
+	fmt.Printf("  3. review the copied .go files under skills/%s/ and delete any that\n", skill)
+	fmt.Printf("     don't apply to this source (e.g. a reference's profile/relationships code)\n")
+	fmt.Printf("  4. cd skills/%s && go mod tidy   # drop the reference's now-unused source driver\n", skill)
+	fmt.Printf("  5. skills-ref validate skills/%s\n", skill)
 }
