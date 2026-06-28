@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -32,14 +33,28 @@ func renderMarkdown(body string) string {
 
 // Doc is the per-concept payload embedded for the reader pane.
 type Doc struct {
-	Title       string   `json:"title"`
-	Type        string   `json:"type"`
-	Description string   `json:"description"`
-	Resource    string   `json:"resource,omitempty"`
-	Tags        []string `json:"tags,omitempty"`
-	Timestamp   string   `json:"timestamp,omitempty"`
-	BodyHTML    string   `json:"bodyHtml"`
-	Columns     []Column `json:"columns,omitempty"`
+	Title       string       `json:"title"`
+	Type        string       `json:"type"`
+	Description string       `json:"description"`
+	Resource    string       `json:"resource,omitempty"`
+	Tags        []string     `json:"tags,omitempty"`
+	Timestamp   string       `json:"timestamp,omitempty"`
+	BodyHTML    string       `json:"bodyHtml"`
+	Columns     []Column     `json:"columns,omitempty"`
+	Profile     []ProfileRow `json:"profile,omitempty"`
+}
+
+// ProfileRow is a parsed row of a concept's "## Data Profile" section, so the
+// reader can chart it (null-ratio bars, distinct counts) instead of showing a raw
+// table. Populated only when a Data Profile section is present.
+type ProfileRow struct {
+	Column   string `json:"column"`
+	NonNull  int64  `json:"nonNull"`
+	Null     int64  `json:"null"`
+	Distinct int64  `json:"distinct"`
+	Min      string `json:"min,omitempty"`
+	Max      string `json:"max,omitempty"`
+	Semantic string `json:"semantic,omitempty"`
 }
 
 // buildDocs renders every concept's body to HTML keyed by concept ID, and parses
@@ -74,9 +89,63 @@ func buildDocs(m *Model) map[string]Doc {
 			Timestamp:   doc.Frontmatter.Timestamp,
 			BodyHTML:    renderMarkdown(doc.Body),
 			Columns:     cols,
+			Profile:     parseProfile(doc.Body),
 		}
 	}
 	return docs
+}
+
+// parseProfile reads the "## Data Profile" table into structured rows for the
+// reader's inline charts. Returns nil when no profile section is present, so the
+// reader shows the body unchanged.
+func parseProfile(body string) []ProfileRow {
+	section, ok := okf.GetSection(body, "Data Profile")
+	if !ok {
+		return nil
+	}
+	var rows []ProfileRow
+	var idx map[string]int
+	atoi := func(s string) int64 {
+		n, _ := strconv.ParseInt(strings.TrimSpace(s), 10, 64)
+		return n
+	}
+	for _, line := range strings.Split(section, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "|") || !strings.HasSuffix(line, "|") || strings.Contains(line, "---") {
+			continue
+		}
+		cells := splitTableRow(line)
+		if idx == nil {
+			idx = map[string]int{}
+			for i, h := range cells {
+				idx[strings.ToLower(h)] = i
+			}
+			if _, has := idx["column"]; !has {
+				return nil
+			}
+			continue
+		}
+		get := func(key string) string {
+			if p, ok := idx[key]; ok && p < len(cells) {
+				return cells[p]
+			}
+			return ""
+		}
+		name := get("column")
+		if name == "" {
+			continue
+		}
+		rows = append(rows, ProfileRow{
+			Column:   name,
+			NonNull:  atoi(get("non-null")),
+			Null:     atoi(get("null")),
+			Distinct: atoi(get("distinct")),
+			Min:      get("min"),
+			Max:      get("max"),
+			Semantic: get("semantic"),
+		})
+	}
+	return rows
 }
 
 // parseColumns reads the "# Columns" GFM table (header: Name | Type | Primary Key
@@ -164,28 +233,77 @@ func htmlEscape(s string) string {
 	return r.String()
 }
 
+// DefaultLazyThreshold is the concept count above which Emit defaults to lazy
+// payloads (graph + frontmatter inlined, bodies written as sibling fragments)
+// instead of inlining every rendered body. Below it, the single self-contained
+// file is the default.
+const DefaultLazyThreshold = 150
+
 // EmitOptions controls page generation.
 type EmitOptions struct {
-	Title   string
-	Theme   string // light|dark|system
-	Offline bool
-	Lang    string
+	Title     string
+	Theme     string // light|dark|system
+	Offline   bool
+	Lang      string
+	InlineAll bool // force full single-file output regardless of size
+	Threshold int  // concept-count lazy threshold (0 = DefaultLazyThreshold)
 }
 
 type pageData struct {
 	Title, CSS, AppJS, LibTag, DataJSON, InitTheme, Lang string
 }
 
-// Emit renders the full self-contained HTML for a model.
-func Emit(m *Model, opt EmitOptions) (string, error) {
+// Emit renders the self-contained HTML for a model and, in lazy mode, the set of
+// per-concept body fragments to write next to it (relative path -> HTML content).
+// In inline mode (small bundles or --inline-all) fragments is nil and the output
+// is byte-identical to the historical single-file behavior.
+func Emit(m *Model, opt EmitOptions) (string, map[string]string, error) {
 	css, _ := assetFS.ReadFile("assets/app.css")
 	appjs, _ := assetFS.ReadFile("assets/app.js")
 	tmplBytes, _ := assetFS.ReadFile("assets/page.tmpl.html")
 
-	payload := map[string]any{"nodes": m.Nodes, "edges": m.Edges, "docs": buildDocs(m)}
+	threshold := opt.Threshold
+	if threshold <= 0 {
+		threshold = DefaultLazyThreshold
+	}
+	lazy := !opt.InlineAll && len(m.concepts) > threshold
+
+	// Stamp per-concept enrichment state for the coverage overlay (deterministic,
+	// no LLM — reuses the placeholder catalog).
+	for i := range m.Nodes {
+		if m.Nodes[i].Kind != "concept" {
+			continue
+		}
+		if okf.IsPlaceholderDescription(m.Nodes[i].Description) {
+			m.Nodes[i].Coverage = "placeholder"
+		} else {
+			m.Nodes[i].Coverage = "enriched"
+		}
+	}
+
+	var payload map[string]any
+	var fragments map[string]string
+	docs := buildDocs(m)
+	if lazy {
+		// Inline graph + lightweight docs (frontmatter + columns, no body); write
+		// bodies as deterministic sibling fragments referenced by a manifest.
+		manifest := map[string]string{}
+		fragments = map[string]string{}
+		light := map[string]Doc{}
+		for id, d := range docs {
+			frag := "_okf/" + id + ".html"
+			fragments[frag] = d.BodyHTML
+			manifest[id] = frag
+			d.BodyHTML = "" // dropped from the inline payload
+			light[id] = d
+		}
+		payload = map[string]any{"nodes": m.Nodes, "edges": m.Edges, "docs": light, "manifest": manifest, "lazy": true}
+	} else {
+		payload = map[string]any{"nodes": m.Nodes, "edges": m.Edges, "docs": docs}
+	}
 	dataJSON, err := json.Marshal(payload)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	theme := opt.Theme
 	if theme != "light" && theme != "dark" {
@@ -197,18 +315,18 @@ func Emit(m *Model, opt EmitOptions) (string, error) {
 	}
 	libTag, err := libraryTag(opt.Offline)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	tmpl, err := template.New("page").Parse(string(tmplBytes))
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	var buf strings.Builder
 	err = tmpl.Execute(&buf, pageData{
 		Title: opt.Title, CSS: string(css), AppJS: string(appjs),
 		LibTag: libTag, DataJSON: string(dataJSON), InitTheme: theme, Lang: lang,
 	})
-	return buf.String(), err
+	return buf.String(), fragments, err
 }
 
 // vendorOrder lists the pinned vendor JS files in dependency-first load order:

@@ -39,6 +39,11 @@ cd skills/okf-viz && go build -o okf-viz .
 - `--theme`: initial theme (default `system`, follows the OS); switchable in-page.
 - `--lang`: UI-chrome language (default `en`).
 - `--title`: page title (default derived from the bundle).
+- `--inline-all`: always inline every concept body into the single file, regardless of size (the archival/shareable form).
+- `--threshold`: concept count above which bodies are written lazily as sibling `_okf/<id>.html` fragments instead of inlined (default 150). Small bundles stay a single self-contained file; large bundles load a concept's body on selection. Re-running produces byte-identical `index.html` and fragments. In-page, **ER** toggles the entity-relationship view and **Cluster** collapses directories into tappable super-nodes for large graphs.
+- `--diff <bundle>`: highlight what changed versus another bundle revision — added / removed / changed concepts and edges, using each concept's `content_hash` (body-comparison fallback when a hash is absent). Deterministic and byte-stable.
+- `--bundles <a,b,…>`: federate additional bundles into one view; each bundle's node IDs are namespaced so identical IDs across bundles stay distinct. Single-bundle output is unchanged.
+- In-page, **Coverage** recolors nodes by enrichment state, and **PNG** / **JSON** export the graph and the visible subgraph. The three panes carry ARIA roles and the graph is keyboard-traversable (focus it, then arrow between neighbors, Enter to select).
 
 ### schema
 

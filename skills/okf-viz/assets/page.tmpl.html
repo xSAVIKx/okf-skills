@@ -20,20 +20,26 @@
     <option value="circle">circle</option>
     <option value="grid">grid</option>
   </select>
+  <label id="hops-label" title="Spotlight neighborhood depth (hops)">hops <input type="number" id="hops" min="0" max="6" value="1" style="width:3.2em"></label>
+  <button id="trace" title="Trace shortest path: click Trace, then two nodes">Trace</button>
   <label id="er-toggle-label" title="Entity-relationship mode"><input type="checkbox" id="er-mode"> ER</label>
+  <label id="cluster-toggle-label" title="Collapse directories into super-nodes (tap a directory to expand)"><input type="checkbox" id="cluster"> Cluster</label>
+  <label id="coverage-toggle-label" title="Color nodes by enrichment state"><input type="checkbox" id="coverage-overlay"> Coverage</label>
   <select id="theme" aria-label="Theme">
     <option value="system">System</option>
     <option value="light">Light</option>
     <option value="dark">Dark</option>
   </select>
+  <button id="export-png" title="Export the graph as a PNG">PNG</button>
+  <button id="export-json" title="Export the visible subgraph as JSON">JSON</button>
   <button id="toggle-nav" title="Toggle navigator">☰</button>
   <button id="toggle-graph" title="Toggle graph">◉</button>
   <button id="toggle-reader" title="Toggle reader">▤</button>
 </header>
 <main id="panes">
-  <aside id="nav"><div id="filters"></div><ul id="tree"></ul></aside>
-  <section id="graph"></section>
-  <article id="reader"><p class="empty">Select a concept.</p></article>
+  <aside id="nav" role="navigation" aria-label="Concept navigator"><div id="filters" role="group" aria-label="Type filters"></div><ul id="tree" role="listbox" aria-label="Concepts"></ul></aside>
+  <section id="graph" role="application" aria-label="Concept graph" tabindex="0"></section>
+  <article id="reader" role="main" aria-label="Concept reader"><p class="empty">Select a concept.</p></article>
 </main>
 <script type="application/json" id="okf-data">{{.DataJSON}}</script>
 {{.LibTag}}

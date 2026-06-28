@@ -29,6 +29,49 @@ func TestParseColumns(t *testing.T) {
 	}
 }
 
+func TestParseProfile(t *testing.T) {
+	body := "# Columns\n\n| Name | Type |\n| --- | --- |\n| id | INT |\n\n## Data Profile\n\n| Column | Non-Null | Null | Distinct | Min | Max | Semantic |\n| --- | --- | --- | --- | --- | --- | --- |\n| id | 10 | 2 | 8 | 1 | 99 | fk-ish |\n"
+	rows := parseProfile(body)
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 profile row, got %d", len(rows))
+	}
+	r := rows[0]
+	if r.Column != "id" || r.NonNull != 10 || r.Null != 2 || r.Distinct != 8 || r.Min != "1" || r.Max != "99" || r.Semantic != "fk-ish" {
+		t.Fatalf("unexpected profile row: %+v", r)
+	}
+}
+
+func TestParseProfile_Absent(t *testing.T) {
+	if rows := parseProfile("# Columns\n\n| Name |\n| --- |\n| id |\n"); rows != nil {
+		t.Fatalf("expected nil profile when section absent, got %+v", rows)
+	}
+}
+
+func TestEmit_StampsCoverage(t *testing.T) {
+	m := &Model{RootID: rootNodeID, concepts: map[string]*okf.ConceptDoc{}}
+	m.Nodes = []Node{
+		{ID: "a", Kind: "concept", Description: "One row per order."},     // enriched
+		{ID: "b", Kind: "concept", Description: "SQLite table customers"}, // placeholder
+		{ID: rootNodeID, Kind: "root"},
+	}
+	m.concepts["a"] = &okf.ConceptDoc{}
+	m.concepts["b"] = &okf.ConceptDoc{}
+	html, _, err := Emit(m, EmitOptions{Title: "t"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(html, `"coverage":"enriched"`) || !strings.Contains(html, `"coverage":"placeholder"`) {
+		t.Errorf("coverage state not stamped on nodes:\n%s", html[:min(len(html), 600)])
+	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func TestParseColumns_NonTabular(t *testing.T) {
 	if cols := parseColumns("# File: x\n\n## Metadata\n\n- Size: 1\n"); cols != nil {
 		t.Fatalf("non-tabular concept must yield nil columns, got %+v", cols)
@@ -68,10 +111,52 @@ func TestBuildDocs(t *testing.T) {
 	}
 }
 
+func TestEmit_LazyAboveThreshold(t *testing.T) {
+	m, _ := BuildModel("testdata/linked")
+	addCrossLinks(m)
+	html, frags, err := Emit(m, EmitOptions{Title: "Shop", Threshold: 1}) // 2 concepts > 1
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(frags) == 0 {
+		t.Fatal("lazy mode must emit body fragments")
+	}
+	if !strings.Contains(html, `"lazy":true`) || !strings.Contains(html, `"manifest"`) {
+		t.Errorf("lazy payload must carry lazy flag + manifest")
+	}
+	if strings.Contains(html, "FK to") {
+		t.Errorf("lazy mode must not inline bodies into index.html")
+	}
+	var bodyInFragment bool
+	for _, c := range frags {
+		if strings.Contains(c, "FK to") {
+			bodyInFragment = true
+		}
+	}
+	if !bodyInFragment {
+		t.Errorf("a fragment must contain the rendered body")
+	}
+}
+
+func TestEmit_InlineAllForcesSingleFile(t *testing.T) {
+	m, _ := BuildModel("testdata/linked")
+	addCrossLinks(m)
+	html, frags, err := Emit(m, EmitOptions{Title: "Shop", Threshold: 1, InlineAll: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(frags) != 0 {
+		t.Errorf("--inline-all must not produce fragments")
+	}
+	if !strings.Contains(html, "FK to") {
+		t.Errorf("--inline-all must inline bodies")
+	}
+}
+
 func TestEmit_DefaultUsesCDNWithIntegrity(t *testing.T) {
 	m, _ := BuildModel("testdata/linked")
 	addCrossLinks(m)
-	html, err := Emit(m, EmitOptions{Title: "Shop", Theme: "system", Offline: false})
+	html, _, err := Emit(m, EmitOptions{Title: "Shop", Theme: "system", Offline: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +173,7 @@ func TestEmit_DefaultUsesCDNWithIntegrity(t *testing.T) {
 func TestEmit_OfflineInlinesLib(t *testing.T) {
 	m, _ := BuildModel("testdata/linked")
 	addCrossLinks(m)
-	html, err := Emit(m, EmitOptions{Title: "Shop", Theme: "system", Offline: true})
+	html, _, err := Emit(m, EmitOptions{Title: "Shop", Theme: "system", Offline: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +185,7 @@ func TestEmit_OfflineInlinesLib(t *testing.T) {
 func TestRenderOfflineHasNoNetwork(t *testing.T) {
 	m, _ := BuildModel("testdata/linked")
 	addCrossLinks(m)
-	html, err := Emit(m, EmitOptions{Title: "Shop", Theme: "dark", Offline: true})
+	html, _, err := Emit(m, EmitOptions{Title: "Shop", Theme: "dark", Offline: true})
 	if err != nil {
 		t.Fatal(err)
 	}

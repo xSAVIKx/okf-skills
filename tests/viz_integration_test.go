@@ -36,6 +36,13 @@ func TestOkfVizTypedEdges(t *testing.T) {
 	if !strings.Contains(string(html), "\"relation\":\"references\"") {
 		t.Errorf("index.html missing typed FK relation in inlined JSON")
 	}
+	// navigation controls + permalink/fuzzy/trace hooks are present.
+	s := string(html)
+	for _, want := range []string{`id="hops"`, `id="trace"`, "function fuzzyScore", "function writeHash", "dijkstra"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("index.html missing navigation hook %q", want)
+		}
+	}
 }
 
 func TestOkfVizERColumns(t *testing.T) {
@@ -72,6 +79,113 @@ func TestOkfVizERColumns(t *testing.T) {
 	}
 	if !strings.Contains(s, "er-mode") {
 		t.Errorf("index.html missing the ER mode control")
+	}
+	// data-aware reader: structured profile payload + coverage state + controls.
+	if !strings.Contains(s, "\"coverage\":\"enriched\"") {
+		t.Errorf("index.html missing per-node coverage state")
+	}
+	if !strings.Contains(s, "coverage-overlay") {
+		t.Errorf("index.html missing the coverage overlay control")
+	}
+}
+
+func TestOkfVizLazyScale(t *testing.T) {
+	bin := getBinaryPath("okf-viz")
+	if _, err := os.Stat(bin); err != nil {
+		t.Skipf("okf-viz binary not built: %v", err)
+	}
+	bundle := t.TempDir()
+	write := func(p, body string) {
+		if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(filepath.Join(bundle, "index.md"), "---\nokf_version: \"0.1\"\n---\n# Demo\n")
+	write(filepath.Join(bundle, "tables", "a.md"), "---\ntype: SQLite Table\ntitle: a\n---\n# Columns\n\nbody of A here.\n")
+	write(filepath.Join(bundle, "tables", "b.md"), "---\ntype: SQLite Table\ntitle: b\n---\n# Columns\n\nbody of B here.\n")
+
+	out := filepath.Join(bundle, "index.html")
+	// threshold 1 forces lazy with 2 concepts.
+	if err := exec.Command(bin, "render", "--bundle", bundle, "--out", out, "--threshold", "1").Run(); err != nil {
+		t.Fatalf("render failed: %v", err)
+	}
+	html, _ := os.ReadFile(out)
+	if !strings.Contains(string(html), "\"lazy\":true") {
+		t.Errorf("expected lazy payload above threshold")
+	}
+	if strings.Contains(string(html), "body of A here") {
+		t.Errorf("bodies must not be inlined in lazy mode")
+	}
+	// fragment written next to index.html and contains the body
+	frag := filepath.Join(bundle, "_okf", "tables", "a.html")
+	fb, err := os.ReadFile(frag)
+	if err != nil || !strings.Contains(string(fb), "body of A here") {
+		t.Errorf("body fragment missing or wrong: %v", err)
+	}
+
+	// --inline-all forces single file (no fragments) even above threshold.
+	out2 := filepath.Join(bundle, "full.html")
+	if err := exec.Command(bin, "render", "--bundle", bundle, "--out", out2, "--threshold", "1", "--inline-all").Run(); err != nil {
+		t.Fatalf("render --inline-all failed: %v", err)
+	}
+	h2, _ := os.ReadFile(out2)
+	if !strings.Contains(string(h2), "body of A here") {
+		t.Errorf("--inline-all must inline bodies")
+	}
+}
+
+func TestOkfVizDiffAndFederation(t *testing.T) {
+	bin := getBinaryPath("okf-viz")
+	if _, err := os.Stat(bin); err != nil {
+		t.Skipf("okf-viz binary not built: %v", err)
+	}
+	mk := func(dir string, files map[string]string) {
+		for rel, body := range files {
+			p := filepath.Join(dir, rel)
+			if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(p, []byte(body), 0644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	idx := "---\nokf_version: \"0.1\"\n---\n# Demo\n"
+	older := t.TempDir()
+	mk(older, map[string]string{
+		"index.md":         idx,
+		"tables/orders.md": "---\ntype: SQLite Table\ntitle: orders\ncontent_hash: AAA\n---\n# Columns\n\n| id |\n",
+		"tables/legacy.md": "---\ntype: SQLite Table\ntitle: legacy\ncontent_hash: OLD\n---\n# Columns\n\n| id |\n",
+	})
+	newer := t.TempDir()
+	mk(newer, map[string]string{
+		"index.md":         idx,
+		"tables/orders.md": "---\ntype: SQLite Table\ntitle: orders\ncontent_hash: BBB\n---\n# Columns\n\n| id |\n| email |\n", // changed hash
+		"tables/fresh.md":  "---\ntype: SQLite Table\ntitle: fresh\ncontent_hash: NEW\n---\n# Columns\n\n| id |\n",             // added
+	})
+
+	out := filepath.Join(newer, "index.html")
+	if err := exec.Command(bin, "render", "--bundle", newer, "--out", out, "--diff", older).Run(); err != nil {
+		t.Fatalf("render --diff failed: %v", err)
+	}
+	s, _ := os.ReadFile(out)
+	for _, want := range []string{"\"diff\":\"changed\"", "\"diff\":\"added\"", "\"diff\":\"removed\""} {
+		if !strings.Contains(string(s), want) {
+			t.Errorf("diff output missing %q", want)
+		}
+	}
+
+	// Federation: namespaced IDs from two bundles.
+	out2 := filepath.Join(newer, "fed.html")
+	if err := exec.Command(bin, "render", "--bundle", newer, "--out", out2, "--bundles", older).Run(); err != nil {
+		t.Fatalf("render --bundles failed: %v", err)
+	}
+	f, _ := os.ReadFile(out2)
+	if !strings.Contains(string(f), "\"bundle\":") {
+		t.Errorf("federation output missing per-node bundle key")
 	}
 }
 
