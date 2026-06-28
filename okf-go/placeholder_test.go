@@ -19,6 +19,8 @@ func TestIsPlaceholderDescription(t *testing.T) {
 		"CSV file orders",
 		"API endpoint GET /orders",
 		"API schema Order",
+		"GraphQL type Order",
+		"GraphQL query orders",
 		"No description available",
 	}
 	for _, p := range placeholders {

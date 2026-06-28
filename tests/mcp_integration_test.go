@@ -41,6 +41,7 @@ func TestConnectorSchemaContract(t *testing.T) {
 		{"okf-csv", []string{"produce", "ingest", "schema"}},
 		{"okf-openapi", []string{"produce", "ingest", "schema"}},
 		{"okf-mongodb", []string{"produce", "ingest", "schema"}},
+		{"okf-graphql", []string{"produce", "ingest", "schema"}},
 		// okf-viz is a consumer skill: render + schema (no produce/ingest)
 		{"okf-viz", []string{"render", "schema"}},
 		// okf-lint is a consumer skill: lint + schema (no produce/ingest)

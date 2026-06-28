@@ -25,6 +25,7 @@
     "okf-go": { "component": "okf-go" },
     "okf-mcp": { "component": "okf-mcp" },
     "skills/okf-sqlite": { "component": "skills/okf-sqlite" },
+    "skills/okf-graphql": { "component": "skills/okf-graphql" },
     "skills/okf-mysql": { "component": "skills/okf-mysql" },
     "skills/okf-postgresql": { "component": "skills/okf-postgresql" },
     "skills/okf-bigquery": { "component": "skills/okf-bigquery" },
