@@ -36,11 +36,11 @@
   function baseElements() {
     var els = [];
     nodes.forEach(function (n) {
-      els.push({ data: { id: n.id, label: n.title, kind: n.kind, ntype: n.type || "", degree: n.degree || 1, coverage: n.coverage || "" } });
+      els.push({ data: { id: n.id, label: n.title, kind: n.kind, ntype: n.type || "", degree: n.degree || 1, coverage: n.coverage || "", diff: n.diff || "" } });
     });
     edges.forEach(function (e) {
       var rel = e.relation || "";
-      els.push({ data: { id: e.source + "|" + e.target + "|" + e.kind + "|" + rel, source: e.source, target: e.target, kind: e.kind, relation: rel } });
+      els.push({ data: { id: e.source + "|" + e.target + "|" + e.kind + "|" + rel + "|" + (e.diff || ""), source: e.source, target: e.target, kind: e.kind, relation: rel, diff: e.diff || "" } });
     });
     return els;
   }
@@ -182,7 +182,7 @@
         "line-color": cssVar("--rel-references") || crosslink,
         "source-arrow-shape": "tee", "source-arrow-color": cssVar("--rel-references") || crosslink,
         "target-arrow-shape": "triangle-tee", "target-arrow-color": cssVar("--rel-references") || crosslink } },
-    ].concat(relationStyles()).concat(coverageOverlay ? coverageStyles() : []));
+    ].concat(relationStyles()).concat(coverageOverlay ? coverageStyles() : []).concat(diffStyles()));
   }
 
   // coverageStyles recolors concept nodes by enrichment state; layered over the
@@ -191,6 +191,19 @@
     return [
       { selector: 'node[coverage="placeholder"]', style: { "background-color": cssVar("--cov-placeholder") || "#d9534f" } },
       { selector: 'node[coverage="enriched"]', style: { "background-color": cssVar("--cov-enriched") || "#3fae6b" } },
+    ];
+  }
+
+  // diffStyles highlights added/removed/changed elements when diff data is present
+  // (always applied — diff fields are absent unless --diff was used).
+  function diffStyles() {
+    var added = cssVar("--diff-added") || "#3fae6b", removed = cssVar("--diff-removed") || "#d9534f", changed = cssVar("--diff-changed") || "#e0a106";
+    return [
+      { selector: 'node[diff="added"]', style: { "border-width": 4, "border-color": added } },
+      { selector: 'node[diff="removed"]', style: { "border-width": 4, "border-color": removed, "border-style": "dashed", "opacity": 0.6 } },
+      { selector: 'node[diff="changed"]', style: { "border-width": 4, "border-color": changed } },
+      { selector: 'edge[diff="added"]', style: { "line-color": added, "width": 3 } },
+      { selector: 'edge[diff="removed"]', style: { "line-color": removed, "line-style": "dashed", "opacity": 0.6 } },
     ];
   }
 
@@ -484,6 +497,39 @@
       if (window.cy) cy.resize();
     });
   }
+
+  // ---- export (PNG + subgraph JSON) ----
+  function download(url, name) {
+    var a = document.createElement("a"); a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  var pngBtn = document.getElementById("export-png");
+  if (pngBtn) pngBtn.addEventListener("click", function () {
+    try { download(cy.png({ full: true, scale: 2, bg: cssVar("--bg") || "#fff" }), "okf-graph.png"); } catch (e) { /* png unsupported */ }
+  });
+  var jsonBtn = document.getElementById("export-json");
+  if (jsonBtn) jsonBtn.addEventListener("click", function () {
+    var ids = {}; cy.nodes(":visible").forEach(function (n) { ids[n.id()] = true; });
+    var exp = { nodes: [], edges: [] };
+    cy.nodes(":visible").forEach(function (n) { exp.nodes.push(n.data()); });
+    cy.edges().forEach(function (e) { if (ids[e.data("source")] && ids[e.data("target")]) exp.edges.push(e.data()); });
+    download(URL.createObjectURL(new Blob([JSON.stringify(exp, null, 2)], { type: "application/json" })), "okf-subgraph.json");
+  });
+
+  // ---- a11y: keyboard traversal of the graph ----
+  var graphEl = document.getElementById("graph");
+  graphEl.addEventListener("keydown", function (ev) {
+    if (ev.key !== "ArrowRight" && ev.key !== "ArrowLeft" && ev.key !== "Enter") return;
+    var current = selectedId ? cy.getElementById(selectedId) : cy.nodes('[kind="concept"]').first();
+    if (current.empty()) return;
+    if (ev.key === "Enter") { select(current.id()); ev.preventDefault(); return; }
+    var neighbors = current.closedNeighborhood().nodes().filter(function (n) { return n.id() !== current.id(); });
+    if (neighbors.length) {
+      var next = ev.key === "ArrowRight" ? neighbors.first() : neighbors.last();
+      select(next.id());
+      ev.preventDefault();
+    }
+  });
 
   // ---- permalinks: encode node + filters + layout + hidden relations in the hash ----
   function hiddenRelations() {

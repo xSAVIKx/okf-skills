@@ -30,14 +30,16 @@
     <option value="light">Light</option>
     <option value="dark">Dark</option>
   </select>
+  <button id="export-png" title="Export the graph as a PNG">PNG</button>
+  <button id="export-json" title="Export the visible subgraph as JSON">JSON</button>
   <button id="toggle-nav" title="Toggle navigator">☰</button>
   <button id="toggle-graph" title="Toggle graph">◉</button>
   <button id="toggle-reader" title="Toggle reader">▤</button>
 </header>
 <main id="panes">
-  <aside id="nav"><div id="filters"></div><ul id="tree"></ul></aside>
-  <section id="graph"></section>
-  <article id="reader"><p class="empty">Select a concept.</p></article>
+  <aside id="nav" role="navigation" aria-label="Concept navigator"><div id="filters" role="group" aria-label="Type filters"></div><ul id="tree" role="listbox" aria-label="Concepts"></ul></aside>
+  <section id="graph" role="application" aria-label="Concept graph" tabindex="0"></section>
+  <article id="reader" role="main" aria-label="Concept reader"><p class="empty">Select a concept.</p></article>
 </main>
 <script type="application/json" id="okf-data">{{.DataJSON}}</script>
 {{.LibTag}}

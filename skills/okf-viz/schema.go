@@ -18,6 +18,10 @@ func buildSchema() okf.SkillSchema {
 					{Name: "lang", Type: "string", Description: "UI-chrome language code.", Default: "en"},
 					{Name: "theme", Type: "string", Description: "Initial theme: light, dark, or system.", Default: "system"},
 					{Name: "title", Type: "string", Description: "Page title (default derived from the bundle)."},
+					{Name: "inline-all", Type: "bool", Description: "Always inline every concept body (single file, regardless of size).", Default: "false"},
+					{Name: "threshold", Type: "int", Description: "Concept count above which bodies are written as lazy sibling fragments (0 = default).", Default: "0"},
+					{Name: "diff", Type: "string", Description: "Diff against another bundle: highlight added/removed/changed concepts and edges."},
+					{Name: "bundles", Type: "string", Description: "Comma-separated additional bundles to federate into one cross-bundle view."},
 				},
 			},
 			{

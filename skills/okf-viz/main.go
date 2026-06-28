@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/xSAVIKx/okf-skills/okf-go"
 )
@@ -90,6 +91,8 @@ func runRender(args []string) {
 	title := fs.String("title", "", "Page title (default derived from bundle)")
 	inlineAll := fs.Bool("inline-all", false, "Always inline every concept body (single file, regardless of size)")
 	threshold := fs.Int("threshold", 0, "Concept count above which bodies are written as lazy sibling fragments (0 = default)")
+	diff := fs.String("diff", "", "Diff against another bundle: highlight added/removed/changed concepts and edges")
+	bundles := fs.String("bundles", "", "Comma-separated additional bundles to federate into one cross-bundle view")
 	_ = fs.Parse(args)
 
 	if *bundle == "" {
@@ -101,6 +104,34 @@ func runRender(args []string) {
 		log.Fatalf("Failed to read bundle: %v", err)
 	}
 	addCrossLinks(m)
+
+	// Diff mode: annotate against an older bundle (content_hash-based, body fallback).
+	if *diff != "" {
+		other, derr := BuildModel(*diff)
+		if derr != nil {
+			log.Fatalf("Failed to read diff bundle %s: %v", *diff, derr)
+		}
+		addCrossLinks(other)
+		ComputeDiff(m, other)
+	}
+
+	// Federation: namespace and merge additional bundles into one view.
+	if *bundles != "" {
+		others := map[string]*Model{}
+		for _, b := range strings.Split(*bundles, ",") {
+			b = strings.TrimSpace(b)
+			if b == "" {
+				continue
+			}
+			om, oerr := BuildModel(b)
+			if oerr != nil {
+				log.Fatalf("Failed to read federated bundle %s: %v", b, oerr)
+			}
+			addCrossLinks(om)
+			others[filepath.Base(b)] = om
+		}
+		Federate(filepath.Base(*bundle), m, others)
+	}
 
 	pageTitle := *title
 	if pageTitle == "" {
