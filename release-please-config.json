@@ -31,6 +31,7 @@
     "skills/okf-csv": { "component": "skills/okf-csv" },
     "skills/okf-fs": { "component": "skills/okf-fs" },
     "skills/okf-git": { "component": "skills/okf-git" },
+    "skills/okf-openapi": { "component": "skills/okf-openapi" },
     "skills/okf-viz": { "component": "skills/okf-viz" },
     "skills/okf-enrich": { "component": "skills/okf-enrich", "release-type": "simple" },
     "skills/okf-reader": { "component": "skills/okf-reader", "release-type": "simple" },

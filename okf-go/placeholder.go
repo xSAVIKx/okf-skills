@@ -21,6 +21,8 @@ var placeholderPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`^Git file .+$`),
 	regexp.MustCompile(`^Git directory .+$`),
 	regexp.MustCompile(`^CSV file .+$`),
+	regexp.MustCompile(`^API endpoint .+$`),
+	regexp.MustCompile(`^API schema .+$`),
 	regexp.MustCompile(`^No description available$`),
 }
 

@@ -16,6 +16,8 @@ func TestIsPlaceholderDescription(t *testing.T) {
 		"Git file main.go",
 		"Git directory internal",
 		"CSV file orders",
+		"API endpoint GET /orders",
+		"API schema Order",
 		"No description available",
 	}
 	for _, p := range placeholders {

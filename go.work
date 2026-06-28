@@ -9,6 +9,7 @@ use (
 	./skills/okf-git
 	./skills/okf-lint
 	./skills/okf-mysql
+	./skills/okf-openapi
 	./skills/okf-postgresql
 	./skills/okf-sqlite
 	./skills/okf-viz
