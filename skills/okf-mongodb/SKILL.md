@@ -4,7 +4,7 @@ description: MongoDB connector that produces and ingests Open Knowledge Format (
 license: Apache-2.0
 compatibility: Requires the Go toolchain (1.24+) to build the connector binary. No CGO needed.
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   author: Yurii Serhiichuk
   tags: "okf, knowledge-catalog, mongodb, document-store, schema"
 ---

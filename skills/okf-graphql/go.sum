@@ -19,8 +19,8 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/vektah/gqlparser/v2 v2.5.35 h1:LEr/wXnTKkOqNn+4tNClYclksXN2781VoBFzzFW51Dk=
 github.com/vektah/gqlparser/v2 v2.5.35/go.mod h1:cAJ9qwVgPaUkWv6Gn8vn0mqOE0Ui5Pn56wNy5396XWo=
-github.com/xSAVIKx/okf-skills/okf-go v0.7.0 h1:lWEyXVajniuuJ+F+/9bZg97eVbVg4c0+lR2LA7XOYck=
-github.com/xSAVIKx/okf-skills/okf-go v0.7.0/go.mod h1:cxuOEOxX+mj8GJctWAeXj4QXjji3lnpwzPeHEBtdufI=
+github.com/xSAVIKx/okf-skills/okf-go v0.8.0 h1:k7+0RsdHLczRfv3eabF1rjVxQqWLTkAIewEydiVJZ4M=
+github.com/xSAVIKx/okf-skills/okf-go v0.8.0/go.mod h1:cxuOEOxX+mj8GJctWAeXj4QXjji3lnpwzPeHEBtdufI=
 go.yaml.in/yaml/v3 v3.0.4 h1:tfq32ie2Jv2UxXFdLJdh3jXuOzWiL1fo0bu/FbuKpbc=
 go.yaml.in/yaml/v3 v3.0.4/go.mod h1:DhzuOOF2ATzADvBadXxruRBLzYTpT36CKvDb3+aBEFg=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=

@@ -15,8 +15,8 @@ github.com/montanaflynn/stats v0.7.1 h1:etflOAAHORrCC44V+aR6Ftzort912ZU+YLiSTuV8
 github.com/montanaflynn/stats v0.7.1/go.mod h1:etXPPgVO6n31NxCd9KQUMvCM+ve0ruNzt6R8Bnaayow=
 github.com/rogpeppe/go-internal v1.11.0 h1:cWPaGQEPrBb5/AsnsZesgZZ9yb1OQ+GOISoDNXVBh4M=
 github.com/rogpeppe/go-internal v1.11.0/go.mod h1:ddIwULY96R17DhadqLgMfk9H9tvdUzkipdSkR5nkCZA=
-github.com/xSAVIKx/okf-skills/okf-go v0.7.0 h1:lWEyXVajniuuJ+F+/9bZg97eVbVg4c0+lR2LA7XOYck=
-github.com/xSAVIKx/okf-skills/okf-go v0.7.0/go.mod h1:cxuOEOxX+mj8GJctWAeXj4QXjji3lnpwzPeHEBtdufI=
+github.com/xSAVIKx/okf-skills/okf-go v0.8.0 h1:k7+0RsdHLczRfv3eabF1rjVxQqWLTkAIewEydiVJZ4M=
+github.com/xSAVIKx/okf-skills/okf-go v0.8.0/go.mod h1:cxuOEOxX+mj8GJctWAeXj4QXjji3lnpwzPeHEBtdufI=
 github.com/xdg-go/pbkdf2 v1.0.0 h1:Su7DPu48wXMwC3bs7MCNG+z4FhcyEuz5dlvchbq0B0c=
 github.com/xdg-go/pbkdf2 v1.0.0/go.mod h1:jrpuAogTd400dnrH08LKmI/xc1MbPOebTwRqcT5RDeI=
 github.com/xdg-go/scram v1.1.2 h1:FHX5I5B4i4hKRVRBCFRxq1iQRej7WO3hhBuJf+UUySY=
