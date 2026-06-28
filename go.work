@@ -6,6 +6,7 @@ use (
 	./skills/okf-bigquery
 	./skills/okf-fs
 	./skills/okf-git
+	./skills/okf-lint
 	./skills/okf-mysql
 	./skills/okf-postgresql
 	./skills/okf-sqlite
