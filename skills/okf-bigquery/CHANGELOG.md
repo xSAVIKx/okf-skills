@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-bigquery/v0.6.0...skills/okf-bigquery/v0.7.0) (2026-06-28)
+
+
+### Miscellaneous Chores
+
+* **skills/okf-bigquery:** Synchronize okf-skills versions
+
 ## [0.6.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-bigquery/v0.5.0...skills/okf-bigquery/v0.6.0) (2026-06-17)
 
 
