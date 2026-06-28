@@ -4,12 +4,13 @@
   "groupings": [
     {
       "title": "Database Connectors",
-      "description": "Produce and ingest OKF bundles from SQL databases and warehouses.",
+      "description": "Produce and ingest OKF bundles from SQL databases, warehouses, and tabular flat files.",
       "skills": [
         "okf-sqlite",
         "okf-mysql",
         "okf-postgresql",
-        "okf-bigquery"
+        "okf-bigquery",
+        "okf-csv"
       ]
     },
     {
@@ -32,12 +33,16 @@
     {
       "title": "Visualization",
       "description": "Render OKF bundles into a browsable, interactive HTML graph view.",
-      "skills": ["okf-viz"]
+      "skills": [
+        "okf-viz"
+      ]
     },
     {
       "title": "Validation",
       "description": "Validate OKF bundles for spec conformance and enrichment coverage, gating CI.",
-      "skills": ["okf-lint"]
+      "skills": [
+        "okf-lint"
+      ]
     }
   ]
 }

@@ -20,6 +20,7 @@ var placeholderPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`^Directory .+$`),
 	regexp.MustCompile(`^Git file .+$`),
 	regexp.MustCompile(`^Git directory .+$`),
+	regexp.MustCompile(`^CSV file .+$`),
 	regexp.MustCompile(`^No description available$`),
 }
 

@@ -15,6 +15,7 @@ func TestIsPlaceholderDescription(t *testing.T) {
 		"Directory src",
 		"Git file main.go",
 		"Git directory internal",
+		"CSV file orders",
 		"No description available",
 	}
 	for _, p := range placeholders {

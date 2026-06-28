@@ -1,6 +1,6 @@
 .PHONY: build clean install test integration scaffold
 
-SKILLS := okf-sqlite okf-mysql okf-postgresql okf-bigquery okf-fs okf-git okf-viz okf-lint
+SKILLS := okf-sqlite okf-mysql okf-postgresql okf-bigquery okf-fs okf-git okf-viz okf-lint okf-csv
 
 # Executable suffix (.exe on Windows).
 ifeq ($(OS),Windows_NT)
