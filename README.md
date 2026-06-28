@@ -139,6 +139,7 @@ Every skill is self-describing via a `schema` subcommand that emits JSON describ
 | `okf-fs` | Local filesystem | `.okfignore` & `.okf-metadata.yaml` support |
 | `okf-git` | Git repositories | Commit history & file-level metadata |
 | `okf-csv` | CSV files | Inferred column types + data profile, `.okf-metadata.yaml` sync |
+| `okf-openapi` | OpenAPI / Swagger specs | Endpoint + Schema concepts with typed cross-links |
 
 ### Commands
 
@@ -264,6 +265,7 @@ The root `skills.sh.json` manifest groups the skills for the [skills.sh](https:/
 |---|---|
 | Database Connectors | `okf-sqlite`, `okf-mysql`, `okf-postgresql`, `okf-bigquery`, `okf-csv` |
 | Filesystem & Git | `okf-fs`, `okf-git` |
+| API Connectors | `okf-openapi` |
 | Agent Guidance | `okf-reader`, `okf-enrich`, `okf-producer-generator` |
 | Visualization | `okf-viz` |
 | Validation | `okf-lint` |
