@@ -43,10 +43,11 @@ func profileTable(db *sql.DB, table string, cols []Column) ([]okf.ColumnProfile,
 }
 
 // distinctValues returns up to limit distinct non-null values of a column as text.
-// The LIMIT lets SQLite stop early on high-cardinality columns, so this stays a
-// cheap, bounded read rather than a full scan.
+// The LIMIT keeps this a cheap, bounded read on high-cardinality columns; the
+// ORDER BY makes WHICH values the LIMIT returns deterministic across runs, so the
+// derived semantic tag (and thus the concept body) is byte-stable.
 func distinctValues(db *sql.DB, table, col string, limit int) ([]string, error) {
-	q := fmt.Sprintf("SELECT DISTINCT CAST(`%[1]s` AS TEXT) FROM `%[2]s` WHERE `%[1]s` IS NOT NULL LIMIT %[3]d", col, table, limit)
+	q := fmt.Sprintf("SELECT DISTINCT CAST(`%[1]s` AS TEXT) FROM `%[2]s` WHERE `%[1]s` IS NOT NULL ORDER BY 1 LIMIT %[3]d", col, table, limit)
 	rows, err := db.Query(q)
 	if err != nil {
 		return nil, err

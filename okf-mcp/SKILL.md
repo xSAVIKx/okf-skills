@@ -4,7 +4,7 @@ description: Generic Model Context Protocol (MCP) server that discovers installe
 license: Apache-2.0
 compatibility: Requires the Go toolchain (1.24+) to build the server binary, plus installed okf-* skill binaries to discover and expose.
 metadata:
-  version: "0.1.0"
+  version: "0.6.0"
   author: Yurii Serhiichuk
   tags: "okf, mcp, registry, tools"
 ---

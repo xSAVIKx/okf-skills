@@ -1,8 +1,82 @@
 # Open Knowledge Format (OKF) Skills
 
-This repository is a central collection of standalone CLI skills for producing, ingesting, and visualizing Open Knowledge Format (OKF) bundles. OKF is a simple, human- and agent-friendly specification for documenting data assets (schemas, comments, constraints, and metrics) as a directory of Markdown files with YAML frontmatter.
+**Turn the structure your data already has — database schemas, column comments, foreign keys, file trees, commit history — into a browsable, agent-readable knowledge catalog.**
 
-Most skills are self-contained Go modules that compile to a single portable binary; the agent-guidance skills are instructions-only (`SKILL.md`, no binary).
+OKF Skills are small, deterministic connectors that **produce** an [Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) bundle (a directory of Markdown + YAML) from any source, let an LLM **enrich** it with grounded descriptions, **visualize** it as an interactive graph, and **sync** descriptions back to the source. Extraction is pure and reproducible — no embedded model — so the only LLM in the loop is *your* agent's, guided by instructions. Every connector is a single portable binary that self-describes over MCP, so it drops into any agent harness.
+
+## 🚀 Get started
+
+### 1. Install
+
+The quickest way — add the whole skill set to your agent through the [skills.sh](https://www.skills.sh) registry:
+
+```bash
+npx skills add xSAVIKx/okf-skills
+```
+
+…or build + install the binaries (all connectors + the `okf-mcp` server) from a clone:
+
+```bash
+git clone https://github.com/xSAVIKx/okf-skills && cd okf-skills
+./install.sh                       # builds + installs to ~/.local/bin
+# ./install.sh /usr/local/bin      # …or a directory of your choice
+```
+
+…or grab just what you need, no clone (Go 1.24+):
+
+```bash
+go install github.com/xSAVIKx/okf-skills/okf-mcp@latest            # the MCP server
+go install github.com/xSAVIKx/okf-skills/skills/okf-sqlite@latest  # one connector
+```
+
+Ensure the install directory is on your `PATH` — `okf-sqlite --version` should print a version.
+
+### 2. Connect it to your agent
+
+`okf-mcp` discovers the installed `okf-*` skills and exposes each command as an MCP tool named `<skill>__<command>` (e.g. `okf-sqlite__produce`, `okf-viz__render`). Wire it into your harness once:
+
+**Claude Code**
+```bash
+claude mcp add okf-skills okf-mcp
+```
+
+**Gemini CLI**
+```bash
+gemini mcp add okf-skills okf-mcp
+```
+
+**Cursor / Codex / Windsurf / any MCP client** — add an MCP server entry:
+```json
+{
+  "mcpServers": {
+    "okf-skills": { "command": "okf-mcp" }
+  }
+}
+```
+`okf-mcp` scans your `PATH` for skills by default; pin a directory with `"args": ["--skills-dir", "/path/to/bin"]`. (Codex uses the TOML equivalent: `[mcp_servers.okf-skills]` with `command = "okf-mcp"`.)
+
+### 3. Use it
+
+Ask your agent in plain language — it drives the tools for you:
+
+> *"Catalog my SQLite database at ./app.db, enrich the table descriptions, and render a visual graph."*
+
+It calls `okf-sqlite__produce` (→ an OKF bundle), follows the `okf-enrich` guidance to write grounded descriptions, then `okf-viz__render`s a self-contained `index.html`. Prefer the CLI? The same flow by hand:
+
+```bash
+okf-sqlite produce --db ./app.db --out ./catalog --profile   # extract → OKF bundle
+# enrich descriptions (by hand, or with an agent following the okf-enrich guidance)
+okf-sqlite ingest  --db ./app.db --bundle ./catalog --sync    # push descriptions back
+okf-viz    render  --bundle ./catalog                         # → ./catalog/index.html
+```
+
+## Why OKF?
+
+Your data sources are full of structure that never reaches the people — or agents — who need it: schemas, `COMMENT ON` text, foreign keys, indexes, a repo's file tree and commit history. OKF captures it as plain Markdown + YAML — **diffable, greppable, reviewable in a PR**, and equally readable by a human, an LLM, or `grep`. Connectors extract it **deterministically** (re-running is a no-op when nothing changed), your agent adds meaning on top, and the catalog round-trips back to the source. No proprietary store, no lock-in — just files.
+
+The rest of this document is reference: repository layout, each skill in detail, testing, and releases. Most skills are self-contained Go binaries; the agent-guidance skills (`okf-enrich`, `okf-reader`, `okf-producer-generator`) are instructions-only (`SKILL.md`, no binary).
+
+---
 
 ## Repository Structure
 
@@ -13,7 +87,7 @@ okf-skills/
 ├── LICENSE                        # Apache License 2.0
 ├── go.work                        # Go workspace mapping all sub-modules
 ├── Makefile                       # Build, test, install shortcuts
-├── skills.sh                      # Build and install all skills to a directory
+├── install.sh                     # Build and install all skills to a directory
 ├── skills.sh.json                 # skills.sh registry manifest (groups skills for discovery)
 ├── okf-go/                        # Shared Go library (OKF spec, YAML/MD serialization)
 │   ├── okf.go                     # Core types & helpers (Frontmatter, ConceptDoc)
@@ -76,7 +150,7 @@ All connectors support three subcommands:
 
 Each skill is a published Go module, so the simplest install needs no clone (Go 1.24+):
 ```bash
-go install github.com/xSAVIKx/okf-skills/skills/okf-sqlite@v0.1.0   # → $(go env GOPATH)/bin/okf-sqlite
+go install github.com/xSAVIKx/okf-skills/skills/okf-sqlite@latest   # → $(go env GOPATH)/bin/okf-sqlite
 ```
 Or build from a clone — navigate to the skill directory and run:
 ```bash
@@ -134,20 +208,20 @@ All skills import this module at its published version (`github.com/xSAVIKx/okf-
 Install any single skill (or the `okf-mcp` server) straight from the published module — no clone required (Go 1.24+):
 
 ```bash
-go install github.com/xSAVIKx/okf-skills/skills/okf-sqlite@v0.1.0
-go install github.com/xSAVIKx/okf-skills/okf-mcp@v0.1.0
+go install github.com/xSAVIKx/okf-skills/skills/okf-sqlite@latest
+go install github.com/xSAVIKx/okf-skills/okf-mcp@latest
 ```
 
 The binary lands in `$(go env GOPATH)/bin` (ensure it is on your `PATH`).
 
-To build and install **all** skills at once from a clone, use `skills.sh` (or `make install`):
+To build and install **all** skills at once from a clone, use `install.sh` (or `make install`):
 
 ```bash
 # Install to $HOME/.local/bin (default)
-./skills.sh
+./install.sh
 
 # Install to a custom directory
-./skills.sh /usr/local/bin
+./install.sh /usr/local/bin
 
 # Or via make
 make install
@@ -198,9 +272,9 @@ The root `skills.sh.json` manifest groups the skills for the [skills.sh](https:/
 
 ## 9. Producer Generator Skill (`okf-producer-generator`)
 
-Located in `skills/okf-producer-generator/`, this is an instructions-only skill (`SKILL.md`) — no binary. It is the "write a producer" on-ramp for the project: it ships a copy of the OKF spec (`okf-SPEC.md`), an `okf-go` library API reference (`okf-go-api.md`), and a step-by-step guide for authoring a new connector that matches the existing six rather than reverse-engineering them.
+Located in `skills/okf-producer-generator/`, this is an instructions-only skill (`SKILL.md`) — no binary. It is the "write a producer" on-ramp for the project: it ships a snapshot of the [official OKF spec](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) (`okf-SPEC.md`), an `okf-go` library API reference (`okf-go-api.md`), and a step-by-step guide for authoring a new connector that matches the existing six rather than reverse-engineering them.
 
-It covers the architectural principles (deterministic extraction with **no embedded LLM**, `okf-go` as the single source of OKF types, `schema` as the MCP-discovery contract), the `produce`/`ingest`/`schema` command surface, the secret-handling and `--sync` conventions, and the full registration checklist (`go.work`, `Makefile`, `skills.sh`, `skills.sh.json`, docs, and tests).
+It covers the architectural principles (deterministic extraction with **no embedded LLM**, `okf-go` as the single source of OKF types, `schema` as the MCP-discovery contract), the `produce`/`ingest`/`schema` command surface, the secret-handling and `--sync` conventions, and the full registration checklist (`go.work`, `Makefile`, `install.sh`, `skills.sh.json`, docs, and tests).
 
 Load it when extending the project to a source it doesn't yet cover — e.g. MongoDB, Redis, Kafka, a CSV directory, or an HTTP API.
 

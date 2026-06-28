@@ -4,7 +4,7 @@ description: SQLite connector that produces and ingests Open Knowledge Format (O
 license: Apache-2.0
 compatibility: Requires the Go toolchain (1.24+) to build the connector binary. No CGO or system SQLite library needed.
 metadata:
-  version: "0.1.0"
+  version: "0.6.0"
   author: Yurii Serhiichuk
   tags: "okf, knowledge-catalog, sqlite, database, schema"
 ---

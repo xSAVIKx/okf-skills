@@ -29,6 +29,8 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: "**/go.sum"
+      - name: Localize unpublished okf-go pin (release PR only; no-op otherwise)
+        run: bash scripts/ci-localize-okfgo.sh
       - name: gofmt
         run: |
           unformatted=$(gofmt -l $(git ls-files '*.go'))
@@ -54,6 +56,8 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: "**/go.sum"
+      - name: Localize unpublished okf-go pin (release PR only; no-op otherwise)
+        run: bash scripts/ci-localize-okfgo.sh
       - name: Build all skill binaries + okf-mcp
         run: make build
       - name: Unit tests (shared lib, skills, server)
@@ -90,6 +94,8 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: "**/go.sum"
+      - name: Localize unpublished okf-go pin (release PR only; no-op otherwise)
+        run: bash scripts/ci-localize-okfgo.sh
       - name: Load schema fixtures into the service databases
         run: |
           sudo apt-get update && sudo apt-get install -y default-mysql-client postgresql-client

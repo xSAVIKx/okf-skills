@@ -34,6 +34,15 @@ func buildSchema() okf.SkillSchema {
 				},
 			},
 			{
+				Name:        "coverage",
+				Description: "Report deterministic, no-LLM enrichment coverage for a bundle.",
+				Flags: []okf.FlagSchema{
+					{Name: "bundle", Type: "string", Description: "Path to the OKF bundle directory.", Required: true},
+					{Name: "min", Type: "string", Description: "Fail (exit 1) if enriched % is below this threshold (0 = no gate).", Default: "0"},
+					{Name: "json", Type: "bool", Description: "Emit the report as JSON instead of text.", Default: "false"},
+				},
+			},
+			{
 				Name:        "schema",
 				Description: "Print this skill's machine-readable JSON self-description.",
 				Flags:       []okf.FlagSchema{},

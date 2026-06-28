@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/lib/pq v1.10.9
-	github.com/xSAVIKx/okf-skills/okf-go v0.2.0
+	github.com/xSAVIKx/okf-skills/okf-go v0.6.0
 )
 
 require (

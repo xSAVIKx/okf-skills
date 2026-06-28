@@ -15,7 +15,7 @@ okf-skills/
 ├── LICENSE                        # Apache License 2.0
 ├── go.work                        # Go workspace defining monorepo modules
 ├── Makefile                       # Build, test, install shortcuts
-├── skills.sh                      # Build and install all skills to a directory
+├── install.sh                      # Build and install all skills to a directory
 ├── skills.sh.json                 # skills.sh registry manifest (groups skills for discovery)
 ├── okf-go/                        # Shared Go library (YAML/MD serialization, ignore/metadata helpers)
 │   ├── okf.go                     # Core types: Frontmatter, ConceptDoc, helpers
@@ -98,10 +98,10 @@ The connector skills compile to standalone Go CLI binaries, each exposing three 
 First install all skill binaries:
 ```bash
 # Install to $HOME/.local/bin (default)
-./skills.sh
+./install.sh
 
 # Or to a custom directory
-./skills.sh /path/to/dir
+./install.sh /path/to/dir
 ```
 
 Then register `okf-mcp` as an MCP server in your harness configuration. For Claude Code (`~/.claude/settings.json`):

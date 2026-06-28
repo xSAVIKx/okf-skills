@@ -47,6 +47,12 @@ fail=0
 # by each connector that imports it.
 while IFS= read -r path; do
   path="${path%$'\r'}"   # tolerate CRLF from a Windows jq build
+  # Instruction-only skills (no go.mod) are released for versioning/changelogs
+  # but are not Go modules, so there is nothing to `go install`.
+  if [ ! -f "$path/go.mod" ]; then
+    echo "== skipping (not a Go module) $path =="
+    continue
+  fi
   version="$(jq -r --arg p "$path" '.[$p]' "$MANIFEST" | tr -d '\r')"
   ref="$MODULE_BASE/$path@v$version"
   echo "== verifying (install) $ref =="

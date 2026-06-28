@@ -30,6 +30,6 @@ clean:
 	for s in $(SKILLS); do rm -f skills/$$s/$$s skills/$$s/$$s.exe; done
 	rm -f okf-mcp/okf-mcp okf-mcp/okf-mcp.exe
 
-# Build and install all skills + the okf-mcp server (delegates to skills.sh).
+# Build and install all skills + the okf-mcp server (delegates to install.sh).
 install:
-	sh ./skills.sh
+	sh ./install.sh

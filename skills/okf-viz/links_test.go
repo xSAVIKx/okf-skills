@@ -12,11 +12,13 @@ func TestRelationExtraction(t *testing.T) {
 		m.Nodes = append(m.Nodes, Node{ID: id, Kind: "concept"})
 		m.concepts[id] = &okf.ConceptDoc{Body: body}
 	}
-	add("a", "# Relationships\n\n- FK on x [b](b.md)\n\n# Joins\n\n[c](c.md)\n\n# Columns\n\n[d](d.md) and [fk](e.md)\n")
+	add("a", "# Relationships\n\n- FK on x [b](b.md)\n\n# Joins\n\n[c](c.md)\n\n# Columns\n\n[d](d.md) and [fk](e.md)\n\n# Related Files\n\n[f](f.md)\n\n# See Also\n\n[g](g.md)\n")
 	add("b", "")
 	add("c", "")
 	add("d", "")
 	add("e", "")
+	add("f", "")
+	add("g", "")
 	addCrossLinks(m)
 
 	rel := map[string]string{}
@@ -36,6 +38,12 @@ func TestRelationExtraction(t *testing.T) {
 	}
 	if rel["e"] != "references" {
 		t.Errorf("[fk] annotation should override to references, got %q", rel["e"])
+	}
+	if rel["f"] != "co-changes" {
+		t.Errorf("link under # Related Files should be co-changes, got %q", rel["f"])
+	}
+	if rel["g"] != "see-also" {
+		t.Errorf("link under # See Also should be see-also, got %q", rel["g"])
 	}
 }
 
@@ -95,7 +103,7 @@ func TestCrossLinks(t *testing.T) {
 }
 
 // TestEdgeOrderDeterministic verifies that addCrossLinks leaves m.Edges sorted
-// by (Kind, Source, Target).  The fixture has two link-source concepts
+// by (Kind, Relation, Source, Target).  The fixture has two link-source concepts
 // (orders→customers and customers→orders), so map iteration order in
 // addCrossLinks would produce different orderings across runs without the sort.
 // This test fails deterministically without the sort.Slice call in addCrossLinks.
@@ -108,10 +116,15 @@ func TestEdgeOrderDeterministic(t *testing.T) {
 
 	for i := 1; i < len(m.Edges); i++ {
 		prev, cur := m.Edges[i-1], m.Edges[i]
-		// Compare (Kind, Source, Target) lexicographically.
+		// Mirror the comparator in addCrossLinks exactly: (Kind, Relation, Source,
+		// Target). Omitting Relation here would let a Relation-ordering regression
+		// pass unnoticed.
 		less := func(a, b Edge) bool {
 			if a.Kind != b.Kind {
 				return a.Kind < b.Kind
+			}
+			if a.Relation != b.Relation {
+				return a.Relation < b.Relation
 			}
 			if a.Source != b.Source {
 				return a.Source < b.Source

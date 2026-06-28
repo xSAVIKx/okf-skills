@@ -17,7 +17,16 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+// version is the build version, injected via -ldflags "-X main.version=..." by
+// install.sh; it defaults to "dev" for plain `go build`.
+var version = "dev"
+
 func main() {
+	if len(os.Args) > 1 && (os.Args[1] == "version" || os.Args[1] == "--version" || os.Args[1] == "-v") {
+		fmt.Println(version)
+		return
+	}
+
 	skillsDir := flag.String("skills-dir", "", "directory to scan for okf-* skills (default: $OKF_SKILLS_DIR, else each $PATH entry)")
 	timeout := flag.Duration("timeout", 5*time.Minute, "per-invocation timeout for skill commands")
 	flag.Parse()
@@ -39,7 +48,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "okf-mcp: warning: no okf-* skills discovered")
 	}
 
-	server := mcp.NewServer(&mcp.Implementation{Name: "okf-mcp", Version: "0.1.0"}, nil)
+	server := mcp.NewServer(&mcp.Implementation{Name: "okf-mcp", Version: version}, nil)
 	registerSkills(server, skills, execRunner(*timeout))
 
 	if err := server.Run(ctx, &mcp.StdioTransport{}); err != nil {
