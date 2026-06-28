@@ -24,9 +24,10 @@
     },
     {
       "title": "API Connectors",
-      "description": "Produce and ingest OKF bundles from API contracts such as OpenAPI/Swagger specs.",
+      "description": "Produce and ingest OKF bundles from API contracts such as OpenAPI/Swagger and GraphQL.",
       "skills": [
-        "okf-openapi"
+        "okf-openapi",
+        "okf-graphql"
       ]
     },
     {

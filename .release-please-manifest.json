@@ -2,6 +2,7 @@
   "okf-go": "0.7.0",
   "okf-mcp": "0.7.0",
   "skills/okf-sqlite": "0.7.0",
+  "skills/okf-graphql": "0.1.0",
   "skills/okf-mysql": "0.7.0",
   "skills/okf-postgresql": "0.7.0",
   "skills/okf-bigquery": "0.7.0",

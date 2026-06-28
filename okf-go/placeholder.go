@@ -24,6 +24,7 @@ var placeholderPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`^CSV file .+$`),
 	regexp.MustCompile(`^API endpoint .+$`),
 	regexp.MustCompile(`^API schema .+$`),
+	regexp.MustCompile(`^GraphQL (type|query|mutation|subscription) .+$`),
 	regexp.MustCompile(`^No description available$`),
 }
 
