@@ -36,6 +36,13 @@ func TestOkfVizTypedEdges(t *testing.T) {
 	if !strings.Contains(string(html), "\"relation\":\"references\"") {
 		t.Errorf("index.html missing typed FK relation in inlined JSON")
 	}
+	// navigation controls + permalink/fuzzy/trace hooks are present.
+	s := string(html)
+	for _, want := range []string{`id="hops"`, `id="trace"`, "function fuzzyScore", "function writeHash", "dijkstra"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("index.html missing navigation hook %q", want)
+		}
+	}
 }
 
 func TestOkfVizERColumns(t *testing.T) {
