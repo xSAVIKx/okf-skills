@@ -11,4 +11,5 @@ use (
 	./skills/okf-sqlite
 	./skills/okf-viz
 	./tests
+	./tools/scaffold
 )

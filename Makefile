@@ -1,4 +1,4 @@
-.PHONY: build clean install test integration
+.PHONY: build clean install test integration scaffold
 
 SKILLS := okf-sqlite okf-mysql okf-postgresql okf-bigquery okf-fs okf-git okf-viz
 
@@ -18,6 +18,7 @@ test:
 	cd okf-go && go test ./...
 	for s in $(SKILLS); do (cd skills/$$s && go test ./...) || exit 1; done
 	cd okf-mcp && go test ./...
+	cd tools/scaffold && go test ./...
 
 # Run the integration suite (run `make build` first; MySQL/PostgreSQL cases also
 # need `docker-compose up` in tests/ — SQLite, fs, git, schema-contract, and
@@ -33,3 +34,11 @@ clean:
 # Build and install all skills + the okf-mcp server (delegates to install.sh).
 install:
 	sh ./install.sh
+
+# Scaffold a new connector skill skeleton (green-building + fully wired). See
+# tools/scaffold and docs. Example:
+#   make scaffold NAME=csv TYPE="CSV File" SHAPE=file
+#   make scaffold NAME=mongodb TYPE="MongoDB Collection" SHAPE=tabular SUBDIR=collections
+# SHAPE is one of: tabular | db-comments | file. SUBDIR and DESC are optional.
+scaffold:
+	go run ./tools/scaffold -name "$(NAME)" -type "$(TYPE)" -shape "$(SHAPE)" -subdir "$(SUBDIR)" -desc "$(DESC)"
