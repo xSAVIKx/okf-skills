@@ -43,7 +43,7 @@ jobs:
           set -e
           for mod in okf-go okf-mcp skills/okf-sqlite skills/okf-mysql skills/okf-postgresql \
                      skills/okf-bigquery skills/okf-fs skills/okf-git skills/okf-viz \
-                     skills/okf-lint tests tools/scaffold; do
+                     skills/okf-lint skills/okf-csv tests tools/scaffold; do
             echo "== vet $mod =="
             ( cd "$mod" && go vet ./... )
           done

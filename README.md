@@ -138,6 +138,7 @@ Every skill is self-describing via a `schema` subcommand that emits JSON describ
 | `okf-bigquery` | Google Cloud BigQuery | GCP credentials / API key |
 | `okf-fs` | Local filesystem | `.okfignore` & `.okf-metadata.yaml` support |
 | `okf-git` | Git repositories | Commit history & file-level metadata |
+| `okf-csv` | CSV files | Inferred column types + data profile, `.okf-metadata.yaml` sync |
 
 ### Commands
 
@@ -261,7 +262,7 @@ The root `skills.sh.json` manifest groups the skills for the [skills.sh](https:/
 
 | Group | Skills |
 |---|---|
-| Database Connectors | `okf-sqlite`, `okf-mysql`, `okf-postgresql`, `okf-bigquery` |
+| Database Connectors | `okf-sqlite`, `okf-mysql`, `okf-postgresql`, `okf-bigquery`, `okf-csv` |
 | Filesystem & Git | `okf-fs`, `okf-git` |
 | Agent Guidance | `okf-reader`, `okf-enrich`, `okf-producer-generator` |
 | Visualization | `okf-viz` |
