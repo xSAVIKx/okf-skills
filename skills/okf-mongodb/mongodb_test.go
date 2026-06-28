@@ -25,9 +25,9 @@ func TestInferFields(t *testing.T) {
 	if by["active"].PresencePct != 33 {
 		t.Errorf("active presence = %d, want 33", by["active"].PresencePct)
 	}
-	// total is number in 2 docs, string in 1 -> union "number|string"
-	if by["total"].Type != "number|string" {
-		t.Errorf("total type = %q, want number|string", by["total"].Type)
+	// total is number in 2 docs, string in 1 -> union "number / string"
+	if by["total"].Type != "number / string" {
+		t.Errorf("total type = %q, want number / string", by["total"].Type)
 	}
 	if by["tags"].Type != "array" {
 		t.Errorf("tags type = %q, want array", by["tags"].Type)

@@ -61,8 +61,8 @@ func TestMongoDBIntegration(t *testing.T) {
 		"type: MongoDB Collection",
 		"# Columns",
 		"| Name | Type | Presence |",
-		"number|string", // total has mixed types across docs
-		"| status |",    // present in 2 of 3 docs
+		"number / string", // total has mixed types across docs
+		"| status |",      // present in 2 of 3 docs
 	} {
 		if !strings.Contains(s, want) {
 			t.Errorf("orders.md missing %q:\n%s", want, s)

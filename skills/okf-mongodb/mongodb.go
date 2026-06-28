@@ -82,7 +82,9 @@ func inferFields(docs []map[string]interface{}) []fieldProfile {
 		if total > 0 {
 			presence = int(math.Round(100 * float64(s.present) / float64(total)))
 		}
-		out = append(out, fieldProfile{Name: n, Type: strings.Join(types, "|"), PresencePct: presence})
+		// Join a mixed-type union with " / " (not "|") so it never collides with the
+		// markdown table delimiter.
+		out = append(out, fieldProfile{Name: n, Type: strings.Join(types, " / "), PresencePct: presence})
 	}
 	return out
 }
