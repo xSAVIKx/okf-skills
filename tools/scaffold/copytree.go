@@ -29,6 +29,11 @@ func copyTree(src, dst string) error {
 		if err != nil {
 			return err
 		}
+		// A new skill starts with an empty changelog; release-please populates it on
+		// first release. Copying the reference's would inherit its bogus version history.
+		if d.Name() == "CHANGELOG.md" {
+			data = []byte("# Changelog\n")
+		}
 		out := filepath.Join(dst, rel)
 		if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
 			return err
