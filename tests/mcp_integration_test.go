@@ -40,6 +40,8 @@ func TestConnectorSchemaContract(t *testing.T) {
 		{"okf-git", []string{"produce", "ingest", "schema"}},
 		// okf-viz is a consumer skill: render + schema (no produce/ingest)
 		{"okf-viz", []string{"render", "schema"}},
+		// okf-lint is a consumer skill: lint + schema (no produce/ingest)
+		{"okf-lint", []string{"lint", "schema"}},
 	}
 	for _, spec := range skills {
 		spec := spec // capture

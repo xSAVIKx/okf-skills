@@ -265,6 +265,7 @@ The root `skills.sh.json` manifest groups the skills for the [skills.sh](https:/
 | Filesystem & Git | `okf-fs`, `okf-git` |
 | Agent Guidance | `okf-reader`, `okf-enrich`, `okf-producer-generator` |
 | Visualization | `okf-viz` |
+| Validation | `okf-lint` |
 
 `okf-mcp` is deliberately omitted from the registry manifest: it is the host server that exposes the skills over MCP (and lives outside `skills/`), not a discoverable skill itself.
 

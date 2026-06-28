@@ -64,25 +64,24 @@ func runCoverage(args []string) {
 		fs.Usage()
 		os.Exit(1)
 	}
-	m, err := BuildModel(*bundle)
+	// Delegates to the shared okf-go scanner (also used by okf-lint).
+	rep, err := okf.ScanBundle(*bundle)
 	if err != nil {
-		log.Fatalf("Failed to read bundle: %v", err)
+		log.Fatalf("Failed to scan bundle: %v", err)
 	}
-	addCrossLinks(m)
-	cov := ComputeCoverage(m)
 
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
-		if err := enc.Encode(cov); err != nil {
+		if err := enc.Encode(rep); err != nil {
 			log.Fatalf("Failed to encode report: %v", err)
 		}
 	} else {
-		fmt.Print(cov.Report())
+		fmt.Print(rep.TextReport())
 	}
 
-	if *minPct > 0 && cov.EnrichedPct < *minPct {
-		fmt.Fprintf(os.Stderr, "coverage gate failed: %.1f%% enriched < %.1f%% required\n", cov.EnrichedPct, *minPct)
+	if *minPct > 0 && rep.EnrichedPct < *minPct {
+		fmt.Fprintf(os.Stderr, "coverage gate failed: %.1f%% enriched < %.1f%% required\n", rep.EnrichedPct, *minPct)
 		os.Exit(1)
 	}
 }

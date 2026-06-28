@@ -32,7 +32,8 @@ okf-skills/
 │   ├── okf-enrich/                # Enrichment guidance skill (Instructions-only)
 │   ├── okf-reader/                # Ingestion guidance skill (Instructions-only)
 │   ├── okf-producer-generator/    # Producer-authoring guidance skill (Instructions-only)
-│   └── okf-viz/                   # Bundle visualizer — renders OKF bundles to interactive HTML
+│   ├── okf-viz/                   # Bundle visualizer — renders OKF bundles to interactive HTML
+│   └── okf-lint/                  # Bundle validator — spec conformance + coverage, CI gate
 └── tests/                         # Central integration testing directory
     ├── docker-compose.yml         # MySQL & PostgreSQL containers
     ├── helpers_test.go            # Shared test utilities (getBinaryPath, isPortOpen, etc.)
