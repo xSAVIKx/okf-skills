@@ -4,7 +4,7 @@ go 1.25
 
 require (
 	github.com/getkin/kin-openapi v0.140.0
-	github.com/xSAVIKx/okf-skills/okf-go v0.7.0
+	github.com/xSAVIKx/okf-skills/okf-go v0.8.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

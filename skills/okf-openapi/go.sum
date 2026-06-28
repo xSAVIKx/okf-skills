@@ -26,8 +26,8 @@ github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 h1:KRzFb2m7YtdldCEkzs6KqmJw4nqEV
 github.com/santhosh-tekuri/jsonschema/v6 v6.0.2/go.mod h1:JXeL+ps8p7/KNMjDQk3TCwPpBy0wYklyWTfbkIzdIFU=
 github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
-github.com/xSAVIKx/okf-skills/okf-go v0.7.0 h1:lWEyXVajniuuJ+F+/9bZg97eVbVg4c0+lR2LA7XOYck=
-github.com/xSAVIKx/okf-skills/okf-go v0.7.0/go.mod h1:cxuOEOxX+mj8GJctWAeXj4QXjji3lnpwzPeHEBtdufI=
+github.com/xSAVIKx/okf-skills/okf-go v0.8.0 h1:k7+0RsdHLczRfv3eabF1rjVxQqWLTkAIewEydiVJZ4M=
+github.com/xSAVIKx/okf-skills/okf-go v0.8.0/go.mod h1:cxuOEOxX+mj8GJctWAeXj4QXjji3lnpwzPeHEBtdufI=
 golang.org/x/text v0.14.0 h1:ScX5w1eTa3QqT8oi6+ziP7dTV1S2+ALU0bI+0zXKWiQ=
 golang.org/x/text v0.14.0/go.mod h1:18ZOQIKpY8NJVqYksKHtTdi31H5itFRjB5/qKTNYzSU=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=

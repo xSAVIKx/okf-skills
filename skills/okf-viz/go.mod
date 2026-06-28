@@ -3,7 +3,7 @@ module github.com/xSAVIKx/okf-skills/skills/okf-viz
 go 1.24.0
 
 require (
-	github.com/xSAVIKx/okf-skills/okf-go v0.7.0
+	github.com/xSAVIKx/okf-skills/okf-go v0.8.0
 	github.com/yuin/goldmark v1.8.2
 )
 
