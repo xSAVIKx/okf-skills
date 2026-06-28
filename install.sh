@@ -13,7 +13,7 @@
 #   okf-mcp --skills-dir <INSTALL_DIR>     (or add INSTALL_DIR to PATH)
 set -euo pipefail
 
-SKILLS="okf-sqlite okf-mysql okf-postgresql okf-bigquery okf-fs okf-git okf-viz okf-lint okf-csv okf-openapi"
+SKILLS="okf-sqlite okf-mysql okf-postgresql okf-bigquery okf-fs okf-git okf-viz okf-lint okf-csv okf-openapi okf-mongodb"
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 INSTALL_DIR="${1:-${OKF_INSTALL_DIR:-$HOME/.local/bin}}"

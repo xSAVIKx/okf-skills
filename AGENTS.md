@@ -24,6 +24,7 @@ okf-skills/
 ├── okf-mcp/                       # Generic MCP server — the host that exposes skills (not a skill)
 ├── skills/                        # Standalone Go-based CLI skills
 │   ├── okf-sqlite/                # SQLite connector (CGO-free)
+│   ├── okf-mongodb/                # MongoDB Collection connector
 │   ├── okf-openapi/                # API Endpoint connector
 │   ├── okf-csv/                # CSV File connector
 │   ├── okf-mysql/                 # MySQL connector

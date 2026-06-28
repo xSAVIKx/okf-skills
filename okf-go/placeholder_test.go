@@ -11,6 +11,7 @@ func TestIsPlaceholderDescription(t *testing.T) {
 		"MySQL table products",
 		"PostgreSQL table users",
 		"BigQuery table events",
+		"MongoDB collection orders",
 		"File config.yaml",
 		"Directory src",
 		"Git file main.go",

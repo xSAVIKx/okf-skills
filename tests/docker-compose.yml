@@ -25,3 +25,10 @@ services:
     volumes:
       - ./postgres/init_postgres.sql:/docker-entrypoint-initdb.d/init_postgres.sql
     restart: always
+
+  mongodb:
+    image: mongo:7
+    container_name: okf-mongodb-test
+    ports:
+      - "27017:27017"
+    restart: always

@@ -29,6 +29,7 @@
     "skills/okf-postgresql": { "component": "skills/okf-postgresql" },
     "skills/okf-bigquery": { "component": "skills/okf-bigquery" },
     "skills/okf-csv": { "component": "skills/okf-csv" },
+    "skills/okf-mongodb": { "component": "skills/okf-mongodb" },
     "skills/okf-fs": { "component": "skills/okf-fs" },
     "skills/okf-git": { "component": "skills/okf-git" },
     "skills/okf-openapi": { "component": "skills/okf-openapi" },

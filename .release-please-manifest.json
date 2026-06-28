@@ -6,6 +6,7 @@
   "skills/okf-postgresql": "0.7.0",
   "skills/okf-bigquery": "0.7.0",
   "skills/okf-csv": "0.1.0",
+  "skills/okf-mongodb": "0.1.0",
   "skills/okf-fs": "0.7.0",
   "skills/okf-git": "0.7.0",
   "skills/okf-openapi": "0.1.0",

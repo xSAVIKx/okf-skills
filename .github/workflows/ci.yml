@@ -43,7 +43,8 @@ jobs:
           set -e
           for mod in okf-go okf-mcp skills/okf-sqlite skills/okf-mysql skills/okf-postgresql \
                      skills/okf-bigquery skills/okf-fs skills/okf-git skills/okf-viz \
-                     skills/okf-lint skills/okf-csv skills/okf-openapi tests tools/scaffold; do
+                     skills/okf-lint skills/okf-csv skills/okf-openapi skills/okf-mongodb \
+                     tests tools/scaffold; do
             echo "== vet $mod =="
             ( cd "$mod" && go vet ./... )
           done
@@ -65,7 +66,7 @@ jobs:
         run: make test
 
   integration:
-    name: Integration (SQLite/FS/Git + MySQL/PostgreSQL)
+    name: Integration (SQLite/FS/Git + MySQL/PostgreSQL/MongoDB)
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -88,6 +89,13 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd="pg_isready -U postgres"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd="mongosh --eval 'db.runCommand({ping:1})' --quiet"
           --health-interval=10s --health-timeout=5s --health-retries=10
     steps:
       - uses: actions/checkout@v6
