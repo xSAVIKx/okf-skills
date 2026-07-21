@@ -4,7 +4,7 @@ go 1.22
 
 require (
 	github.com/vektah/gqlparser/v2 v2.5.35
-	github.com/xSAVIKx/okf-skills/okf-go v0.7.0
+	github.com/xSAVIKx/okf-skills/okf-go v0.8.0
 )
 
 require (

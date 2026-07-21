@@ -4,7 +4,7 @@ description: MySQL connector that produces and ingests Open Knowledge Format (OK
 license: Apache-2.0
 compatibility: Requires the Go toolchain (1.24+) to build the connector binary, plus network access and credentials for the target MySQL database.
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
   author: Yurii Serhiichuk
   tags: "okf, knowledge-catalog, mysql, database, schema, documentation"
 ---

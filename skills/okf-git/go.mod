@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/go-git/go-git/v5 v5.11.0
-	github.com/xSAVIKx/okf-skills/okf-go v0.7.0
+	github.com/xSAVIKx/okf-skills/okf-go v0.8.0
 )
 
 require (

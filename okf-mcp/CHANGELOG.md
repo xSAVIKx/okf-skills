@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/xSAVIKx/okf-skills/compare/okf-mcp/v0.7.0...okf-mcp/v0.8.0) (2026-06-28)
+
+
+### Miscellaneous Chores
+
+* **okf-mcp:** Synchronize okf-skills versions
+
 ## [0.7.0](https://github.com/xSAVIKx/okf-skills/compare/okf-mcp/v0.6.0...okf-mcp/v0.7.0) (2026-06-28)
 
 

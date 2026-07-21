@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-mysql/v0.7.0...skills/okf-mysql/v0.8.0) (2026-06-28)
+
+
+### Miscellaneous Chores
+
+* **skills/okf-mysql:** Synchronize okf-skills versions
+
 ## [0.7.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-mysql/v0.6.0...skills/okf-mysql/v0.7.0) (2026-06-28)
 
 
