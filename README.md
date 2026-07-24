@@ -1,5 +1,7 @@
 # Open Knowledge Format (OKF) Skills
 
+[![OKF BundleDex](https://bundledex.net/static-badge.svg)](https://bundledex.net)
+
 **Turn the structure your data already has — database schemas, column comments, foreign keys, file trees, commit history — into a browsable, agent-readable knowledge catalog.**
 
 OKF Skills are small, deterministic connectors that **produce** an [Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) bundle (a directory of Markdown + YAML) from any source, let an LLM **enrich** it with grounded descriptions, **visualize** it as an interactive graph, and **sync** descriptions back to the source. Extraction is pure and reproducible — no embedded model — so the only LLM in the loop is *your* agent's, guided by instructions. Every connector is a single portable binary that self-describes over MCP, so it drops into any agent harness.
