@@ -61,3 +61,20 @@ Load this skill whenever you are tasked with reading, parsing, querying, or anal
 - **Rule**: When pointed at a **source directory** (not a bundle) that has been ingested, a `.okf-metadata.yaml` at its root is a flat `path: description` catalog — read it directly for an instant index, no bundle required.
 - **Protocol**: Inside a bundle you don't need it — the same descriptions already live in each concept's frontmatter `description` (Rule 3). Reach for `.okf-metadata.yaml` only when summarizing the source itself.
 
+### 7. Navigating Attested Computations (`type: Attested Computation`)
+- **Rule**: When answering questions that require calculating a metric or running a formula, check for an `Attested Computation` link instead of improvising custom queries.
+- **Protocol**:
+  1. Follow links from narrative concepts (`Metric`, `Playbook`) to target `Attested Computation` documents.
+  2. Inspect contract frontmatter: `runtime` (`bigquery`, `postgres`, `dbt`, `python`), `parameters` list (`name`, `type`, `required`), `executor` resource, and `attester` resource.
+  3. Supply required parameter values as declared — do **not** edit or rewrite the sanctioned query under `# Computation` (or in `computation: <file>`).
+  4. Pass execution receipts to the `attester` script to confirm run fidelity and provenance before presenting final values.
+
+### 8. Trust, Staleness, and Provenance Gating (OKF v0.2)
+- **Rule**: Weight facts according to their trust tier, recency, and lifecycle status.
+- **Protocol**:
+  - **Trust Tier**: Classify trust as `human-reviewed` (highest; verified by `human:<id>`), `machine-confirmed` (verified by `process:` / tools), or `unverified` (no `verified` entry). Surface trust status when presenting critical business figures.
+  - **Staleness**: Compare today's date against `stale_after` (`YYYY-MM-DD`). If `today >= stale_after`, flag the fact as stale or suggest re-verification.
+  - **Lifecycle Status**: Respect `status` (`draft` | `stable` | `deprecated`). Ignore `deprecated` concepts for active decision-making unless historical context is requested.
+  - **Per-Claim Attribution**: When reading bodies with inline footnotes `[^source-id]`, resolve attribution by joining `source-id` against `sources[].id` in frontmatter. Inspect `author`, `usage_count`, and `last_modified` credibility signals to gauge source authority.
+
+
