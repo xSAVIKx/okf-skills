@@ -110,8 +110,20 @@ Layer classification tags onto the connector's existing `tags` (e.g. `[sqlite, t
   **sorted** for byte-stability); never remove or reorder connector- or human-set
   tags. Re-running yields the same set.
 
+#### 4c. Record verification & trust tier (OKF v0.2)
+- **Machine enrichment sign-off**: When performing automated machine enrichment, set frontmatter `verified: { by: "process:<agent-name>", at: "<ISO8601>" }` (or append to the list if `verified` is already present). This transitions the concept's derived trust tier from `unverified` to `machine-confirmed`.
+- **Human sign-off**: When a human user reviews or confirms concept descriptions, set `verified: { by: "human:<username>", at: "<ISO8601>" }`, elevating the concept to `human-reviewed`.
+- **Preserve existing verifications**: Append new verification events to the `verified` array without dropping existing entries.
+
+#### 4d. Extract Attested Computations (`type: Attested Computation`)
+- When a narrative concept (e.g. `Metric`, `Playbook`, or report doc) contains explicit calculation formulas or queries:
+  1. Extract the sanctioned calculation into a standalone concept file (e.g., `computations/revenue.md`) of `type: Attested Computation`.
+  2. Define contract frontmatter: `runtime` (e.g. `bigquery`, `postgres`, `dbt`, `python`), `parameters` list (`name`, `type`, `required`), `executor` resource, `attester` resource, and `status: stable`.
+  3. Place the raw executable code under a body `# Computation` code fence (or set `computation` to a path).
+  4. Replace inline formulas in narrative docs with standard markdown links to the new `Attested Computation` concept (e.g. `[revenue computation](../computations/revenue.md)`).
+
 ### 5. Write back surgically
-- Set **only** the frontmatter `description` field. Preserve `type`, `title`, `resource`, `timestamp`, and (apart from the additions in §4a/§4b) the markdown body — including the Columns, Data Profile, and Sample sections — unchanged.
+- Set the frontmatter `description` field and append `verified: { by: "process:<agent>", at: "<timestamp>" }`. Preserve `type`, `title`, `resource`, `timestamp`, and (apart from the additions in §4a/§4b/§4c/§4d) the markdown body — including the Columns, Data Profile, and Sample sections — unchanged.
 - **Relationship prose (§4a)**: write glosses *into the existing `# Relationships` section* alongside the connector's links; never touch the link list itself, and never create the section when the connector did not.
 - **Tags (§4b)**: edit only the frontmatter `tags` field as a sorted, deduplicated union; never reorder or drop existing tags.
 - Where the source carries per-column comments (see the **Source variations** table below), fill only the **empty** cells in that column; leave populated cells and every other cell untouched.
