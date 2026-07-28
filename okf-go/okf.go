@@ -17,9 +17,9 @@ import (
 type TrustTier string
 
 const (
-	TrustTierUnverified      TrustTier = "unverified"
+	TrustTierUnverified       TrustTier = "unverified"
 	TrustTierMachineConfirmed TrustTier = "machine-confirmed"
-	TrustTierHumanReviewed   TrustTier = "human-reviewed"
+	TrustTierHumanReviewed    TrustTier = "human-reviewed"
 )
 
 // GeneratedInfo records how the concept was produced per OKF-SPEC §5.2.
@@ -94,25 +94,25 @@ type AttesterInfo struct {
 // Frontmatter represents the YAML metadata block at the top of an OKF concept document.
 type Frontmatter struct {
 	Type            string           `yaml:"type,omitempty" json:"type,omitempty"`                         // The kind of concept (e.g., SQLite Table, Attested Computation)
-	Title           string           `yaml:"title,omitempty" json:"title,omitempty"`                      // Display name
-	Description     string           `yaml:"description,omitempty" json:"description,omitempty"`          // One-line summary
-	Resource        string           `yaml:"resource,omitempty" json:"resource,omitempty"`             // Canonical URI for underlying asset
+	Title           string           `yaml:"title,omitempty" json:"title,omitempty"`                       // Display name
+	Description     string           `yaml:"description,omitempty" json:"description,omitempty"`           // One-line summary
+	Resource        string           `yaml:"resource,omitempty" json:"resource,omitempty"`                 // Canonical URI for underlying asset
 	Tags            []string         `yaml:"tags,omitempty" json:"tags,omitempty"`                         // Classification tags
-	Generated       *GeneratedInfo   `yaml:"generated,omitempty" json:"generated,omitempty"`              // Generation actor and ISO 8601 datetime (§5.2)
-	Verified        VerifiedList     `yaml:"verified,omitempty" json:"verified,omitempty"`                // Verification events list (§5.2)
-	Sources         []SourceEntry    `yaml:"sources,omitempty" json:"sources,omitempty"`                  // Provenance sources (§5.1)
-	UsageWindow     *UsageWindow     `yaml:"usage_window,omitempty" json:"usage_window,omitempty"`        // Shared usage window (§5.1)
-	Status          string           `yaml:"status,omitempty" json:"status,omitempty"`                    // draft | stable | deprecated (§5.4)
-	StaleAfter      string           `yaml:"stale_after,omitempty" json:"stale_after,omitempty"`            // Absolute staleness date YYYY-MM-DD (§5.5)
-	Runtime         string           `yaml:"runtime,omitempty" json:"runtime,omitempty"`                  // Execution runtime for Attested Computation (§10.2)
-	Parameters      []ParameterEntry `yaml:"parameters,omitempty" json:"parameters,omitempty"`            // Parameter bindings for Attested Computation (§10.2)
-	Computation     string           `yaml:"computation,omitempty" json:"computation,omitempty"`          // External file path for computation (§10.3)
-	Executor        *ExecutorInfo    `yaml:"executor,omitempty" json:"executor,omitempty"`                // Executor specification (§10.2)
-	Attester        *AttesterInfo    `yaml:"attester,omitempty" json:"attester,omitempty"`                // Attester specification (§10.2)
-	Timestamp       string           `yaml:"timestamp,omitempty" json:"timestamp,omitempty"`              // v0.1 legacy ISO 8601 timestamp fallback
-	ContentHash     string           `yaml:"content_hash,omitempty" json:"content_hash,omitempty"`        // Structural hash for incremental re-produce
-	EnrichedAgainst string           `yaml:"enriched_against,omitempty" json:"enriched_against,omitempty"`// Structural hash description was enriched against
-	OKFVersion      string           `yaml:"okf_version,omitempty" json:"okf_version,omitempty"`          // OKF version targeted (permitted in root index.md)
+	Generated       *GeneratedInfo   `yaml:"generated,omitempty" json:"generated,omitempty"`               // Generation actor and ISO 8601 datetime (§5.2)
+	Verified        VerifiedList     `yaml:"verified,omitempty" json:"verified,omitempty"`                 // Verification events list (§5.2)
+	Sources         []SourceEntry    `yaml:"sources,omitempty" json:"sources,omitempty"`                   // Provenance sources (§5.1)
+	UsageWindow     *UsageWindow     `yaml:"usage_window,omitempty" json:"usage_window,omitempty"`         // Shared usage window (§5.1)
+	Status          string           `yaml:"status,omitempty" json:"status,omitempty"`                     // draft | stable | deprecated (§5.4)
+	StaleAfter      string           `yaml:"stale_after,omitempty" json:"stale_after,omitempty"`           // Absolute staleness date YYYY-MM-DD (§5.5)
+	Runtime         string           `yaml:"runtime,omitempty" json:"runtime,omitempty"`                   // Execution runtime for Attested Computation (§10.2)
+	Parameters      []ParameterEntry `yaml:"parameters,omitempty" json:"parameters,omitempty"`             // Parameter bindings for Attested Computation (§10.2)
+	Computation     string           `yaml:"computation,omitempty" json:"computation,omitempty"`           // External file path for computation (§10.3)
+	Executor        *ExecutorInfo    `yaml:"executor,omitempty" json:"executor,omitempty"`                 // Executor specification (§10.2)
+	Attester        *AttesterInfo    `yaml:"attester,omitempty" json:"attester,omitempty"`                 // Attester specification (§10.2)
+	Timestamp       string           `yaml:"timestamp,omitempty" json:"timestamp,omitempty"`               // v0.1 legacy ISO 8601 timestamp fallback
+	ContentHash     string           `yaml:"content_hash,omitempty" json:"content_hash,omitempty"`         // Structural hash for incremental re-produce
+	EnrichedAgainst string           `yaml:"enriched_against,omitempty" json:"enriched_against,omitempty"` // Structural hash description was enriched against
+	OKFVersion      string           `yaml:"okf_version,omitempty" json:"okf_version,omitempty"`           // OKF version targeted (permitted in root index.md)
 }
 
 // GetTrustTier derives the trust tier per OKF-SPEC §5.3.
