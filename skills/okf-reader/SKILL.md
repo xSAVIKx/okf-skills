@@ -39,12 +39,19 @@ Load this skill whenever you are tasked with reading, parsing, querying, or anal
 - **Rule**: To identify, filter, or catalog concepts, read only the top frontmatter — not the bodies.
 - **Protocol**:
   - Parse the YAML block between the first two `---`.
-  - Use `type` (an arbitrary producer-defined kind — e.g. `Table`, `File`, `Metric`, `Playbook`), `title`, `description` (the one-line summary — the most useful field for cataloging), and `resource` (canonical URI of the underlying asset).
+  - Use `type` (an arbitrary producer-defined kind — e.g. `Table`, `File`, `Metric`, `Playbook`, `Attested Computation`), `title`, `description` (the one-line summary — the most useful field for cataloging), and `resource` (canonical URI of the underlying asset).
+  - **OKF v0.2 Metadata Families**:
+    - **Generation & Timestamp**: Read `generated.by` (actor) and `generated.at` (ISO 8601 timestamp). Fall back to legacy `timestamp` if `generated` is absent.
+    - **Trust Tier**: Derive trust from `verified`: `human-reviewed` if any `verified[].by` starts with `human:`, `machine-confirmed` if verified by processes/agents only, `unverified` if absent.
+    - **Freshness & Staleness**: Check `stale_after` (`YYYY-MM-DD`). A concept is stale when `today >= stale_after`.
+    - **Lifecycle Status**: Read `status` (`draft` | `stable` | `deprecated`; default: `stable`).
+    - **Provenance**: Read `sources` array (`id`, `resource`, `title`, `author`, `usage_count`, `last_modified`) and `usage_window`. Resolve inline footnote claim citations (`[^source-id]`).
+    - **Attested Computations**: Concepts with `type: Attested Computation` declare `runtime`, `parameters`, `computation` (or `# Computation` body fence), `executor`, and `attester`.
   - The bundle stores **knowledge about** an asset, not its contents — for filesystem/git bundles the body may be only metadata. To read the asset itself, dereference its `resource` URI: for `file://`, drop the scheme and URL-decode to a local path; other schemes (`bq://`, `postgres://`, `git://`, …) identify the asset but need the matching connector or credentials to fetch.
 
 ### 4. Search by name or keyword with grep
 - **Rule**: To find a field, key, column, or any keyword across the bundle, don't open files one by one.
-- **Protocol**: Run `grep`/`ripgrep` across the bundle directory and open only the files that match. For frontmatter-only filters, grep anchored lines (e.g. `^type:`, `^title:`).
+- **Protocol**: Run `grep`/`ripgrep` across the bundle directory and open only the files that match. For frontmatter-only filters, grep anchored lines (e.g. `^type:`, `^title:`, `^status:`).
 
 ### 5. Follow links for relationships — when they exist
 - **Rule**: Relationships are expressed as standard markdown links between concepts; don't infer them. Some bundles are richly cross-linked; others (e.g. filesystem/git) encode structure only as index/tree containment and have **no** body links — tolerate their absence rather than forcing a graph.
@@ -53,3 +60,4 @@ Load this skill whenever you are tasked with reading, parsing, querying, or anal
 ### 6. Source-side catalog: `.okf-metadata.yaml`
 - **Rule**: When pointed at a **source directory** (not a bundle) that has been ingested, a `.okf-metadata.yaml` at its root is a flat `path: description` catalog — read it directly for an instant index, no bundle required.
 - **Protocol**: Inside a bundle you don't need it — the same descriptions already live in each concept's frontmatter `description` (Rule 3). Reach for `.okf-metadata.yaml` only when summarizing the source itself.
+

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
@@ -37,12 +38,16 @@ type Doc struct {
 	Resource    string   `json:"resource,omitempty"`
 	Tags        []string `json:"tags,omitempty"`
 	Timestamp   string   `json:"timestamp,omitempty"`
+	TrustTier   string   `json:"trustTier,omitempty"`
+	Status      string   `json:"status,omitempty"`
+	IsStale     bool     `json:"isStale,omitempty"`
 	BodyHTML    string   `json:"bodyHtml"`
 }
 
 // buildDocs renders every concept's body to HTML keyed by concept ID.
 func buildDocs(m *Model) map[string]Doc {
 	docs := map[string]Doc{}
+	now := time.Now()
 	for id, doc := range m.concepts {
 		docs[id] = Doc{
 			Title:       firstNonEmpty(doc.Frontmatter.Title, id),
@@ -50,7 +55,10 @@ func buildDocs(m *Model) map[string]Doc {
 			Description: doc.Frontmatter.Description,
 			Resource:    doc.Frontmatter.Resource,
 			Tags:        doc.Frontmatter.Tags,
-			Timestamp:   doc.Frontmatter.Timestamp,
+			Timestamp:   doc.Frontmatter.GetEffectiveTimestamp(),
+			TrustTier:   string(doc.Frontmatter.GetTrustTier()),
+			Status:      doc.Frontmatter.Status,
+			IsStale:     doc.Frontmatter.IsStale(now),
 			BodyHTML:    renderMarkdown(doc.Body),
 		}
 	}

@@ -264,6 +264,7 @@ func runProduce(args []string) {
 				Description: description,
 				Resource:    fmt.Sprintf("mysql://%s:%d/%s/%s", *host, *port, *dbName, tInfo.Name),
 				Tags:        []string{"mysql", kindTag},
+				Generated:   &okf.GeneratedInfo{By: "okf-mysql/v0.2.0", At: timestamp},
 				Timestamp:   timestamp,
 			},
 			Body: bodyStr,
@@ -313,7 +314,7 @@ func runProduce(args []string) {
 
 	indexDoc := okf.ConceptDoc{
 		Frontmatter: okf.Frontmatter{
-			OKFVersion: "0.1",
+			OKFVersion: "0.2",
 		},
 		Body: indexBody.String(),
 	}

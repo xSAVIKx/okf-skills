@@ -22,7 +22,7 @@ func TestOkfVizTypedEdges(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write(filepath.Join(bundle, "index.md"), "---\nokf_version: \"0.1\"\n---\n# Demo\n")
+	write(filepath.Join(bundle, "index.md"), "---\nokf_version: \"0.2\"\n---\n# Demo\n")
 	write(filepath.Join(bundle, "tables", "orders.md"),
 		"---\ntype: SQLite Table\ntitle: orders\ndescription: One row per order.\n---\n# Columns\n\n# Relationships\n\n- FK on customer_id [customers](/tables/customers.md)\n")
 	write(filepath.Join(bundle, "tables", "customers.md"),
@@ -53,7 +53,7 @@ func TestOkfVizCoverage(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write(filepath.Join(bundle, "index.md"), "---\nokf_version: \"0.1\"\n---\n# Demo\n")
+	write(filepath.Join(bundle, "index.md"), "---\nokf_version: \"0.2\"\n---\n# Demo\n")
 	// one enriched, one placeholder.
 	write(filepath.Join(bundle, "tables", "orders.md"),
 		"---\ntype: SQLite Table\ntitle: orders\ndescription: One row per order.\n---\n# Columns\n\nFK to [customers](/tables/customers.md).\n")
@@ -101,7 +101,7 @@ func TestOkfVizRender(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	must(filepath.Join(bundle, "index.md"), "---\nokf_version: \"0.1\"\n---\n# Demo\n")
+	must(filepath.Join(bundle, "index.md"), "---\nokf_version: \"0.2\"\n---\n# Demo\n")
 	must(filepath.Join(bundle, "tables", "orders.md"),
 		"---\ntype: SQLite Table\ntitle: orders\ndescription: One row per order.\n---\n# Columns\n\nFK to [customers](/tables/customers.md).\n")
 	must(filepath.Join(bundle, "tables", "customers.md"),

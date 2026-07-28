@@ -74,10 +74,10 @@ func TestGitIntegration(t *testing.T) {
 		t.Errorf("file_git.txt.md was not produced")
 	}
 
-	// Verify index.md contains okf_version: "0.1"
+	// Verify index.md contains okf_version: "0.2"
 	indexBytes, _ := os.ReadFile(indexFile)
-	if !strings.Contains(string(indexBytes), "okf_version: \"0.1\"") {
-		t.Errorf("index.md does not contain okf_version: \"0.1\"")
+	if !strings.Contains(string(indexBytes), "okf_version: \"0.2\"") {
+		t.Errorf("index.md does not contain okf_version: \"0.2\"")
 	}
 
 	// Check gitDocFile contains author and commit message provenance
