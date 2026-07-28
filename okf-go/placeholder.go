@@ -16,10 +16,15 @@ var placeholderPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`^MySQL (table|view) .+$`),
 	regexp.MustCompile(`^PostgreSQL (table|view) .+$`),
 	regexp.MustCompile(`^BigQuery (table|view) .+$`),
+	regexp.MustCompile(`^MongoDB collection .+$`),
 	regexp.MustCompile(`^File .+$`),
 	regexp.MustCompile(`^Directory .+$`),
 	regexp.MustCompile(`^Git file .+$`),
 	regexp.MustCompile(`^Git directory .+$`),
+	regexp.MustCompile(`^CSV file .+$`),
+	regexp.MustCompile(`^API endpoint .+$`),
+	regexp.MustCompile(`^API schema .+$`),
+	regexp.MustCompile(`^GraphQL (type|query|mutation|subscription) .+$`),
 	regexp.MustCompile(`^No description available$`),
 }
 

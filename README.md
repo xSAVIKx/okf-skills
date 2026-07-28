@@ -138,6 +138,10 @@ Every skill is self-describing via a `schema` subcommand that emits JSON describ
 | `okf-bigquery` | Google Cloud BigQuery | GCP credentials / API key |
 | `okf-fs` | Local filesystem | `.okfignore` & `.okf-metadata.yaml` support |
 | `okf-git` | Git repositories | Commit history & file-level metadata |
+| `okf-csv` | CSV files | Inferred column types + data profile, `.okf-metadata.yaml` sync |
+| `okf-openapi` | OpenAPI / Swagger specs | Endpoint + Schema concepts with typed cross-links |
+| `okf-mongodb` | MongoDB databases | Document sampling → field type/presence schema |
+| `okf-graphql` | GraphQL SDL | Types + operations with native relationship edges |
 
 ### Commands
 
@@ -261,10 +265,12 @@ The root `skills.sh.json` manifest groups the skills for the [skills.sh](https:/
 
 | Group | Skills |
 |---|---|
-| Database Connectors | `okf-sqlite`, `okf-mysql`, `okf-postgresql`, `okf-bigquery` |
+| Database Connectors | `okf-sqlite`, `okf-mysql`, `okf-postgresql`, `okf-bigquery`, `okf-csv`, `okf-mongodb` |
 | Filesystem & Git | `okf-fs`, `okf-git` |
+| API Connectors | `okf-openapi`, `okf-graphql` |
 | Agent Guidance | `okf-reader`, `okf-enrich`, `okf-producer-generator` |
 | Visualization | `okf-viz` |
+| Validation | `okf-lint` |
 
 `okf-mcp` is deliberately omitted from the registry manifest: it is the host server that exposes the skills over MCP (and lives outside `skills/`), not a discoverable skill itself.
 

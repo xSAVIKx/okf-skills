@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-producer-generator/v0.2.0...skills/okf-producer-generator/v0.3.0) (2026-06-17)
+
+
+### Features
+
+* deterministic enrichment coverage report ([#12](https://github.com/xSAVIKx/okf-skills/issues/12)) ([6d85333](https://github.com/xSAVIKx/okf-skills/commit/6d853336be4656d10f5d16b39e188b5f2d437c77))
+
 ## [0.2.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-producer-generator/v0.1.0...skills/okf-producer-generator/v0.2.0) (2026-06-16)
 
 

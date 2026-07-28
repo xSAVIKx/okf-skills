@@ -38,8 +38,14 @@ func TestConnectorSchemaContract(t *testing.T) {
 		{"okf-bigquery", []string{"produce", "ingest", "schema"}},
 		{"okf-fs", []string{"produce", "ingest", "schema"}},
 		{"okf-git", []string{"produce", "ingest", "schema"}},
+		{"okf-csv", []string{"produce", "ingest", "schema"}},
+		{"okf-openapi", []string{"produce", "ingest", "schema"}},
+		{"okf-mongodb", []string{"produce", "ingest", "schema"}},
+		{"okf-graphql", []string{"produce", "ingest", "schema"}},
 		// okf-viz is a consumer skill: render + schema (no produce/ingest)
 		{"okf-viz", []string{"render", "schema"}},
+		// okf-lint is a consumer skill: lint + schema (no produce/ingest)
+		{"okf-lint", []string{"lint", "schema"}},
 	}
 	for _, spec := range skills {
 		spec := spec // capture

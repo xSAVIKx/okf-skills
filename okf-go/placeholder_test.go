@@ -11,10 +11,16 @@ func TestIsPlaceholderDescription(t *testing.T) {
 		"MySQL table products",
 		"PostgreSQL table users",
 		"BigQuery table events",
+		"MongoDB collection orders",
 		"File config.yaml",
 		"Directory src",
 		"Git file main.go",
 		"Git directory internal",
+		"CSV file orders",
+		"API endpoint GET /orders",
+		"API schema Order",
+		"GraphQL type Order",
+		"GraphQL query orders",
 		"No description available",
 	}
 	for _, p := range placeholders {

@@ -34,6 +34,10 @@ okf-skills/
 ├── okf-mcp/                       # Generic MCP server — the host that exposes skills (not a skill)
 ├── skills/                        # Standalone Go-based CLI skills
 │   ├── okf-sqlite/                # SQLite connector (CGO-free)
+│   ├── okf-graphql/                # GraphQL Type connector
+│   ├── okf-mongodb/                # MongoDB Collection connector
+│   ├── okf-openapi/                # API Endpoint connector
+│   ├── okf-csv/                # CSV File connector
 │   ├── okf-mysql/                 # MySQL connector
 │   ├── okf-postgresql/            # PostgreSQL connector
 │   ├── okf-bigquery/              # GCP BigQuery connector
@@ -42,7 +46,8 @@ okf-skills/
 │   ├── okf-enrich/                # Enrichment guidance skill (Instructions-only)
 │   ├── okf-reader/                # Ingestion guidance skill (Instructions-only)
 │   ├── okf-producer-generator/    # Producer-authoring guidance skill (Instructions-only)
-│   └── okf-viz/                   # Bundle visualizer — renders OKF bundles to interactive HTML
+│   ├── okf-viz/                   # Bundle visualizer — renders OKF bundles to interactive HTML
+│   └── okf-lint/                  # Bundle validator — spec conformance + coverage, CI gate
 └── tests/                         # Central integration testing directory
     ├── docker-compose.yml         # MySQL & PostgreSQL containers
     ├── helpers_test.go            # Shared test utilities (getBinaryPath, isPortOpen, etc.)

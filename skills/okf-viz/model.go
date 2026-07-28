@@ -22,8 +22,11 @@ type Node struct {
 	TrustTier   string   `json:"trustTier,omitempty"`
 	Status      string   `json:"status,omitempty"`
 	IsStale     bool     `json:"isStale,omitempty"`
-	Dir         string   `json:"dir"`    // parent directory id ("" = root)
-	Degree      int      `json:"degree"` // set in links.go
+	Dir         string   `json:"dir"`                // parent directory id ("" = root)
+	Degree      int      `json:"degree"`             // set in links.go
+	Coverage    string   `json:"coverage,omitempty"` // "placeholder" | "enriched" (concepts only; for the coverage overlay)
+	Diff        string   `json:"diff,omitempty"`     // "added" | "removed" | "changed" (diff mode only)
+	Bundle      string   `json:"bundle,omitempty"`   // owning bundle key (federation only)
 }
 
 // Edge connects two nodes. Kind is "containment" (dashed) or "crosslink" (solid).
@@ -37,6 +40,7 @@ type Edge struct {
 	Kind     string `json:"kind"`
 	Relation string `json:"relation,omitempty"`
 	Label    string `json:"label,omitempty"`
+	Diff     string `json:"diff,omitempty"` // "added" | "removed" (diff mode only)
 }
 
 // Model is the full graph plus the bundle root label.
@@ -47,6 +51,16 @@ type Model struct {
 	Edges     []Edge
 	// concepts maps concept ID -> parsed doc, used by render.go.
 	concepts map[string]*okf.ConceptDoc
+}
+
+// Column is a parsed row of a concept's "# Columns" table, used by ER/schema mode
+// to draw each table with its columns. Populated only for tabular concepts.
+type Column struct {
+	Name     string `json:"name"`
+	Type     string `json:"type,omitempty"`
+	PK       bool   `json:"pk,omitempty"`
+	FK       bool   `json:"fk,omitempty"`
+	Nullable bool   `json:"nullable,omitempty"`
 }
 
 const rootNodeID = "__root__"
