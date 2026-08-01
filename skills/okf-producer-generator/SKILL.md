@@ -42,7 +42,7 @@ concept types. The rules you will lean on most:
 - A bundle is a directory tree of markdown files with YAML frontmatter.
 - The **only required frontmatter field is `type`**; everything else is optional.
 - `index.md` files carry **no frontmatter**, except the **bundle-root** `index.md`,
-  which may declare **only** `okf_version: "0.1"`.
+  which may declare **only** `okf_version: "0.2"`.
 - Consumers are permissive: unknown `type` values, extra keys, and broken links
   are all tolerated. Conformance is just "every concept has parseable frontmatter
   with a non-empty `type`."
@@ -133,7 +133,8 @@ doc := okf.ConceptDoc{
         Description: fmt.Sprintf("MongoDB collection %s", name), // deterministic placeholder
         Resource:    resourceURI,                          // no credentials
         Tags:        []string{"mongodb", "collection"},
-        Timestamp:   timestamp,                             // time.Now().Format(time.RFC3339), computed once
+        Generated:   &okf.GeneratedInfo{By: "okf-mongodb/v0.2.0", At: timestamp}, // OKF v0.2 producer identity & ISO datetime
+        Timestamp:   timestamp,                             // v0.1 legacy fallback
     },
     Body: bodyStr,
 }
@@ -145,7 +146,7 @@ Then write the **bundle-root `index.md`** — the only index with frontmatter, a
 
 ```go
 okf.WriteConceptDoc(filepath.Join(outDir, "index.md"), okf.ConceptDoc{
-    Frontmatter: okf.Frontmatter{OKFVersion: "0.1"}, // nothing else
+    Frontmatter: okf.Frontmatter{OKFVersion: "0.2"}, // nothing else
     Body:        indexBody.String(),                 // "# …", then "- [name](collections/name.md) - …" lines
 })
 ```

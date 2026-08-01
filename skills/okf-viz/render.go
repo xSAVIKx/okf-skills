@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"time"
 
 	okf "github.com/xSAVIKx/okf-skills/okf-go"
 	"github.com/yuin/goldmark"
@@ -39,6 +40,9 @@ type Doc struct {
 	Resource    string       `json:"resource,omitempty"`
 	Tags        []string     `json:"tags,omitempty"`
 	Timestamp   string       `json:"timestamp,omitempty"`
+	TrustTier   string       `json:"trustTier,omitempty"`
+	Status      string       `json:"status,omitempty"`
+	IsStale     bool         `json:"isStale,omitempty"`
 	BodyHTML    string       `json:"bodyHtml"`
 	Columns     []Column     `json:"columns,omitempty"`
 	Profile     []ProfileRow `json:"profile,omitempty"`
@@ -73,6 +77,7 @@ func buildDocs(m *Model) map[string]Doc {
 	}
 
 	docs := map[string]Doc{}
+	now := time.Now()
 	for id, doc := range m.concepts {
 		cols := parseColumns(doc.Body)
 		for i := range cols {
@@ -86,7 +91,10 @@ func buildDocs(m *Model) map[string]Doc {
 			Description: doc.Frontmatter.Description,
 			Resource:    doc.Frontmatter.Resource,
 			Tags:        doc.Frontmatter.Tags,
-			Timestamp:   doc.Frontmatter.Timestamp,
+			Timestamp:   doc.Frontmatter.GetEffectiveTimestamp(),
+			TrustTier:   string(doc.Frontmatter.GetTrustTier()),
+			Status:      doc.Frontmatter.Status,
+			IsStale:     doc.Frontmatter.IsStale(now),
 			BodyHTML:    renderMarkdown(doc.Body),
 			Columns:     cols,
 			Profile:     parseProfile(doc.Body),

@@ -8,21 +8,145 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
 
+// TrustTier represents derived credibility status per OKF-SPEC §5.3.
+type TrustTier string
+
+const (
+	TrustTierUnverified       TrustTier = "unverified"
+	TrustTierMachineConfirmed TrustTier = "machine-confirmed"
+	TrustTierHumanReviewed    TrustTier = "human-reviewed"
+)
+
+// GeneratedInfo records how the concept was produced per OKF-SPEC §5.2.
+type GeneratedInfo struct {
+	By string `yaml:"by" json:"by"`
+	At string `yaml:"at,omitempty" json:"at,omitempty"`
+}
+
+// VerifiedEntry records a verification event per OKF-SPEC §5.2.
+type VerifiedEntry struct {
+	By string `yaml:"by" json:"by"`
+	At string `yaml:"at,omitempty" json:"at,omitempty"`
+}
+
+// VerifiedList handles YAML unmarshaling for both single mapping `{by, at}` and sequence `[{by, at}]`.
+type VerifiedList []VerifiedEntry
+
+func (vl *VerifiedList) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind == yaml.SequenceNode {
+		var list []VerifiedEntry
+		if err := node.Decode(&list); err != nil {
+			return err
+		}
+		*vl = list
+		return nil
+	}
+	if node.Kind == yaml.MappingNode {
+		var single VerifiedEntry
+		if err := node.Decode(&single); err != nil {
+			return err
+		}
+		*vl = []VerifiedEntry{single}
+		return nil
+	}
+	return nil
+}
+
+// SourceEntry represents an entry in the sources list per OKF-SPEC §5.1.
+type SourceEntry struct {
+	ID           string `yaml:"id,omitempty" json:"id,omitempty"`
+	Resource     string `yaml:"resource" json:"resource"`
+	Title        string `yaml:"title,omitempty" json:"title,omitempty"`
+	Author       string `yaml:"author,omitempty" json:"author,omitempty"`
+	UsageCount   int64  `yaml:"usage_count,omitempty" json:"usage_count,omitempty"`
+	LastModified string `yaml:"last_modified,omitempty" json:"last_modified,omitempty"`
+}
+
+// UsageWindow represents the window framing usage_count per OKF-SPEC §5.1.
+type UsageWindow struct {
+	From string `yaml:"from,omitempty" json:"from,omitempty"`
+	To   string `yaml:"to,omitempty" json:"to,omitempty"`
+}
+
+// ParameterEntry represents a parameter for an Attested Computation concept per OKF-SPEC §10.2.
+type ParameterEntry struct {
+	Name     string `yaml:"name" json:"name"`
+	Type     string `yaml:"type" json:"type"`
+	Required bool   `yaml:"required,omitempty" json:"required,omitempty"`
+}
+
+// ExecutorInfo represents executor contract per OKF-SPEC §10.2.
+type ExecutorInfo struct {
+	Resource string   `yaml:"resource,omitempty" json:"resource,omitempty"`
+	Receipt  []string `yaml:"receipt,omitempty" json:"receipt,omitempty"`
+}
+
+// AttesterInfo represents attester contract per OKF-SPEC §10.2.
+type AttesterInfo struct {
+	Resource string `yaml:"resource,omitempty" json:"resource,omitempty"`
+}
+
 // Frontmatter represents the YAML metadata block at the top of an OKF concept document.
 type Frontmatter struct {
-	Type            string   `yaml:"type,omitempty"`             // The kind of concept (e.g., SQLite Table, Dataset)
-	Title           string   `yaml:"title,omitempty"`            // The display name of the concept
-	Description     string   `yaml:"description,omitempty"`      // A brief summary description
-	Resource        string   `yaml:"resource,omitempty"`         // Canonical URI for the underlying asset
-	Tags            []string `yaml:"tags,omitempty"`             // Tags for classification
-	Timestamp       string   `yaml:"timestamp,omitempty"`        // ISO 8601 modification timestamp
-	ContentHash     string   `yaml:"content_hash,omitempty"`     // Structural hash for incremental re-produce (set by connectors)
-	EnrichedAgainst string   `yaml:"enriched_against,omitempty"` // content_hash the description was last enriched against (set by okf-enrich)
-	OKFVersion      string   `yaml:"okf_version,omitempty"`      // OKF version targeted (only permitted in bundle-root index.md)
+	Type            string           `yaml:"type,omitempty" json:"type,omitempty"`                         // The kind of concept (e.g., SQLite Table, Attested Computation)
+	Title           string           `yaml:"title,omitempty" json:"title,omitempty"`                       // Display name
+	Description     string           `yaml:"description,omitempty" json:"description,omitempty"`           // One-line summary
+	Resource        string           `yaml:"resource,omitempty" json:"resource,omitempty"`                 // Canonical URI for underlying asset
+	Tags            []string         `yaml:"tags,omitempty" json:"tags,omitempty"`                         // Classification tags
+	Generated       *GeneratedInfo   `yaml:"generated,omitempty" json:"generated,omitempty"`               // Generation actor and ISO 8601 datetime (§5.2)
+	Verified        VerifiedList     `yaml:"verified,omitempty" json:"verified,omitempty"`                 // Verification events list (§5.2)
+	Sources         []SourceEntry    `yaml:"sources,omitempty" json:"sources,omitempty"`                   // Provenance sources (§5.1)
+	UsageWindow     *UsageWindow     `yaml:"usage_window,omitempty" json:"usage_window,omitempty"`         // Shared usage window (§5.1)
+	Status          string           `yaml:"status,omitempty" json:"status,omitempty"`                     // draft | stable | deprecated (§5.4)
+	StaleAfter      string           `yaml:"stale_after,omitempty" json:"stale_after,omitempty"`           // Absolute staleness date YYYY-MM-DD (§5.5)
+	Runtime         string           `yaml:"runtime,omitempty" json:"runtime,omitempty"`                   // Execution runtime for Attested Computation (§10.2)
+	Parameters      []ParameterEntry `yaml:"parameters,omitempty" json:"parameters,omitempty"`             // Parameter bindings for Attested Computation (§10.2)
+	Computation     string           `yaml:"computation,omitempty" json:"computation,omitempty"`           // External file path for computation (§10.3)
+	Executor        *ExecutorInfo    `yaml:"executor,omitempty" json:"executor,omitempty"`                 // Executor specification (§10.2)
+	Attester        *AttesterInfo    `yaml:"attester,omitempty" json:"attester,omitempty"`                 // Attester specification (§10.2)
+	Timestamp       string           `yaml:"timestamp,omitempty" json:"timestamp,omitempty"`               // v0.1 legacy ISO 8601 timestamp fallback
+	ContentHash     string           `yaml:"content_hash,omitempty" json:"content_hash,omitempty"`         // Structural hash for incremental re-produce
+	EnrichedAgainst string           `yaml:"enriched_against,omitempty" json:"enriched_against,omitempty"` // Structural hash description was enriched against
+	OKFVersion      string           `yaml:"okf_version,omitempty" json:"okf_version,omitempty"`           // OKF version targeted (permitted in root index.md)
+}
+
+// GetTrustTier derives the trust tier per OKF-SPEC §5.3.
+func (fm Frontmatter) GetTrustTier() TrustTier {
+	if len(fm.Verified) == 0 {
+		return TrustTierUnverified
+	}
+	for _, v := range fm.Verified {
+		if strings.HasPrefix(v.By, "human:") {
+			return TrustTierHumanReviewed
+		}
+	}
+	return TrustTierMachineConfirmed
+}
+
+// IsStale reports whether today >= stale_after per OKF-SPEC §5.5.
+func (fm Frontmatter) IsStale(now time.Time) bool {
+	if fm.StaleAfter == "" {
+		return false
+	}
+	t, err := time.Parse("2006-01-02", fm.StaleAfter)
+	if err != nil {
+		return false
+	}
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	return !today.Before(t)
+}
+
+// GetEffectiveTimestamp returns generated.at if set, otherwise legacy timestamp.
+func (fm Frontmatter) GetEffectiveTimestamp() string {
+	if fm.Generated != nil && fm.Generated.At != "" {
+		return fm.Generated.At
+	}
+	return fm.Timestamp
 }
 
 // ConceptDoc represents a complete OKF document, separating YAML frontmatter from the markdown body.

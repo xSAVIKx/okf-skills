@@ -12,11 +12,21 @@ This repository is a central collection of skills for producing, consuming, and 
 okf-skills/
 ├── AGENTS.md                      # This guide
 ├── README.md                      # General user-facing overview
+├── CONTRIBUTING.md                # Contributor workflow & conventions
+├── RELEASING.md                   # Release process (release-please lockstep versioning)
 ├── LICENSE                        # Apache License 2.0
 ├── go.work                        # Go workspace defining monorepo modules
 ├── Makefile                       # Build, test, install shortcuts
-├── install.sh                      # Build and install all skills to a directory
+├── install.sh                     # Build and install all skills to a directory
 ├── skills.sh.json                 # skills.sh registry manifest (groups skills for discovery)
+├── release-please-config.json     # release-please config (lockstep versioning)
+├── .release-please-manifest.json  # release-please version manifest
+├── .github/                       # CI workflows
+├── scripts/                       # Release & intra-repo dependency tooling
+│   ├── sync-intra-deps.sh         # Re-pin okf-go in every consumer to the release version
+│   ├── ci-localize-okfgo.sh       # Make an unpublished okf-go pin resolvable in CI
+│   ├── verify-release.sh          # Prove every module installs/builds standalone (GOWORK=off)
+│   └── dryrun-pin-sync.sh         # Local dry-run of the release pin-sync flow
 ├── okf-go/                        # Shared Go library (YAML/MD serialization, ignore/metadata helpers)
 │   ├── okf.go                     # Core types: Frontmatter, ConceptDoc, helpers
 │   ├── okf_test.go                # Unit tests
@@ -44,6 +54,8 @@ okf-skills/
     ├── db_integration_test.go     # SQLite, MySQL, PostgreSQL integration tests
     ├── fs_integration_test.go     # Filesystem integration tests
     ├── git_integration_test.go    # Git integration tests
+    ├── mcp_integration_test.go    # schema-contract checks + okf-mcp discovery
+    ├── viz_integration_test.go    # okf-viz render integration tests
     ├── mysql/
     │   └── init_mysql.sql         # Sample MySQL schema with comments
     ├── postgres/
@@ -59,7 +71,7 @@ All core OKF schemas and parsing helper functions live under `okf-go/`.
 - **Do Not Duplicate Structs**: The `Frontmatter` and `ConceptDoc` structs must not be defined in individual skills. Import `github.com/xSAVIKx/okf-skills/okf-go` instead.
 - **Spec Compliance**: OKF concepts are Markdown files with YAML frontmatter.
   - Subdirectory `index.md` files must contain **no frontmatter**.
-  - The bundle-root `index.md` is the only index permitted to contain frontmatter, and it should only declare `okf_version: "0.1"` (omit `type`, `title`, and `description` from the YAML block; place them directly inside the Markdown body).
+  - The bundle-root `index.md` is the only index permitted to contain frontmatter, and it should only declare `okf_version: "0.2"` (omit `type`, `title`, and `description` from the YAML block; place them directly inside the Markdown body).
 - **Line Ending Compatibility**: `ReadConceptDoc` split operations must handle both Unix LF (`\n`) and Windows CRLF (`\r\n`) markers for frontmatter boundaries.
 - **Ignore & Metadata Helpers**: Use the shared `IgnoreMatcher` helper to load `.okfignore` wildcard matchers, and `ReadFolderMetadata`/`WriteFolderMetadata` to serialize/deserialize path-to-description mapping inside `.okf-metadata.yaml`.
 - **Unit Testing**: Maintain robust tests in `okf_test.go` and run `go test -v ./...` inside `okf-go/` after making changes.
@@ -156,6 +168,7 @@ Integration tests are centralized under `tests/` and organized by connector type
 | `fs_integration_test.go` | Filesystem produce & ingest |
 | `git_integration_test.go` | Git repository produce & ingest |
 | `mcp_integration_test.go` | Connector `schema`-contract checks + `okf-mcp` discovery of a built skill |
+| `viz_integration_test.go` | `okf-viz` render output (self-contained `index.html`) |
 
 ### Running Tests
 ```bash
@@ -174,7 +187,7 @@ cd tests && go test -v .
 cd tests && docker-compose down && cd ..
 ```
 
-SQLite, filesystem, git, the `schema`-contract checks, and `okf-mcp` discovery run without Docker; the MySQL/PostgreSQL cases are guarded by connection checks and skip when the containers are down.
+SQLite, filesystem, git, `okf-viz` render, the `schema`-contract checks, and `okf-mcp` discovery run without Docker; the MySQL/PostgreSQL cases are guarded by connection checks and skip when the containers are down.
 
 ---
 
@@ -188,3 +201,15 @@ When adding a new connector or modifying an existing one, follow these steps (th
 5. **Compile Binaries**: Run `make build` (or `go build -o <name> .` in each skill directory and `okf-mcp/`) and verify everything compiles without errors.
 6. **Code Clean-up**: Shut down database containers via `cd tests && docker-compose down`.
 7. **Commit Conventions**: Use conventional commit messages (`feat: ...`, `fix: ...`, `refactor: ...`, `docs: ...`) and commit modularly.
+
+---
+
+## 7. Releasing
+
+Releases are **fully automated** from [Conventional Commits](https://www.conventionalcommits.org/) via [release-please](https://github.com/googleapis/release-please) — you never tag or `go install`-publish a module by hand. **[`RELEASING.md`](RELEASING.md) is the source of truth; read it before touching versions, pins, or the release tooling.** The essentials:
+
+- **Commits drive the bump.** Squash-merge so the PR title lands on `master` as the conventional commit. `feat:` → minor, `fix:` → patch, `chore/docs/ci/test/style/build/refactor:` → no release. release-please decides which modules to bump from the **file paths** touched, mapped via `packages` in `release-please-config.json` — the commit scope (`fix(okf-sqlite): …`) is informational.
+- **Lockstep versioning.** Every Go module (the 7 connectors + `okf-mcp` + `okf-go`) releases at the **same version and SHA**, so a connector and the `okf-go` it was built against never skew. Enforced by the `linked-versions` plugin. The instruction-only skills (`okf-enrich`, `okf-reader`, `okf-producer-generator`) are `simple` packages that version **independently**.
+- **Never bump `require okf-go vNEW` in a feature PR** — `vNEW` doesn't exist until the release PR merges. The `sync-pins` job ([`scripts/sync-intra-deps.sh`](scripts/sync-intra-deps.sh)) re-pins every consumer and refreshes `go.sum` on the release PR; it also rewrites each `SKILL.md` → `metadata.version`.
+- **Why the `scripts/` tooling exists.** `go.work` hides stale pins and missing `go.sum` entries during normal CI (it resolves `okf-go` from the working tree). The release scripts close that gap: `sync-intra-deps.sh` syncs pins against a local tag, `ci-localize-okfgo.sh` makes the unpublished pin resolvable in workspace-mode CI, and `verify-release.sh` (the post-merge `verify-install` gate) proves every module installs **standalone** (`GOWORK=off`). See `RELEASING.md` for the full rationale.
+- **Skill version lives in one place:** `SKILL.md` → `metadata.version`. `install.sh` injects it into binaries via `-ldflags` (so `okf-<name> --version` reports it) and records it in `okf-skills-manifest.txt`.

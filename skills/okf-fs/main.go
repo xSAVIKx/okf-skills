@@ -154,6 +154,7 @@ func runProduce(args []string) {
 				Description: description,
 				Resource:    fmt.Sprintf("file:///%s", filepath.ToSlash(filepath.Join(absDir, rel))),
 				Tags:        []string{"fs", strings.ToLower(conceptType)},
+				Generated:   &okf.GeneratedInfo{By: "okf-fs/v0.2.0", At: timestamp},
 				Timestamp:   timestamp,
 			},
 			Body: body.String(),
@@ -205,7 +206,7 @@ func runProduce(args []string) {
 
 	indexDoc := okf.ConceptDoc{
 		Frontmatter: okf.Frontmatter{
-			OKFVersion: "0.1",
+			OKFVersion: "0.2",
 		},
 		Body: indexBody.String(),
 	}

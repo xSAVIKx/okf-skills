@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 // TestRoundTrip verifies that a concept doc can be written to disk and parsed back exactly.
@@ -240,5 +241,105 @@ func TestFolderMetadata(t *testing.T) {
 
 	if !reflect.DeepEqual(parsedMeta, originalMeta) {
 		t.Errorf("expected %+v, got %+v", originalMeta, parsedMeta)
+	}
+}
+
+// TestOKFSpecV2Frontmatter verifies OKF v0.2 frontmatter parsing, trust tier derivation, and staleness checks.
+func TestOKFSpecV2Frontmatter(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "okf-v2-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	yamlContent := `---
+type: Attested Computation
+title: Revenue Calculation
+description: Recognized revenue calculation
+runtime: bigquery
+status: stable
+stale_after: 2026-06-15
+generated:
+  by: okf-sqlite/v0.2.0
+  at: 2026-06-20T14:00:00Z
+verified:
+  by: human:ahormati
+  at: 2026-06-21T09:00:00Z
+parameters:
+  - name: year
+    type: integer
+    required: true
+executor:
+  resource: references/skills/run-bq.md
+  receipt: [job_id, executed_sql]
+attester:
+  resource: references/attesters/sql-check.py
+sources:
+  - id: rev-policy
+    resource: https://wiki.acme/finance/rev-policy
+    title: Revenue Policy
+    author: team:finance
+    usage_count: 500
+    last_modified: 2026-05-01
+---
+# Computation
+
+    SELECT SUM(amount) FROM sales WHERE year = @year
+`
+	filePath := filepath.Join(tempDir, "computation.md")
+	if err := os.WriteFile(filePath, []byte(yamlContent), 0644); err != nil {
+		t.Fatalf("failed to write test file: %v", err)
+	}
+
+	doc, err := ReadConceptDoc(filePath)
+	if err != nil {
+		t.Fatalf("failed to read v0.2 concept doc: %v", err)
+	}
+
+	fm := doc.Frontmatter
+	if fm.Type != "Attested Computation" {
+		t.Errorf("expected Type 'Attested Computation', got %q", fm.Type)
+	}
+	if fm.Runtime != "bigquery" {
+		t.Errorf("expected Runtime 'bigquery', got %q", fm.Runtime)
+	}
+	if fm.Status != "stable" {
+		t.Errorf("expected Status 'stable', got %q", fm.Status)
+	}
+	if fm.Generated == nil || fm.Generated.By != "okf-sqlite/v0.2.0" {
+		t.Errorf("expected Generated.By 'okf-sqlite/v0.2.0', got %+v", fm.Generated)
+	}
+	if fm.GetEffectiveTimestamp() != "2026-06-20T14:00:00Z" {
+		t.Errorf("expected GetEffectiveTimestamp '2026-06-20T14:00:00Z', got %q", fm.GetEffectiveTimestamp())
+	}
+
+	// Trust tier check
+	if fm.GetTrustTier() != TrustTierHumanReviewed {
+		t.Errorf("expected TrustTierHumanReviewed, got %q", fm.GetTrustTier())
+	}
+
+	// Single verified item unmarshaling check
+	if len(fm.Verified) != 1 || fm.Verified[0].By != "human:ahormati" {
+		t.Errorf("expected 1 verified item 'human:ahormati', got %+v", fm.Verified)
+	}
+
+	// Staleness check
+	staleDate, _ := time.Parse("2006-01-02", "2026-06-20")
+	freshDate, _ := time.Parse("2006-01-02", "2026-06-10")
+	if !fm.IsStale(staleDate) {
+		t.Errorf("expected IsStale to be true for date %v with stale_after 2026-06-15", staleDate)
+	}
+	if fm.IsStale(freshDate) {
+		t.Errorf("expected IsStale to be false for date %v with stale_after 2026-06-15", freshDate)
+	}
+
+	// Sources check
+	if len(fm.Sources) != 1 || fm.Sources[0].ID != "rev-policy" || fm.Sources[0].UsageCount != 500 {
+		t.Errorf("expected Sources parsed correctly, got %+v", fm.Sources)
+	}
+
+	// Parameters check
+	if len(fm.Parameters) != 1 || fm.Parameters[0].Name != "year" || !fm.Parameters[0].Required {
+		t.Errorf("expected Parameters parsed correctly, got %+v", fm.Parameters)
 	}
 }

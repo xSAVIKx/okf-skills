@@ -80,10 +80,10 @@ func TestFSIntegration(t *testing.T) {
 		t.Errorf("file1Doc frontmatter description is missing or incorrect: %s", string(file1Bytes))
 	}
 
-	// Check index.md contains okf_version: "0.1"
+	// Check index.md contains okf_version: "0.2"
 	indexBytes, _ := os.ReadFile(indexFile)
-	if !strings.Contains(string(indexBytes), "okf_version: \"0.1\"") {
-		t.Errorf("index.md does not contain okf_version: \"0.1\"")
+	if !strings.Contains(string(indexBytes), "okf_version: \"0.2\"") {
+		t.Errorf("index.md does not contain okf_version: \"0.2\"")
 	}
 
 	// 3. Modify description in file1.txt.md and sync back

@@ -56,10 +56,13 @@ func TestSQLiteIntegration(t *testing.T) {
 		t.Errorf("users.md was not produced")
 	}
 
-	// Verify index.md contains okf_version: "0.1"
-	indexContent, _ := os.ReadFile(indexFile)
-	if !strings.Contains(string(indexContent), "okf_version: \"0.1\"") {
-		t.Errorf("index.md does not contain okf_version: \"0.1\"")
+	// Verify index.md contains okf_version: "0.2"
+	indexContent, err := os.ReadFile(filepath.Join(outDir, "index.md"))
+	if err != nil {
+		t.Fatalf("failed to read index.md: %v", err)
+	}
+	if !strings.Contains(string(indexContent), "okf_version: \"0.2\"") {
+		t.Errorf("index.md does not contain okf_version: \"0.2\"")
 	}
 
 	// 3. Run ingest and sync a new table
@@ -383,8 +386,8 @@ func TestMySQLIntegration(t *testing.T) {
 	// 2. Validate index.md
 	indexFile := filepath.Join(outDir, "index.md")
 	indexContent, _ := os.ReadFile(indexFile)
-	if !strings.Contains(string(indexContent), "okf_version: \"0.1\"") {
-		t.Errorf("mysql index.md does not contain okf_version: \"0.1\"")
+	if !strings.Contains(string(indexContent), "okf_version: \"0.2\"") {
+		t.Errorf("mysql index.md does not contain okf_version: \"0.2\"")
 	}
 
 	// 3. Modify table and column comments in products.md
@@ -586,8 +589,8 @@ func TestPostgreSQLIntegration(t *testing.T) {
 	// 2. Validate index.md
 	indexFile := filepath.Join(outDir, "index.md")
 	indexContent, _ := os.ReadFile(indexFile)
-	if !strings.Contains(string(indexContent), "okf_version: \"0.1\"") {
-		t.Errorf("postgres index.md does not contain okf_version: \"0.1\"")
+	if !strings.Contains(string(indexContent), "okf_version: \"0.2\"") {
+		t.Errorf("postgres index.md does not contain okf_version: \"0.2\"")
 	}
 
 	// 3. Modify table and column comments in products.md

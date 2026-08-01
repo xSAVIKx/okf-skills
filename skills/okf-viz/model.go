@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/xSAVIKx/okf-skills/okf-go"
 )
@@ -18,6 +19,9 @@ type Node struct {
 	Description string   `json:"description"` // one-line summary (concepts only)
 	Resource    string   `json:"resource,omitempty"`
 	Tags        []string `json:"tags,omitempty"`
+	TrustTier   string   `json:"trustTier,omitempty"`
+	Status      string   `json:"status,omitempty"`
+	IsStale     bool     `json:"isStale,omitempty"`
 	Dir         string   `json:"dir"`                // parent directory id ("" = root)
 	Degree      int      `json:"degree"`             // set in links.go
 	Coverage    string   `json:"coverage,omitempty"` // "placeholder" | "enriched" (concepts only; for the coverage overlay)
@@ -105,6 +109,9 @@ func BuildModel(bundleDir string) (*Model, error) {
 			ID: id, Kind: "concept", Type: doc.Frontmatter.Type,
 			Title: title, Description: doc.Frontmatter.Description,
 			Resource: doc.Frontmatter.Resource, Tags: doc.Frontmatter.Tags, Dir: dir,
+			TrustTier: string(doc.Frontmatter.GetTrustTier()),
+			Status:    doc.Frontmatter.Status,
+			IsStale:   doc.Frontmatter.IsStale(time.Now()),
 		})
 		m.concepts[id] = doc
 		markDirChain(dirsWithConcepts, dir)

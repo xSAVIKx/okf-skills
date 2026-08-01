@@ -226,6 +226,7 @@ func runProduce(args []string) {
 				Description: tMeta.Description,
 				Resource:    fmt.Sprintf("bigquery://%s/%s/%s", *projectID, *datasetID, t.TableID),
 				Tags:        []string{"bigquery", kindTag},
+				Generated:   &okf.GeneratedInfo{By: "okf-bigquery/v0.2.0", At: timestamp},
 				Timestamp:   timestamp,
 			},
 			Body: bodyStr,
@@ -271,7 +272,7 @@ func runProduce(args []string) {
 
 	indexDoc := okf.ConceptDoc{
 		Frontmatter: okf.Frontmatter{
-			OKFVersion: "0.1",
+			OKFVersion: "0.2",
 		},
 		Body: indexBody.String(),
 	}

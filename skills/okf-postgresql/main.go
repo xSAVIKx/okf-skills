@@ -230,6 +230,7 @@ func runProduce(args []string) {
 				Description: tInfo.Comment, // preserve the database COMMENT (obj_description) as the description
 				Resource:    fmt.Sprintf("postgres://%s:%d/%s/%s/%s", *host, *port, *dbName, *schemaName, tInfo.Name),
 				Tags:        []string{"postgres", kindTag},
+				Generated:   &okf.GeneratedInfo{By: "okf-postgresql/v0.2.0", At: timestamp},
 				Timestamp:   timestamp,
 			},
 			Body: bodyStr,
@@ -279,7 +280,7 @@ func runProduce(args []string) {
 
 	indexDoc := okf.ConceptDoc{
 		Frontmatter: okf.Frontmatter{
-			OKFVersion: "0.1",
+			OKFVersion: "0.2",
 		},
 		Body: indexBody.String(),
 	}

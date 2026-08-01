@@ -262,6 +262,7 @@ func runProduce(args []string) {
 				Description: description,
 				Resource:    fmt.Sprintf("git:///%s", filepath.ToSlash(filepath.Join(absRepo, rel))),
 				Tags:        []string{"git", strings.ToLower(strings.Fields(conceptType)[1])},
+				Generated:   &okf.GeneratedInfo{By: "okf-git/v0.2.0", At: lastCommitTime.Format(time.RFC3339)},
 				Timestamp:   lastCommitTime.Format(time.RFC3339),
 			},
 			Body: bodyStr,
@@ -310,7 +311,7 @@ func runProduce(args []string) {
 
 	indexDoc := okf.ConceptDoc{
 		Frontmatter: okf.Frontmatter{
-			OKFVersion: "0.1",
+			OKFVersion: "0.2",
 		},
 		Body: indexBody.String(),
 	}
