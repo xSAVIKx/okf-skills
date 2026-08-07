@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-git/v0.8.0...skills/okf-git/v0.9.0) (2026-08-01)
+
+
+### Features
+
+* align core library, skills, and tests with OKF Spec v0.2 ([#44](https://github.com/xSAVIKx/okf-skills/issues/44)) ([d48dc48](https://github.com/xSAVIKx/okf-skills/commit/d48dc48d6459f09e996745891a70f09fbb58a473))
+
 ## [0.8.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-git/v0.7.0...skills/okf-git/v0.8.0) (2026-06-28)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-producer-generator/v0.3.0...skills/okf-producer-generator/v0.4.0) (2026-08-01)
+
+
+### Features
+
+* align core library, skills, and tests with OKF Spec v0.2 ([#44](https://github.com/xSAVIKx/okf-skills/issues/44)) ([d48dc48](https://github.com/xSAVIKx/okf-skills/commit/d48dc48d6459f09e996745891a70f09fbb58a473))
+
 ## [0.3.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-producer-generator/v0.2.0...skills/okf-producer-generator/v0.3.0) (2026-06-17)
 
 
