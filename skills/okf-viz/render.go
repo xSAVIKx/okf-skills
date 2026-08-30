@@ -249,16 +249,21 @@ const DefaultLazyThreshold = 150
 
 // EmitOptions controls page generation.
 type EmitOptions struct {
-	Title     string
-	Theme     string // light|dark|system
-	Offline   bool
-	Lang      string
-	InlineAll bool // force full single-file output regardless of size
-	Threshold int  // concept-count lazy threshold (0 = DefaultLazyThreshold)
+	Title         string
+	Theme         string // light|dark|system
+	Offline       bool
+	Lang          string
+	InlineAll     bool   // force full single-file output regardless of size
+	Threshold     int    // concept-count lazy threshold (0 = DefaultLazyThreshold)
+	Author        string // catalog author name for display
+	AuthorURL     string // catalog author URL for backlink
+	NoAttribution bool   // hide the 'Built with okf-skills by Yurii Serhiichuk' badge
 }
 
 type pageData struct {
 	Title, CSS, AppJS, LibTag, DataJSON, InitTheme, Lang string
+	Author, AuthorURL                                    string
+	ShowAttribution                                      bool
 }
 
 // Emit renders the self-contained HTML for a model and, in lazy mode, the set of
@@ -333,6 +338,7 @@ func Emit(m *Model, opt EmitOptions) (string, map[string]string, error) {
 	err = tmpl.Execute(&buf, pageData{
 		Title: opt.Title, CSS: string(css), AppJS: string(appjs),
 		LibTag: libTag, DataJSON: string(dataJSON), InitTheme: theme, Lang: lang,
+		Author: opt.Author, AuthorURL: opt.AuthorURL, ShowAttribution: !opt.NoAttribution,
 	})
 	return buf.String(), fragments, err
 }

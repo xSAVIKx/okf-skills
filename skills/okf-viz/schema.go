@@ -22,15 +22,9 @@ func buildSchema() okf.SkillSchema {
 					{Name: "threshold", Type: "int", Description: "Concept count above which bodies are written as lazy sibling fragments (0 = default).", Default: "0"},
 					{Name: "diff", Type: "string", Description: "Diff against another bundle: highlight added/removed/changed concepts and edges."},
 					{Name: "bundles", Type: "string", Description: "Comma-separated additional bundles to federate into one cross-bundle view."},
-				},
-			},
-			{
-				Name:        "coverage",
-				Description: "Report deterministic, no-LLM enrichment coverage for a bundle.",
-				Flags: []okf.FlagSchema{
-					{Name: "bundle", Type: "string", Description: "Path to the OKF bundle directory.", Required: true},
-					{Name: "min", Type: "string", Description: "Fail (exit 1) if enriched % is below this threshold (0 = no gate).", Default: "0"},
-					{Name: "json", Type: "bool", Description: "Emit the report as JSON instead of text.", Default: "false"},
+					{Name: "author", Type: "string", Description: "Catalog author name for display."},
+					{Name: "author-url", Type: "string", Description: "Catalog author URL for backlink."},
+					{Name: "no-attribution", Type: "bool", Description: "Hide the 'Built with okf-skills by Yurii Serhiichuk' attribution badge.", Default: "false"},
 				},
 			},
 			{

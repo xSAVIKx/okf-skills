@@ -1,5 +1,7 @@
 # Open Knowledge Format (OKF) Skills
 
+Created and maintained by [Yurii Serhiichuk](https://serhiichuk.dev)
+
 **Turn the structure your data already has — database schemas, column comments, foreign keys, file trees, commit history — into a browsable, agent-readable knowledge catalog conforming to OKF Spec v0.2.**
 
 OKF Skills are small, deterministic connectors that **produce** an [Open Knowledge Format](https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/main/SPEC.md) bundle (a directory of Markdown + YAML) from any source, let an LLM **enrich** it with grounded descriptions, **visualize** it as an interactive graph, and **sync** descriptions back to the source. Extraction is pure and reproducible — no embedded model — so the only LLM in the loop is *your* agent's, guided by instructions. Every connector is a single portable binary that self-describes over MCP, so it drops into any agent harness. Full support for **OKF v0.2** features including trust tiers (`human-reviewed`, `machine-confirmed`, `unverified`), provenance `sources`, staleness tracking (`stale_after`), and `Attested Computation` concepts.
@@ -320,6 +322,10 @@ to `master` maintains a release PR, and merging that PR tags each changed module
 in Go's `<path>/vX.Y.Z` form, cuts a GitHub Release, and warms the module proxy.
 See **[RELEASING.md](RELEASING.md)** for the full flow and one-time repo settings.
 
+## Author & Maintainer
+
+Created and maintained by **[Yurii Serhiichuk](https://serhiichuk.dev)** ([@xSAVIKx](https://github.com/xSAVIKx)).
+
 ## License
 
-Licensed under the **Apache License 2.0** — see [`LICENSE`](LICENSE) for the full text. Copyright 2026 Yurii Serhiichuk.
+Licensed under the **Apache License 2.0** — see [`LICENSE`](LICENSE) for the full text. Copyright 2026 [Yurii Serhiichuk](https://serhiichuk.dev).

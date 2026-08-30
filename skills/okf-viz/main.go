@@ -98,6 +98,9 @@ func runRender(args []string) {
 	threshold := fs.Int("threshold", 0, "Concept count above which bodies are written as lazy sibling fragments (0 = default)")
 	diff := fs.String("diff", "", "Diff against another bundle: highlight added/removed/changed concepts and edges")
 	bundles := fs.String("bundles", "", "Comma-separated additional bundles to federate into one cross-bundle view")
+	author := fs.String("author", "", "Catalog author name for display")
+	authorURL := fs.String("author-url", "", "Catalog author URL for backlink")
+	noAttribution := fs.Bool("no-attribution", false, "Hide the 'Built with okf-skills by Yurii Serhiichuk' attribution badge")
 	_ = fs.Parse(args)
 
 	if *bundle == "" {
@@ -145,6 +148,7 @@ func runRender(args []string) {
 	html, fragments, err := Emit(m, EmitOptions{
 		Title: pageTitle, Theme: *theme, Offline: *offline, Lang: *lang,
 		InlineAll: *inlineAll, Threshold: *threshold,
+		Author: *author, AuthorURL: *authorURL, NoAttribution: *noAttribution,
 	})
 	if err != nil {
 		log.Fatalf("Failed to render: %v", err)

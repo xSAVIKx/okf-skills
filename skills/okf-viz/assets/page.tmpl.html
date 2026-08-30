@@ -9,6 +9,8 @@
 <body>
 <header id="topbar">
   <span id="bundle-title">{{.Title}}</span>
+  {{if .Author}}<span id="bundle-author">{{if .AuthorURL}}<a href="{{.AuthorURL}}" target="_blank" rel="noopener noreferrer">{{.Author}}</a>{{else}}{{.Author}}{{end}}</span>{{end}}
+  {{if .ShowAttribution}}<span id="attribution">Built with <a href="https://github.com/xSAVIKx/okf-skills" target="_blank" rel="noopener noreferrer">okf-skills</a> by <a href="https://serhiichuk.dev" target="_blank" rel="noopener noreferrer">Yurii Serhiichuk</a></span>{{end}}
   <span class="spacer"></span>
   <input id="search" type="search" placeholder="Search concepts…" aria-label="Search">
   <select id="layout" aria-label="Graph layout">
