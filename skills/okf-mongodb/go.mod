@@ -3,7 +3,7 @@ module github.com/xSAVIKx/okf-skills/skills/okf-mongodb
 go 1.24.0
 
 require (
-	github.com/xSAVIKx/okf-skills/okf-go v0.9.0
+	github.com/xSAVIKx/okf-skills/okf-go v0.10.0
 	go.mongodb.org/mongo-driver v1.17.9
 )
 
