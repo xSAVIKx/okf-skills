@@ -6,7 +6,7 @@ compatibility: Requires the Go toolchain (1.24+) to build the connector binary.
 metadata:
   version: "0.9.0"
   author: Yurii Serhiichuk
-  tags: "okf, knowledge-catalog, filesystem, documentation"
+  tags: "okf, open-knowledge-format, filesystem, documentation"
 ---
 
 # Skill: okf-fs (Local Filesystem OKF Connector)

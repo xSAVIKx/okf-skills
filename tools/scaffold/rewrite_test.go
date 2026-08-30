@@ -15,7 +15,7 @@ func TestRewriteSkillMD(t *testing.T) {
 		"name: okf-csv",
 		"description: new desc here",
 		`version: "0.1.0"`,
-		`tags: "okf, knowledge-catalog, csv"`,
+		`tags: "okf, open-knowledge-format, csv"`,
 		"TODO(okf-scaffold): rewrite the prose",
 	} {
 		if !strings.Contains(out, want) {

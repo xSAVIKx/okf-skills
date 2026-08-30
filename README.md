@@ -2,7 +2,7 @@
 
 **Turn the structure your data already has — database schemas, column comments, foreign keys, file trees, commit history — into a browsable, agent-readable knowledge catalog conforming to OKF Spec v0.2.**
 
-OKF Skills are small, deterministic connectors that **produce** an [Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md) bundle (a directory of Markdown + YAML) from any source, let an LLM **enrich** it with grounded descriptions, **visualize** it as an interactive graph, and **sync** descriptions back to the source. Extraction is pure and reproducible — no embedded model — so the only LLM in the loop is *your* agent's, guided by instructions. Every connector is a single portable binary that self-describes over MCP, so it drops into any agent harness. Full support for **OKF v0.2** features including trust tiers (`human-reviewed`, `machine-confirmed`, `unverified`), provenance `sources`, staleness tracking (`stale_after`), and `Attested Computation` concepts.
+OKF Skills are small, deterministic connectors that **produce** an [Open Knowledge Format](https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/main/SPEC.md) bundle (a directory of Markdown + YAML) from any source, let an LLM **enrich** it with grounded descriptions, **visualize** it as an interactive graph, and **sync** descriptions back to the source. Extraction is pure and reproducible — no embedded model — so the only LLM in the loop is *your* agent's, guided by instructions. Every connector is a single portable binary that self-describes over MCP, so it drops into any agent harness. Full support for **OKF v0.2** features including trust tiers (`human-reviewed`, `machine-confirmed`, `unverified`), provenance `sources`, staleness tracking (`stale_after`), and `Attested Computation` concepts.
 
 ## 🚀 Get started
 
@@ -278,7 +278,7 @@ The root `skills.sh.json` manifest groups the skills for the [skills.sh](https:/
 
 ## 9. Producer Generator Skill (`okf-producer-generator`)
 
-Located in `skills/okf-producer-generator/`, this is an instructions-only skill (`SKILL.md`) — no binary. It is the "write a producer" on-ramp for the project: it ships a snapshot of the [official OKF spec](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) (`okf-SPEC.md`), an `okf-go` library API reference (`okf-go-api.md`), and a step-by-step guide for authoring a new connector that matches the existing six rather than reverse-engineering them.
+Located in `skills/okf-producer-generator/`, this is an instructions-only skill (`SKILL.md`) — no binary. It is the "write a producer" on-ramp for the project: it ships a snapshot of the [official OKF spec](https://github.com/GoogleCloudPlatform/open-knowledge-format) (`okf-SPEC.md`), an `okf-go` library API reference (`okf-go-api.md`), and a step-by-step guide for authoring a new connector that matches the existing six rather than reverse-engineering them.
 
 It covers the architectural principles (deterministic extraction with **no embedded LLM**, `okf-go` as the single source of OKF types, `schema` as the MCP-discovery contract), the `produce`/`ingest`/`schema` command surface, the secret-handling and `--sync` conventions, and the full registration checklist (`go.work`, `Makefile`, `install.sh`, `skills.sh.json`, docs, and tests).
 

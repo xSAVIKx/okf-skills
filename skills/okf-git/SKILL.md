@@ -6,7 +6,7 @@ compatibility: Requires the Go toolchain (1.24+) to build the connector binary, 
 metadata:
   version: "0.9.0"
   author: Yurii Serhiichuk
-  tags: "okf, knowledge-catalog, git, documentation"
+  tags: "okf, open-knowledge-format, git, documentation"
 ---
 
 # Skill: okf-git (Git Repository OKF Connector)

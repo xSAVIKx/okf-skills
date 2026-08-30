@@ -6,7 +6,7 @@ compatibility: Requires the Go toolchain (1.24+) to build the connector binary. 
 metadata:
   version: "0.2.0"
   author: Yurii Serhiichuk
-  tags: "okf, knowledge-catalog, csv, flat-file, schema, profile"
+  tags: "okf, open-knowledge-format, csv, flat-file, schema, profile"
 ---
 
 # CSV OKF Connector

@@ -6,7 +6,7 @@ compatibility: Requires the Go toolchain (1.24+) to build the connector binary, 
 metadata:
   version: "0.9.0"
   author: Yurii Serhiichuk
-  tags: "okf, knowledge-catalog, mysql, database, schema, documentation"
+  tags: "okf, open-knowledge-format, mysql, database, schema, documentation"
 ---
 
 # MySQL OKF Connector

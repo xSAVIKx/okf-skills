@@ -6,7 +6,7 @@ compatibility: Requires the Go toolchain (1.24+) to build the consumer binary. N
 metadata:
   version: "0.1.0"
   author: Yurii Serhiichuk
-  tags: "okf, knowledge-catalog, lint, validation, conformance, ci"
+  tags: "okf, open-knowledge-format, lint, validation, conformance, ci"
 ---
 
 # OKF Lint
