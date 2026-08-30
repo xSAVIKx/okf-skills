@@ -80,7 +80,7 @@ func rewriteSkillMD(s, skill, desc string) string {
 	name := strings.TrimPrefix(skill, "okf-")
 	s = reTags.ReplaceAllStringFunc(s, func(m string) string {
 		indent := reTags.FindStringSubmatch(m)[1]
-		return indent + `tags: "okf, knowledge-catalog, ` + name + `"`
+		return indent + `tags: "okf, open-knowledge-format, ` + name + `"`
 	})
 	s = reVersion.ReplaceAllStringFunc(s, func(m string) string {
 		indent := reVersion.FindStringSubmatch(m)[1]

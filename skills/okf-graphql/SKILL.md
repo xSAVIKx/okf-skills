@@ -6,7 +6,7 @@ compatibility: Requires the Go toolchain (1.24+) to build the connector binary. 
 metadata:
   version: "0.2.0"
   author: Yurii Serhiichuk
-  tags: "okf, knowledge-catalog, graphql, api, schema"
+  tags: "okf, open-knowledge-format, graphql, api, schema"
 ---
 
 # GraphQL OKF Connector

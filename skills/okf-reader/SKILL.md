@@ -5,7 +5,7 @@ license: Apache-2.0
 metadata:
   version: "0.3.0"
   author: Yurii Serhiichuk
-  tags: "okf, knowledge-catalog, agent-guidance, documentation, prompt-engineering"
+  tags: "okf, open-knowledge-format, agent-guidance, documentation, prompt-engineering"
 ---
 
 # OKF Bundle Reader Guidance Skill

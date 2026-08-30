@@ -6,7 +6,7 @@ compatibility: Requires the Go toolchain (1.24+) to build the binary. The defaul
 metadata:
   version: "0.9.0"
   author: Yurii Serhiichuk
-  tags: "okf, knowledge-catalog, visualization, graph, cytoscape, html, consumer"
+  tags: "okf, open-knowledge-format, visualization, graph, cytoscape, html, consumer"
 ---
 
 # okf-viz — OKF Bundle Visualizer
