@@ -140,7 +140,7 @@ jobs:
           Using our own skills, perform the full pipeline in order:
           1. okf-fs (produce): run 'okf-fs produce --dir . --out ${BUNDLE}'. okf-fs automatically reuses descriptions from .okf-metadata.yaml.
           2. okf-enrich (enrich): for EVERY concept doc in ${BUNDLE} whose frontmatter 'description' is still the placeholder (exactly 'File <name>' or 'Directory <name>'), write one concise description grounded only in the path, name and extension — grain first (what it is), then purpose — per the okf-enrich quality rules. Edit ONLY the frontmatter 'description:' field; preserve type/title/resource/tags/timestamp and the whole body byte-for-byte; never modify index.md or log.md. Skip concepts that already have a substantive description.
-          3. okf-viz (render): run 'okf-viz render --bundle ${BUNDLE} --offline --title "${CATALOG_TITLE}"'.
+          3. okf-viz (render): run 'okf-viz render --bundle ${BUNDLE} --offline --title "${CATALOG_TITLE}" --author "Yurii Serhiichuk" --author-url "https://serhiichuk.dev"'.
           4. okf-fs (ingest): run 'okf-fs ingest --dir . --bundle ${BUNDLE} --sync' to persist your enriched descriptions into .okf-metadata.yaml.
 
           Do not touch any files outside ${BUNDLE} and .okf-metadata.yaml. Work fully autonomously without asking for confirmation. Finish by confirming ${BUNDLE}/index.html exists.
@@ -163,7 +163,7 @@ jobs:
             okf-fs produce --dir . --out "$BUNDLE"
           fi
           if [ ! -f "$BUNDLE/index.html" ]; then
-            okf-viz render --bundle "$BUNDLE" --offline --title "$CATALOG_TITLE"
+            okf-viz render --bundle "$BUNDLE" --offline --title "$CATALOG_TITLE" --author "Yurii Serhiichuk" --author-url "https://serhiichuk.dev"
           fi
 
       - name: Upload Pages artifact

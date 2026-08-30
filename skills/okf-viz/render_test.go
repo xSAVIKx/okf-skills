@@ -201,3 +201,42 @@ func TestRenderOfflineHasNoNetwork(t *testing.T) {
 		t.Error("offline output must inline cytoscape")
 	}
 }
+
+func TestEmit_AttributionAndAuthor(t *testing.T) {
+	m := &Model{RootID: rootNodeID, concepts: map[string]*okf.ConceptDoc{}}
+	m.Nodes = []Node{{ID: rootNodeID, Kind: "root"}}
+
+	// Default: attribution shown, no author
+	html, _, err := Emit(m, EmitOptions{Title: "Catalog"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(html, `id="attribution"`) || !strings.Contains(html, "https://serhiichuk.dev") {
+		t.Errorf("expected default attribution badge in HTML:\n%s", html)
+	}
+	if strings.Contains(html, `id="bundle-author"`) {
+		t.Errorf("bundle-author should not be present when not specified")
+	}
+
+	// With author and author-url
+	htmlAuthor, _, err := Emit(m, EmitOptions{
+		Title:     "Catalog",
+		Author:    "Yurii Serhiichuk",
+		AuthorURL: "https://serhiichuk.dev",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(htmlAuthor, `id="bundle-author"`) || !strings.Contains(htmlAuthor, `href="https://serhiichuk.dev"`) {
+		t.Errorf("expected bundle-author in HTML:\n%s", htmlAuthor)
+	}
+
+	// With NoAttribution = true
+	htmlNoAttr, _, err := Emit(m, EmitOptions{Title: "Catalog", NoAttribution: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(htmlNoAttr, `id="attribution"`) {
+		t.Errorf("attribution badge should be hidden with NoAttribution=true")
+	}
+}
