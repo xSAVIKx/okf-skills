@@ -2,7 +2,7 @@ module github.com/xSAVIKx/okf-skills/skills/okf-lint
 
 go 1.24.0
 
-require github.com/xSAVIKx/okf-skills/okf-go v0.9.0
+require github.com/xSAVIKx/okf-skills/okf-go v0.10.0
 
 require (
 	github.com/kr/text v0.2.0 // indirect

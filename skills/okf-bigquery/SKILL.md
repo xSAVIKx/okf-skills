@@ -4,7 +4,7 @@ description: Google Cloud BigQuery connector that produces and ingests Open Know
 license: Apache-2.0
 compatibility: Requires the Go toolchain (1.24+) to build the connector binary, plus Google Cloud credentials or an API key to reach BigQuery.
 metadata:
-  version: "0.9.0"
+  version: "0.10.0"
   author: Yurii Serhiichuk
   tags: "okf, open-knowledge-format, bigquery, google-cloud, database, schema, documentation"
 ---
