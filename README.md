@@ -47,6 +47,20 @@ claude mcp add okf-skills okf-mcp
 gemini mcp add okf-skills okf-mcp
 ```
 
+**Google Antigravity (AGY)**
+
+Add `okf-mcp` to your global `~/.gemini/config/mcp_config.json` (or workspace `.agents/mcp_config.json`):
+```json
+{
+  "mcpServers": {
+    "okf-skills": {
+      "command": "okf-mcp"
+    }
+  }
+}
+```
+To also equip Antigravity with procedural guidance skills (e.g. `okf-enrich`, `okf-reader`, `okf-producer-generator`), link or copy their folders into `.agents/skills/` (workspace) or `~/.gemini/antigravity/skills/` (global).
+
 **Cursor / Codex / Windsurf / any MCP client** — add an MCP server entry:
 ```json
 {
