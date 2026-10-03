@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-fs/v0.9.0...skills/okf-fs/v0.10.0) (2026-08-30)
+
+
+### Miscellaneous Chores
+
+* **skills/okf-fs:** Synchronize okf-skills versions
+
 ## [0.9.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-fs/v0.8.0...skills/okf-fs/v0.9.0) (2026-08-01)
 
 

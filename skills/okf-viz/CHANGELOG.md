@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-viz/v0.9.0...skills/okf-viz/v0.10.0) (2026-08-30)
+
+
+### Features
+
+* add author backlinks and promotion references for serhiichuk.dev ([#47](https://github.com/xSAVIKx/okf-skills/issues/47)) ([295d08b](https://github.com/xSAVIKx/okf-skills/commit/295d08be66b6103214654ee19a9234678d800d84))
+
 ## [0.9.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-viz/v0.8.0...skills/okf-viz/v0.9.0) (2026-08-01)
 
 

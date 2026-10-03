@@ -4,7 +4,7 @@ description: PostgreSQL connector that produces and ingests Open Knowledge Forma
 license: Apache-2.0
 compatibility: Requires the Go toolchain (1.24+) to build the connector binary, plus network access and credentials for the target PostgreSQL database.
 metadata:
-  version: "0.9.0"
+  version: "0.10.0"
   author: Yurii Serhiichuk
   tags: "okf, open-knowledge-format, postgresql, database, schema, documentation"
 ---
