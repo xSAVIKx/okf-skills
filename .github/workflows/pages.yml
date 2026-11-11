@@ -63,6 +63,7 @@ jobs:
           cache-dependency-path: "**/go.sum"
 
       - name: Configure Pages (enables Pages if not already)
+        id: pages
         uses: actions/configure-pages@v5
         with:
           enablement: true
@@ -165,6 +166,45 @@ jobs:
           if [ ! -f "$BUNDLE/index.html" ]; then
             okf-viz render --bundle "$BUNDLE" --offline --title "$CATALOG_TITLE" --author "Yurii Serhiichuk" --author-url "https://serhiichuk.dev"
           fi
+
+      # Discovery files for search engines and LLM agents. The catalog renderer
+      # does not emit them, so they are written here. The hub at the origin root
+      # links each project's sitemap.xml and llms.txt when they exist.
+      - name: Write sitemap.xml and llms.txt
+        env:
+          BUNDLE: ${{ runner.temp }}/bundle
+          BASE_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          set -euo pipefail
+          base="${BASE_URL%/}/"
+          lastmod="$(git log -1 --format=%cs)"
+          {
+            echo '<?xml version="1.0" encoding="UTF-8"?>'
+            echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            ( cd "$BUNDLE" && find . -name '*.html' -printf '%P\n' | LC_ALL=C sort ) | while read -r f; do
+              [ "$f" = "index.html" ] && f=""
+              f="${f%/index.html}"; [ -n "$f" ] && [ -d "$BUNDLE/$f" ] && f="$f/"
+              echo "  <url><loc>${base}${f}</loc><lastmod>${lastmod}</lastmod></url>"
+            done
+            echo '</urlset>'
+          } > "$BUNDLE/sitemap.xml"
+          cat > "$BUNDLE/llms.txt" <<EOF
+          # okf-skills
+
+          > Agent skills for the Open Knowledge Format (OKF): CLI connectors that produce OKF bundles from files, git, databases and APIs, guidance skills to read, enrich and author bundles, and a generic MCP server. This site is a browsable OKF catalog of the repository itself.
+
+          ## Catalog
+
+          - [Catalog (HTML)](${base}): Interactive view of the OKF bundle of this repository.
+          - [Catalog index (Markdown)](${base}index.md): The OKF index of every concept in the bundle.
+
+          ## Source
+
+          - [Repository](https://github.com/xSAVIKx/okf-skills): Source, README and install instructions.
+          - [Skills](https://github.com/xSAVIKx/okf-skills/tree/master/skills): One directory per skill, each with a SKILL.md.
+          - [Author](https://serhiichuk.dev/): Yurii Serhiichuk.
+          EOF
+          cat "$BUNDLE/llms.txt"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
