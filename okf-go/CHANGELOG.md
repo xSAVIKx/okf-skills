@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/xSAVIKx/okf-skills/compare/okf-go/v0.10.0...okf-go/v0.11.0) (2026-11-12)
+
+
+### Miscellaneous Chores
+
+* **okf-go:** Synchronize okf-skills versions
+
 ## [0.10.0](https://github.com/xSAVIKx/okf-skills/compare/okf-go/v0.9.0...okf-go/v0.10.0) (2026-08-30)
 
 
