@@ -70,3 +70,15 @@ func TestEmit_DeferredGraphStart(t *testing.T) {
 		}
 	}
 }
+
+func TestLibName_UnminifiedCDNFile(t *testing.T) {
+	for url, want := range map[string]string{
+		"https://cdn.jsdelivr.net/npm/cytoscape-cola@2.5.1/cytoscape-cola.js":     "cytoscape-cola.min.js",
+		"https://cdn.jsdelivr.net/npm/cytoscape-cola@2.5.1/cytoscape-cola.min.js": "cytoscape-cola.min.js",
+		"https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js":              "dagre.min.js",
+	} {
+		if got := libName(url); got != want {
+			t.Errorf("libName(%q) = %q, want %q", url, got, want)
+		}
+	}
+}
