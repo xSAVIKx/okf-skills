@@ -347,8 +347,8 @@ func Emit(m *Model, opt EmitOptions) (string, map[string]string, error) {
 
 // fragmentPaths maps each concept ID to the relative path of its lazy body
 // fragment ("_okf/<id>.html"). Static hosts often do not publish hidden paths:
-// actions/upload-pages-artifact drops every file or directory whose name starts
-// with ".". A concept such as ".github/workflows/ci.yml" would get a fragment
+// actions/upload-pages-artifact v3 drops .git and .github, and v4 drops every
+// file or directory whose name starts with ".". A concept such as ".github/workflows/ci.yml" would get a fragment
 // that is never published, so a path segment that starts with "." gets a "_"
 // prefix ("_okf/_.github/workflows/ci.yml.html"). The manifest carries the
 // mapping to the page, so no reader code depends on the scheme. IDs are
