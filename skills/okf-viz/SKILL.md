@@ -36,6 +36,7 @@ cd skills/okf-viz && go build -o okf-viz .
 - `--bundle` (required): the OKF bundle to visualize.
 - `--out`: output path; default `<bundle>/index.html`.
 - `--offline`: inline the graph library for a fully isolated file (no CDN).
+- Load time: the page shows the navigator and reader at once and lays out the graph in a Web Worker (main-thread fallback). The cola and dagre layout libraries load on first use; with `--offline` they are still inline, so the file stays self-contained.
 - `--theme`: initial theme (default `system`, follows the OS); switchable in-page.
 - `--lang`: UI-chrome language (default `en`).
 - `--title`: page title (default derived from the bundle).

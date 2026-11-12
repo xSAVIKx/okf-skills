@@ -357,8 +357,21 @@ var vendorOrder = []string{
 	"cytoscape-dagre.min.js",
 }
 
+// lazyVendor lists the vendor files that only an optional layout needs (cola,
+// dagre). The page does not run them at load. app.js runs them on the first
+// use of their layout, which saves their parse and compile time at load.
+var lazyVendor = map[string]bool{
+	"cola.min.js":            true,
+	"cytoscape-cola.min.js":  true,
+	"dagre.min.js":           true,
+	"cytoscape-dagre.min.js": true,
+}
+
 // libraryTag returns CDN <script> tags (default) or inlined library <script>
-// blocks (offline), emitting vendored files in dependency-first order.
+// blocks (offline), emitting vendored files in dependency-first order. Each tag
+// carries data-okf-lib=<file name>, so app.js can find it. A lazy library is
+// an inert type="text/plain" block (offline: the source as text; CDN: the URL
+// and SRI hash as data-src and data-integrity) that app.js runs when needed.
 func libraryTag(offline bool) (string, error) {
 	if !offline {
 		return cdnTags(), nil
@@ -370,7 +383,11 @@ func libraryTag(offline bool) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("vendored library %s missing; run the offline vendoring step", name)
 		}
-		b.WriteString("<script>")
+		if lazyVendor[name] {
+			b.WriteString(`<script type="text/plain" data-okf-lib="` + name + `">`)
+		} else {
+			b.WriteString(`<script data-okf-lib="` + name + `">`)
+		}
 		b.Write(js)
 		b.WriteString("</script>\n")
 	}
