@@ -1,6 +1,9 @@
 package main
 
-import "strings"
+import (
+	"path"
+	"strings"
+)
 
 // cdnTags returns the pinned CDN <script> tags with SRI integrity hashes
 // computed from the vendored copies of each library.
@@ -17,11 +20,22 @@ func cdnTags() string {
 	}
 	var b strings.Builder
 	for _, t := range tags {
+		name := path.Base(t.url)
+		if lazyVendor[name] {
+			// Inert until app.js needs the layout; it then adds a real <script>
+			// with this URL and SRI hash.
+			b.WriteString(`<script type="text/plain" data-okf-lib="` + name + `" data-src="` + t.url + `"`)
+			if t.integrity != "" {
+				b.WriteString(` data-integrity="` + t.integrity + `"`)
+			}
+			b.WriteString("></script>\n")
+			continue
+		}
 		b.WriteString(`<script src="` + t.url + `"`)
 		if t.integrity != "" {
 			b.WriteString(` integrity="` + t.integrity + `" crossorigin="anonymous"`)
 		}
-		b.WriteString("></script>\n")
+		b.WriteString(` data-okf-lib="` + name + `"></script>` + "\n")
 	}
 	return b.String()
 }
