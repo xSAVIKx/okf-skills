@@ -8,6 +8,12 @@ skills/okf-postgresql/okf-postgresql
 skills/okf-bigquery/okf-bigquery
 skills/okf-fs/okf-fs
 skills/okf-git/okf-git
+skills/okf-viz/okf-viz
+skills/okf-lint/okf-lint
+skills/okf-csv/okf-csv
+skills/okf-openapi/okf-openapi
+skills/okf-mongodb/okf-mongodb
+skills/okf-graphql/okf-graphql
 okf-mcp/okf-mcp
 
 # Databases
