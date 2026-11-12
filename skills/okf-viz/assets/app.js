@@ -114,6 +114,9 @@
     function begin(positions) {
       if (started) return;
       started = true;
+      // The user or a permalink can pick another layout while the worker runs.
+      // Then the worker positions are for the wrong layout: lay out again.
+      if (layoutSel.value !== name) positions = null;
       initGraph(els, positions, name);
     }
     function onMainThread() {
