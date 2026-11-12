@@ -7,9 +7,9 @@ All libraries are pinned to exact versions and licensed under the MIT License.
 | `cytoscape.min.js` | cytoscape | 3.30.2 | MIT | https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js |
 | `layout-base.min.js` | layout-base | 2.0.1 | MIT | https://cdn.jsdelivr.net/npm/layout-base@2.0.1/layout-base.min.js |
 | `cose-base.min.js` | cose-base | 2.2.0 | MIT | https://cdn.jsdelivr.net/npm/cose-base@2.2.0/cose-base.min.js |
-| `cytoscape-fcose.min.js` | cytoscape-fcose | 2.2.0 | MIT | https://cdn.jsdelivr.net/npm/cytoscape-fcose@2.2.0/cytoscape-fcose.min.js |
+| `cytoscape-fcose.min.js` | cytoscape-fcose | 2.2.0 | MIT | https://cdn.jsdelivr.net/npm/cytoscape-fcose@2.2.0/cytoscape-fcose.js |
 | `cola.min.js` | webcola | 3.4.0 | MIT | https://cdn.jsdelivr.net/npm/webcola@3.4.0/WebCola/cola.min.js |
-| `cytoscape-cola.min.js` | cytoscape-cola | 2.5.1 | MIT | https://cdn.jsdelivr.net/npm/cytoscape-cola@2.5.1/cytoscape-cola.min.js |
+| `cytoscape-cola.min.js` | cytoscape-cola | 2.5.1 | MIT | https://cdn.jsdelivr.net/npm/cytoscape-cola@2.5.1/cytoscape-cola.js |
 | `dagre.min.js` | dagre | 0.8.5 | MIT | https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js |
 | `cytoscape-dagre.min.js` | cytoscape-dagre | 2.5.0 | MIT | https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js |
 
@@ -28,7 +28,14 @@ The files must be loaded in dependency-first order (as defined by `vendorOrder` 
 
 ## SRI Hashes (sha384)
 
-These hashes match the files in this directory and the `integrity=` attributes in `cdn.go`:
+These hashes match the files in this directory. Six of them are also the `integrity=` attributes in `cdn.go`.
+
+The cytoscape-fcose and cytoscape-cola packages publish no `.min.js` file. jsDelivr minifies those files on request, and that output can change. For this reason `cdn.go` loads the published `cytoscape-fcose.js` and `cytoscape-cola.js` files with these hashes:
+
+- `cytoscape-fcose.js`: `sha384-uk5Wbjq1+KqUdHO30w7N7GrEGdzBhaJeW9o/ANF6v9+yx3M/cBmoX51C000JNCUf`
+- `cytoscape-cola.js`: `sha384-hS0F3AnUYl+EBC3wCT4+d6MKdLR27UlifwZZYJi5oRCNhKA1ptaEWExH6BqyfMeW`
+
+The hashes of the files in this directory:
 
 - `cytoscape.min.js`: `sha384-IWROdLKRsN1UuJywMlWl7/blXQ8GEooN2n7dzTxfEPd7ybYIKCUJ2Ol/1Gpf3YV4`
 - `layout-base.min.js`: `sha384-wORSveLcAX75yM0BmukpnoPBNNhzBkTW19ggbZt2Adj/OGO871ZAiQAuHUDO9OV7`
