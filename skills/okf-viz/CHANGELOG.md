@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.11.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-viz/v0.10.0...skills/okf-viz/v0.11.0) (2026-11-12)
+
+
+### Features
+
+* **okf-viz:** add page metadata, a favicon and a hub link ([#54](https://github.com/xSAVIKx/okf-skills/issues/54)) ([e72e097](https://github.com/xSAVIKx/okf-skills/commit/e72e0973c2373f0e1c30de01b0ed2e931f494d45))
+
+
+### Bug Fixes
+
+* **okf-viz:** keep lazy body fragments out of hidden paths ([#52](https://github.com/xSAVIKx/okf-skills/issues/52)) ([5cde54c](https://github.com/xSAVIKx/okf-skills/commit/5cde54cca0f751f9c0dfdec321beb7c8dd3eb8a2))
+* **okf-viz:** use valid ARIA markup for the concept navigator ([#53](https://github.com/xSAVIKx/okf-skills/issues/53)) ([6e4ea15](https://github.com/xSAVIKx/okf-skills/commit/6e4ea1561c4bdca3b18f0b6ee7e38218c526e059))
+
 ## [0.10.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-viz/v0.9.0...skills/okf-viz/v0.10.0) (2026-08-30)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-sqlite/v0.10.0...skills/okf-sqlite/v0.11.0) (2026-11-12)
+
+
+### Miscellaneous Chores
+
+* **skills/okf-sqlite:** Synchronize okf-skills versions
+
 ## [0.10.0](https://github.com/xSAVIKx/okf-skills/compare/skills/okf-sqlite/v0.9.0...skills/okf-sqlite/v0.10.0) (2026-08-30)
 
 
