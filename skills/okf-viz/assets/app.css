@@ -19,15 +19,20 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
+/* The body is a column: the panes take the height that the top bar leaves free,
+   so the layout does not depend on a fixed top bar height. */
+body{display:flex;flex-direction:column}
+#controls{display:contents}
+#pane-tabs{display:none}
 #topbar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface)}
 #bundle-title{font-weight:600}
-#bundle-author,#attribution{font-size:12px;color:var(--muted)}
-#bundle-author a,#attribution a{color:var(--muted);text-decoration:underline;text-underline-offset:2px}
-#bundle-author a:hover,#attribution a:hover{color:var(--accent)}
+#bundle-author,#hub-link,#attribution{font-size:12px;color:var(--muted)}
+#bundle-author a,#hub-link a,#attribution a{color:var(--muted);text-decoration:underline;text-underline-offset:2px}
+#bundle-author a:hover,#hub-link a:hover,#attribution a:hover{color:var(--accent)}
 .spacer{flex:1}
 #topbar input,#topbar select,#topbar button{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font:inherit}
 #topbar button{cursor:pointer}
-#panes{display:flex;height:calc(100vh - 49px)}
+#panes{display:flex;flex:1 1 auto;min-height:0}
 #nav{flex:0 0 260px;overflow:auto;padding:12px;border-right:1px solid var(--border)}
 #graph{flex:1 1 0;position:relative;min-width:0}
 #reader{flex:0 0 380px;overflow:auto;padding:12px;border-left:1px solid var(--border)}
@@ -55,4 +60,21 @@ html,body{margin:0;height:100%;font-family:system-ui,-apple-system,Segoe UI,Robo
 .pf-bar{flex:1;height:10px;background:var(--surface);border:1px solid var(--border);border-radius:3px;overflow:hidden}
 .pf-fill{display:block;height:100%;background:var(--accent)}
 .pf-meta{flex:0 0 auto;color:var(--muted)}
-.legend{position:absolute;bottom:8px;left:8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12px}
+.legend{position:absolute;z-index:10;bottom:8px;left:8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12px}
+.graph-loading{position:absolute;top:50%;left:0;right:0;margin:0;text-align:center;color:var(--muted);font-size:14px}
+#topbar input:disabled,#topbar select:disabled,#topbar button:disabled{opacity:.5;cursor:default}
+/* Narrow screens: show one pane at a time. The tab bar selects the pane through
+   body[data-pane]; the graph gets the full width. The top bar wraps, and its
+   controls scroll horizontally in one row. */
+@media (max-width:799px){
+  #topbar{flex-wrap:wrap;row-gap:6px;padding:6px 12px}
+  #topbar .spacer{display:none}
+  #controls{display:flex;align-items:center;gap:8px;flex:1 0 100%;overflow-x:auto;padding-bottom:2px}
+  #controls>*{flex:0 0 auto}
+  #toggle-nav,#toggle-graph,#toggle-reader{display:none}
+  #pane-tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border)}
+  #pane-tabs button{flex:1 1 0;min-height:40px;background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);font:inherit;cursor:pointer}
+  #pane-tabs button[aria-pressed="true"]{color:var(--text);font-weight:600;border-bottom-color:var(--accent)}
+  #panes>#nav,#panes>#graph,#panes>#reader{display:none}
+  body[data-pane="nav"] #panes>#nav,body[data-pane="graph"] #panes>#graph,body[data-pane="reader"] #panes>#reader{display:block;flex:1 1 auto;min-width:0;border:0}
+}

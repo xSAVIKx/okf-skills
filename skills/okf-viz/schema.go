@@ -25,6 +25,10 @@ func buildSchema() okf.SkillSchema {
 					{Name: "author", Type: "string", Description: "Catalog author name for display."},
 					{Name: "author-url", Type: "string", Description: "Catalog author URL for backlink."},
 					{Name: "no-attribution", Type: "bool", Description: "Hide the 'Built with okf-skills by Yurii Serhiichuk' attribution badge.", Default: "false"},
+					{Name: "description", Type: "string", Description: "Page meta description (default: first paragraph of the bundle index.md, else a generic sentence)."},
+					{Name: "base-url", Type: "string", Description: "Absolute URL of the directory where the catalog is published; adds canonical and og:url tags."},
+					{Name: "hub-url", Type: "string", Description: "URL of a page that lists more projects; adds a small link next to the author."},
+					{Name: "hub-label", Type: "string", Description: "Text of the --hub-url link.", Default: "More projects"},
 				},
 			},
 			{

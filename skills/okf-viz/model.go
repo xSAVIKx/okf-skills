@@ -47,8 +47,11 @@ type Edge struct {
 type Model struct {
 	RootID    string // node id of the root node
 	RootTitle string // page title source
-	Nodes     []Node
-	Edges     []Edge
+	// RootDescription is the first paragraph of the root index.md body after
+	// its title heading, used as the default page meta description.
+	RootDescription string
+	Nodes           []Node
+	Edges           []Edge
 	// concepts maps concept ID -> parsed doc, used by render.go.
 	concepts map[string]*okf.ConceptDoc
 }
@@ -71,6 +74,7 @@ func BuildModel(bundleDir string) (*Model, error) {
 	m := &Model{RootID: rootNodeID, concepts: map[string]*okf.ConceptDoc{}}
 	dirsWithConcepts := map[string]bool{}
 	rootTitle := filepath.Base(bundleDir)
+	rootDescription := ""
 
 	err := filepath.WalkDir(bundleDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -89,6 +93,7 @@ func BuildModel(bundleDir string) (*Model, error) {
 					if t := firstHeading(doc.Body); t != "" {
 						rootTitle = t
 					}
+					rootDescription = firstParagraph(doc.Body)
 				}
 			}
 			return nil
@@ -121,6 +126,7 @@ func BuildModel(bundleDir string) (*Model, error) {
 		return nil, err
 	}
 	m.RootTitle = rootTitle
+	m.RootDescription = rootDescription
 
 	// Directory nodes (sorted for determinism).
 	var dirs []string
@@ -178,4 +184,33 @@ func firstHeading(body string) string {
 		}
 	}
 	return ""
+}
+
+// firstParagraph returns the first prose paragraph of a markdown body that
+// follows its first heading, joined onto one line. Headings, list items, tables,
+// block quotes and code fences end the search, so a bundle index that lists
+// assets straight after its title yields "".
+func firstParagraph(body string) string {
+	var para []string
+	seenHeading := false
+	for _, line := range strings.Split(body, "\n") {
+		line = strings.TrimSpace(line)
+		switch {
+		case line == "":
+			if len(para) > 0 {
+				return strings.Join(para, " ")
+			}
+		case strings.HasPrefix(line, "#"):
+			if len(para) > 0 || seenHeading {
+				return strings.Join(para, " ")
+			}
+			seenHeading = true
+		case strings.HasPrefix(line, "- "), strings.HasPrefix(line, "* "), strings.HasPrefix(line, "|"),
+			strings.HasPrefix(line, ">"), strings.HasPrefix(line, "```"):
+			return strings.Join(para, " ")
+		default:
+			para = append(para, line)
+		}
+	}
+	return strings.Join(para, " ")
 }

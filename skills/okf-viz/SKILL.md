@@ -36,14 +36,19 @@ cd skills/okf-viz && go build -o okf-viz .
 - `--bundle` (required): the OKF bundle to visualize.
 - `--out`: output path; default `<bundle>/index.html`.
 - `--offline`: inline the graph library for a fully isolated file (no CDN).
+- Load time: the page shows the navigator and reader at once and lays out the graph in a Web Worker (main-thread fallback). The cola and dagre layout libraries load on first use; with `--offline` they are still inline, so the file stays self-contained.
 - `--theme`: initial theme (default `system`, follows the OS); switchable in-page.
 - `--lang`: UI-chrome language (default `en`).
 - `--title`: page title (default derived from the bundle).
+- `--description`: page meta description, also used for Open Graph and Twitter cards (default: the first paragraph of the bundle `index.md`, else a generic sentence).
+- `--base-url`: absolute URL of the directory where the catalog is published. Adds a canonical link and `og:url`.
+- `--hub-url` / `--hub-label`: add a small link (default text "More projects") next to the author, for example to a site that lists more projects.
+- The page always carries an inline SVG favicon, so it stays one self-contained file.
 - `--inline-all`: always inline every concept body into the single file, regardless of size (the archival/shareable form).
-- `--threshold`: concept count above which bodies are written lazily as sibling `_okf/<id>.html` fragments instead of inlined (default 150). Small bundles stay a single self-contained file; large bundles load a concept's body on selection. Re-running produces byte-identical `index.html` and fragments. In-page, **ER** toggles the entity-relationship view and **Cluster** collapses directories into tappable super-nodes for large graphs.
+- `--threshold`: concept count above which bodies are written lazily as sibling `_okf/<id>.html` fragments instead of inlined (default 150). A path segment that starts with `.` gets a `_` prefix (`_okf/_.github/…`), because static hosts such as GitHub Pages often do not publish hidden paths. Small bundles stay a single self-contained file; large bundles load a concept's body on selection. Re-running produces byte-identical `index.html` and fragments. In-page, **ER** toggles the entity-relationship view and **Cluster** collapses directories into tappable super-nodes for large graphs.
 - `--diff <bundle>`: highlight what changed versus another bundle revision — added / removed / changed concepts and edges, using each concept's `content_hash` (body-comparison fallback when a hash is absent). Deterministic and byte-stable.
 - `--bundles <a,b,…>`: federate additional bundles into one view; each bundle's node IDs are namespaced so identical IDs across bundles stay distinct. Single-bundle output is unchanged.
-- In-page, **Coverage** recolors nodes by enrichment state, and **PNG** / **JSON** export the graph and the visible subgraph. The three panes carry ARIA roles and the graph is keyboard-traversable (focus it, then arrow between neighbors, Enter to select).
+- In-page, **Coverage** recolors nodes by enrichment state, and **PNG** / **JSON** export the graph and the visible subgraph. The three panes carry ARIA roles and the graph is keyboard-traversable (focus it, then arrow between neighbors, Enter to select). On screens narrower than 800 px the page shows one pane at a time, and a tab bar (**Navigator** / **Graph** / **Reader**) selects it.
 
 ### schema
 

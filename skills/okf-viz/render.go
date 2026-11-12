@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"text/template"
@@ -258,12 +259,47 @@ type EmitOptions struct {
 	Author        string // catalog author name for display
 	AuthorURL     string // catalog author URL for backlink
 	NoAttribution bool   // hide the 'Built with okf-skills by Yurii Serhiichuk' badge
+	// Description is the page meta description (and og:description). When it is
+	// empty, Emit uses the model's root description, then a generic sentence.
+	Description string
+	// CanonicalURL is the absolute URL where the page is published. When it is
+	// set, the page carries a canonical link and og:url.
+	CanonicalURL string
+	HubURL       string // URL of a page that lists more projects ("" = no link)
+	HubLabel     string // text of the hub link (default DefaultHubLabel)
+}
+
+// DefaultHubLabel is the hub link text when EmitOptions.HubLabel is empty.
+const DefaultHubLabel = "More projects"
+
+// faviconHref is an inline SVG favicon (three linked nodes), so the page needs
+// no extra request and stays a self-contained file.
+const faviconHref = "data:image/svg+xml," +
+	"%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E" +
+	"%3Cpath d='M9 22 16 9l7 13z' fill='none' stroke='%23c64f86' stroke-width='2.5'/%3E" +
+	"%3Ccircle cx='16' cy='9' r='5' fill='%234f86c6'/%3E" +
+	"%3Ccircle cx='9' cy='22' r='5' fill='%233fae6b'/%3E" +
+	"%3Ccircle cx='23' cy='22' r='5' fill='%23c6864f'/%3E%3C/svg%3E"
+
+// pageDescription picks the meta description: the explicit option, the root
+// description from the bundle, or a sentence built from the title and size.
+func pageDescription(m *Model, opt EmitOptions) string {
+	if d := strings.TrimSpace(opt.Description); d != "" {
+		return d
+	}
+	if d := strings.TrimSpace(m.RootDescription); d != "" {
+		return d
+	}
+	return fmt.Sprintf("Interactive catalog of the %d concepts in the %s Open Knowledge Format (OKF) bundle.",
+		len(m.concepts), opt.Title)
 }
 
 type pageData struct {
 	Title, CSS, AppJS, LibTag, DataJSON, InitTheme, Lang string
 	Author, AuthorURL                                    string
 	ShowAttribution                                      bool
+	Description, CanonicalURL, Favicon                   string
+	HubURL, HubLabel                                     string
 }
 
 // Emit renders the self-contained HTML for a model and, in lazy mode, the set of
@@ -303,8 +339,9 @@ func Emit(m *Model, opt EmitOptions) (string, map[string]string, error) {
 		manifest := map[string]string{}
 		fragments = map[string]string{}
 		light := map[string]Doc{}
+		paths := fragmentPaths(docs)
 		for id, d := range docs {
-			frag := "_okf/" + id + ".html"
+			frag := paths[id]
 			fragments[frag] = d.BodyHTML
 			manifest[id] = frag
 			d.BodyHTML = "" // dropped from the inline payload
@@ -330,6 +367,10 @@ func Emit(m *Model, opt EmitOptions) (string, map[string]string, error) {
 	if err != nil {
 		return "", nil, err
 	}
+	hubLabel := opt.HubLabel
+	if hubLabel == "" {
+		hubLabel = DefaultHubLabel
+	}
 	tmpl, err := template.New("page").Parse(string(tmplBytes))
 	if err != nil {
 		return "", nil, err
@@ -339,8 +380,45 @@ func Emit(m *Model, opt EmitOptions) (string, map[string]string, error) {
 		Title: opt.Title, CSS: string(css), AppJS: string(appjs),
 		LibTag: libTag, DataJSON: string(dataJSON), InitTheme: theme, Lang: lang,
 		Author: opt.Author, AuthorURL: opt.AuthorURL, ShowAttribution: !opt.NoAttribution,
+		Description: pageDescription(m, opt), CanonicalURL: opt.CanonicalURL, Favicon: faviconHref,
+		HubURL: opt.HubURL, HubLabel: hubLabel,
 	})
 	return buf.String(), fragments, err
+}
+
+// fragmentPaths maps each concept ID to the relative path of its lazy body
+// fragment ("_okf/<id>.html"). Static hosts often do not publish hidden paths:
+// actions/upload-pages-artifact v3 drops .git and .github, and v4 drops every
+// file or directory whose name starts with ".". A concept such as ".github/workflows/ci.yml" would get a fragment
+// that is never published, so a path segment that starts with "." gets a "_"
+// prefix ("_okf/_.github/workflows/ci.yml.html"). The manifest carries the
+// mapping to the page, so no reader code depends on the scheme. IDs are
+// processed in sorted order, and a mapped path that is already in use gets a
+// numeric suffix, so the result is deterministic and free of collisions.
+func fragmentPaths(docs map[string]Doc) map[string]string {
+	ids := make([]string, 0, len(docs))
+	for id := range docs {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	used := map[string]bool{}
+	out := make(map[string]string, len(ids))
+	for _, id := range ids {
+		segs := strings.Split(id, "/")
+		for i, seg := range segs {
+			if strings.HasPrefix(seg, ".") {
+				segs[i] = "_" + seg
+			}
+		}
+		stem := "_okf/" + strings.Join(segs, "/")
+		p := stem + ".html"
+		for n := 2; used[p]; n++ {
+			p = stem + "-" + strconv.Itoa(n) + ".html"
+		}
+		used[p] = true
+		out[id] = p
+	}
+	return out
 }
 
 // vendorOrder lists the pinned vendor JS files in dependency-first load order:
@@ -357,8 +435,21 @@ var vendorOrder = []string{
 	"cytoscape-dagre.min.js",
 }
 
+// lazyVendor lists the vendor files that only an optional layout needs (cola,
+// dagre). The page does not run them at load. app.js runs them on the first
+// use of their layout, which saves their parse and compile time at load.
+var lazyVendor = map[string]bool{
+	"cola.min.js":            true,
+	"cytoscape-cola.min.js":  true,
+	"dagre.min.js":           true,
+	"cytoscape-dagre.min.js": true,
+}
+
 // libraryTag returns CDN <script> tags (default) or inlined library <script>
-// blocks (offline), emitting vendored files in dependency-first order.
+// blocks (offline), emitting vendored files in dependency-first order. Each tag
+// carries data-okf-lib=<file name>, so app.js can find it. A lazy library is
+// an inert type="text/plain" block (offline: the source as text; CDN: the URL
+// and SRI hash as data-src and data-integrity) that app.js runs when needed.
 func libraryTag(offline bool) (string, error) {
 	if !offline {
 		return cdnTags(), nil
@@ -370,7 +461,11 @@ func libraryTag(offline bool) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("vendored library %s missing; run the offline vendoring step", name)
 		}
-		b.WriteString("<script>")
+		if lazyVendor[name] {
+			b.WriteString(`<script type="text/plain" data-okf-lib="` + name + `">`)
+		} else {
+			b.WriteString(`<script data-okf-lib="` + name + `">`)
+		}
 		b.Write(js)
 		b.WriteString("</script>\n")
 	}

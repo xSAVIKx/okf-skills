@@ -4,14 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{.Title}}</title>
+<meta name="description" content="{{html .Description}}">
+<link rel="icon" href="{{.Favicon}}">
+{{if .CanonicalURL}}<link rel="canonical" href="{{html .CanonicalURL}}">
+<meta property="og:url" content="{{html .CanonicalURL}}">
+{{end}}<meta property="og:type" content="website">
+<meta property="og:title" content="{{html .Title}}">
+<meta property="og:description" content="{{html .Description}}">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="{{html .Title}}">
+<meta name="twitter:description" content="{{html .Description}}">
 <style>{{.CSS}}</style>
 </head>
-<body>
+<body data-pane="graph">
 <header id="topbar">
   <span id="bundle-title">{{.Title}}</span>
   {{if .Author}}<span id="bundle-author">{{if .AuthorURL}}<a href="{{.AuthorURL}}" target="_blank" rel="noopener noreferrer">{{.Author}}</a>{{else}}{{.Author}}{{end}}</span>{{end}}
+  {{if .HubURL}}<span id="hub-link"><a href="{{html .HubURL}}">{{html .HubLabel}}</a></span>{{end}}
   {{if .ShowAttribution}}<span id="attribution">Built with <a href="https://github.com/xSAVIKx/okf-skills" target="_blank" rel="noopener noreferrer">okf-skills</a> by <a href="https://serhiichuk.dev" target="_blank" rel="noopener noreferrer">Yurii Serhiichuk</a></span>{{end}}
   <span class="spacer"></span>
+  <div id="controls">
   <input id="search" type="search" placeholder="Search concepts…" aria-label="Search">
   <select id="layout" aria-label="Graph layout">
     <option value="fcose">fcose</option>
@@ -37,9 +49,15 @@
   <button id="toggle-nav" title="Toggle navigator">☰</button>
   <button id="toggle-graph" title="Toggle graph">◉</button>
   <button id="toggle-reader" title="Toggle reader">▤</button>
+  </div>
 </header>
+<div id="pane-tabs" role="group" aria-label="Show pane">
+  <button type="button" data-pane="nav" aria-pressed="false">Navigator</button>
+  <button type="button" data-pane="graph" aria-pressed="true">Graph</button>
+  <button type="button" data-pane="reader" aria-pressed="false">Reader</button>
+</div>
 <main id="panes">
-  <aside id="nav" role="navigation" aria-label="Concept navigator"><div id="filters" role="group" aria-label="Type filters"></div><ul id="tree" role="listbox" aria-label="Concepts"></ul></aside>
+  <nav id="nav" aria-label="Concept navigator"><div id="filters" role="group" aria-label="Type filters"></div><ul id="tree" role="listbox" aria-label="Concepts"></ul></nav>
   <section id="graph" role="application" aria-label="Concept graph" tabindex="0"></section>
   <article id="reader" role="main" aria-label="Concept reader"><p class="empty">Select a concept.</p></article>
 </main>

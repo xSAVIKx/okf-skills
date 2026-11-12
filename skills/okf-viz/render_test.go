@@ -240,3 +240,31 @@ func TestEmit_AttributionAndAuthor(t *testing.T) {
 		t.Errorf("attribution badge should be hidden with NoAttribution=true")
 	}
 }
+
+// TestEmit_NarrowScreenPaneTabs checks the markup that the narrow-screen layout
+// needs: a pane tab bar with one toggle button for each pane, a default pane on
+// the body, a wrapper for the top-bar controls, and no fixed top-bar height.
+func TestEmit_NarrowScreenPaneTabs(t *testing.T) {
+	m, _ := BuildModel("testdata/linked")
+	addCrossLinks(m)
+	html, _, err := Emit(m, EmitOptions{Title: "Shop", Theme: "system", Offline: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`<body data-pane="graph">`,
+		`<div id="controls">`,
+		`<div id="pane-tabs" role="group" aria-label="Show pane">`,
+		`<button type="button" data-pane="nav" aria-pressed="false">Navigator</button>`,
+		`<button type="button" data-pane="graph" aria-pressed="true">Graph</button>`,
+		`<button type="button" data-pane="reader" aria-pressed="false">Reader</button>`,
+		`@media (max-width:799px)`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("output missing %q", want)
+		}
+	}
+	if strings.Contains(html, "100vh - 49px") {
+		t.Error("the pane height must not depend on a fixed top bar height")
+	}
+}
