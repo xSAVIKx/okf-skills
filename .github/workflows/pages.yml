@@ -43,6 +43,8 @@ env:
   GO_VERSION: "1.26"
   GEMINI_CLI_VERSION: "0.45.0"
   CATALOG_TITLE: "okf-skills knowledge catalog"
+  # Meta description of the catalog page (search results and link previews).
+  CATALOG_DESCRIPTION: "Agent skills for the Open Knowledge Format (OKF): CLI connectors that produce OKF bundles from files, git, databases and APIs, guidance skills to read, enrich and author bundles, and a generic MCP server."
   # These Pages/cache actions are the latest majors but still ship on Node 20;
   # run them on Node 24 (becomes the runner default 2026-06-16) to clear the
   # deprecation warning and stay future-proof.
@@ -117,6 +119,8 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_KEY }}
           BUNDLE: ${{ runner.temp }}/bundle
+          BASE_URL: ${{ steps.pages.outputs.base_url }}
+          HUB_URL: ${{ steps.pages.outputs.origin }}/
         run: |
           set -euo pipefail
           npm install -g "@google/gemini-cli@${GEMINI_CLI_VERSION}"
@@ -141,7 +145,7 @@ jobs:
           Using our own skills, perform the full pipeline in order:
           1. okf-fs (produce): run 'okf-fs produce --dir . --out ${BUNDLE}'. okf-fs automatically reuses descriptions from .okf-metadata.yaml.
           2. okf-enrich (enrich): for EVERY concept doc in ${BUNDLE} whose frontmatter 'description' is still the placeholder (exactly 'File <name>' or 'Directory <name>'), write one concise description grounded only in the path, name and extension — grain first (what it is), then purpose — per the okf-enrich quality rules. Edit ONLY the frontmatter 'description:' field; preserve type/title/resource/tags/timestamp and the whole body byte-for-byte; never modify index.md or log.md. Skip concepts that already have a substantive description.
-          3. okf-viz (render): run 'okf-viz render --bundle ${BUNDLE} --offline --title "${CATALOG_TITLE}" --author "Yurii Serhiichuk" --author-url "https://serhiichuk.dev"'.
+          3. okf-viz (render): run 'okf-viz render --bundle ${BUNDLE} --offline --title "${CATALOG_TITLE}" --description "${CATALOG_DESCRIPTION}" --base-url "${BASE_URL}" --hub-url "${HUB_URL}" --author "Yurii Serhiichuk" --author-url "https://serhiichuk.dev"'.
           4. okf-fs (ingest): run 'okf-fs ingest --dir . --bundle ${BUNDLE} --sync' to persist your enriched descriptions into .okf-metadata.yaml.
 
           Do not touch any files outside ${BUNDLE} and .okf-metadata.yaml. Work fully autonomously without asking for confirmation. Finish by confirming ${BUNDLE}/index.html exists.
@@ -158,13 +162,16 @@ jobs:
       - name: Ensure catalog (deterministic fallback)
         env:
           BUNDLE: ${{ runner.temp }}/bundle
+          BASE_URL: ${{ steps.pages.outputs.base_url }}
+          HUB_URL: ${{ steps.pages.outputs.origin }}/
         run: |
           set -euo pipefail
           if [ ! -f "$BUNDLE/index.md" ]; then
             okf-fs produce --dir . --out "$BUNDLE"
           fi
           if [ ! -f "$BUNDLE/index.html" ]; then
-            okf-viz render --bundle "$BUNDLE" --offline --title "$CATALOG_TITLE" --author "Yurii Serhiichuk" --author-url "https://serhiichuk.dev"
+            okf-viz render --bundle "$BUNDLE" --offline --title "$CATALOG_TITLE" --description "$CATALOG_DESCRIPTION" \
+              --base-url "$BASE_URL" --hub-url "$HUB_URL" --author "Yurii Serhiichuk" --author-url "https://serhiichuk.dev"
           fi
 
       # Discovery files for search engines and LLM agents. The catalog renderer
@@ -210,6 +217,49 @@ jobs:
           - [Author](https://serhiichuk.dev/): Yurii Serhiichuk.
           EOF
           cat "$BUNDLE/llms.txt"
+
+      # GitHub Pages serves <project>/404.html for a missing path under the
+      # project. This step runs after the sitemap step, so the sitemap does not
+      # list the 404 page. The links are absolute, because GitHub Pages serves
+      # the page at the missing path.
+      - name: Write 404.html
+        env:
+          BUNDLE: ${{ runner.temp }}/bundle
+          BASE_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          set -euo pipefail
+          base="${BASE_URL%/}/"
+          # Escape the title for HTML. A title with < or & must not break the page.
+          title_html="$(printf '%s' "$CATALOG_TITLE" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g')"
+          cat > "$BUNDLE/404.html" <<EOF
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <meta name="robots" content="noindex">
+          <title>Page not found · ${title_html}</title>
+          <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M9 22 16 9l7 13z' fill='none' stroke='%23c64f86' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='9' r='5' fill='%234f86c6'/%3E%3Ccircle cx='9' cy='22' r='5' fill='%233fae6b'/%3E%3Ccircle cx='23' cy='22' r='5' fill='%23c6864f'/%3E%3C/svg%3E">
+          <style>
+          :root{--bg:#fff;--surface:#f6f7f9;--text:#1c2430;--muted:#5b6470;--border:#dfe3e8;--accent:#4f86c6}
+          @media (prefers-color-scheme:dark){:root{--bg:#11151b;--surface:#1a2029;--text:#e6eaf0;--muted:#9aa4b2;--border:#2a313c;--accent:#6fa3df}}
+          html,body{margin:0;height:100%;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
+          header{padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface);font-weight:600}
+          main{max-width:40rem;margin:0 auto;padding:48px 16px}
+          p{color:var(--muted)}
+          a{color:var(--accent)}
+          </style>
+          </head>
+          <body>
+          <header><a href="${base}" style="color:inherit;text-decoration:none">${title_html}</a></header>
+          <main>
+          <h1>Page not found</h1>
+          <p>This page does not exist in the catalog.</p>
+          <p><a href="${base}">Go to the catalog</a></p>
+          </main>
+          </body>
+          </html>
+          EOF
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

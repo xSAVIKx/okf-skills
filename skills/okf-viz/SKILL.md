@@ -39,6 +39,10 @@ cd skills/okf-viz && go build -o okf-viz .
 - `--theme`: initial theme (default `system`, follows the OS); switchable in-page.
 - `--lang`: UI-chrome language (default `en`).
 - `--title`: page title (default derived from the bundle).
+- `--description`: page meta description, also used for Open Graph and Twitter cards (default: the first paragraph of the bundle `index.md`, else a generic sentence).
+- `--base-url`: absolute URL of the directory where the catalog is published. Adds a canonical link and `og:url`.
+- `--hub-url` / `--hub-label`: add a small link (default text "More projects") next to the author, for example to a site that lists more projects.
+- The page always carries an inline SVG favicon, so it stays one self-contained file.
 - `--inline-all`: always inline every concept body into the single file, regardless of size (the archival/shareable form).
 - `--threshold`: concept count above which bodies are written lazily as sibling `_okf/<id>.html` fragments instead of inlined (default 150). A path segment that starts with `.` gets a `_` prefix (`_okf/_.github/…`), because static hosts such as GitHub Pages often do not publish hidden paths. Small bundles stay a single self-contained file; large bundles load a concept's body on selection. Re-running produces byte-identical `index.html` and fragments. In-page, **ER** toggles the entity-relationship view and **Cluster** collapses directories into tappable super-nodes for large graphs.
 - `--diff <bundle>`: highlight what changed versus another bundle revision — added / removed / changed concepts and edges, using each concept's `content_hash` (body-comparison fallback when a hash is absent). Deterministic and byte-stable.
