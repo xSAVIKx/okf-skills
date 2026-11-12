@@ -1,6 +1,9 @@
 package main
 
-import "strings"
+import (
+	"path"
+	"strings"
+)
 
 // cdnTags returns the pinned CDN <script> tags with SRI integrity hashes
 // computed from the vendored copies of each library.
@@ -17,11 +20,34 @@ func cdnTags() string {
 	}
 	var b strings.Builder
 	for _, t := range tags {
+		name := libName(t.url)
+		if lazyVendor[name] {
+			// Inert until app.js needs the layout; it then adds a real <script>
+			// with this URL and SRI hash.
+			b.WriteString(`<script type="text/plain" data-okf-lib="` + name + `" data-src="` + t.url + `"`)
+			if t.integrity != "" {
+				b.WriteString(` data-integrity="` + t.integrity + `"`)
+			}
+			b.WriteString("></script>\n")
+			continue
+		}
 		b.WriteString(`<script src="` + t.url + `"`)
 		if t.integrity != "" {
 			b.WriteString(` integrity="` + t.integrity + `" crossorigin="anonymous"`)
 		}
-		b.WriteString("></script>\n")
+		b.WriteString(` data-okf-lib="` + name + `"></script>` + "\n")
 	}
 	return b.String()
+}
+
+// libName returns the data-okf-lib name of a CDN URL. It is the name of the
+// vendored copy ("cytoscape-cola.min.js"), so app.js finds a library by the
+// same name in CDN and --offline mode. Some packages publish no .min.js file,
+// so their CDN URL ends in ".js"; the name then gets the ".min.js" form.
+func libName(url string) string {
+	name := path.Base(url)
+	if !strings.HasSuffix(name, ".min.js") {
+		name = strings.TrimSuffix(name, ".js") + ".min.js"
+	}
+	return name
 }

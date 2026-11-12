@@ -81,26 +81,183 @@
   var typeColors = {}; var ci = 0;
   nodes.forEach(function (n) { if (n.kind === "concept" && n.type && !(n.type in typeColors)) typeColors[n.type] = palette[ci++ % palette.length]; });
 
-  var cy = window.cy = cytoscape({
-    container: document.getElementById("graph"),
-    elements: baseElements(),
-    minZoom: 0.1, maxZoom: 4,
-  });
-  styleGraph(cy);
-  cy.on("tap", "node", function (evt) {
-    var n = evt.target;
-    if (traceMode) { handleTraceTap(n); return; }
-    var k = n.data("kind");
-    if (clustered && (k === "directory" || k === "root")) {
-      var dirKey = k === "root" ? "" : n.id();
-      if (expandedDirs.has(dirKey)) expandedDirs.delete(dirKey); else expandedDirs.add(dirKey);
-      applyClusterDisplay();
-      return;
+  // ---- deferred graph start ----
+  // A force layout of a large graph takes seconds of CPU time. The page does not
+  // do it before first paint: the navigator, search and reader work at once,
+  // and the graph appears when its positions are ready. The default fcose
+  // layout runs in a Web Worker (built from the same inlined or SRI-checked
+  // library code) so the main thread stays free. If a worker is not available,
+  // the layout runs on the main thread after first paint.
+  var cy = null;          // created by initGraph when node positions are known
+  var appliedLayout = ""; // name of the layout last run on the graph
+  var layoutSel = document.getElementById("layout");
+  // graph-only controls stay disabled until the graph exists.
+  var graphControls = ["layout", "hops", "trace", "er-mode", "cluster", "coverage-overlay", "export-png", "export-json"];
+  setGraphControls(false);
+  var loadingNote = document.createElement("p");
+  loadingNote.className = "graph-loading";
+  loadingNote.setAttribute("role", "status");
+  loadingNote.textContent = "Laying out the graph…";
+  document.getElementById("graph").appendChild(loadingNote);
+
+  function setGraphControls(on) {
+    graphControls.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.disabled = !on;
+    });
+  }
+
+  function startGraph(name) {
+    var els = baseElements();
+    var started = false;
+    function begin(positions) {
+      if (started) return;
+      started = true;
+      // The user or a permalink can pick another layout while the worker runs.
+      // Then the worker positions are for the wrong layout: lay out again.
+      if (layoutSel.value !== name) positions = null;
+      initGraph(els, positions, name);
     }
-    select(n.id());
-  });
-  runLayout(document.getElementById("layout").value);
-  addLegend();
+    function onMainThread() {
+      // Two frames: let the browser paint the page before the layout work.
+      requestAnimationFrame(function () { setTimeout(function () { begin(null); }, 0); });
+    }
+    if (name === "fcose") layoutInWorker(els, function (positions) { if (positions) begin(positions); else onMainThread(); });
+    else onMainThread();
+  }
+
+  function initGraph(els, positions, name) {
+    if (positions) {
+      els.forEach(function (el) {
+        var p = !el.data.source && positions[el.data.id];
+        if (p) el.position = { x: p.x, y: p.y };
+      });
+    }
+    cy = window.cy = cytoscape({
+      container: document.getElementById("graph"),
+      elements: els,
+      style: graphStyle(),
+      layout: positions ? { name: "preset", fit: true, padding: 30 } : undefined,
+      minZoom: 0.1, maxZoom: 4,
+    });
+    if (positions) appliedLayout = name;
+    cy.on("tap", "node", function (evt) {
+      var n = evt.target;
+      if (traceMode) { handleTraceTap(n); return; }
+      var k = n.data("kind");
+      if (clustered && (k === "directory" || k === "root")) {
+        var dirKey = k === "root" ? "" : n.id();
+        if (expandedDirs.has(dirKey)) expandedDirs.delete(dirKey); else expandedDirs.add(dirKey);
+        applyClusterDisplay();
+        return;
+      }
+      select(n.id());
+    });
+    if (loadingNote.parentNode) loadingNote.parentNode.removeChild(loadingNote);
+    setGraphControls(true);
+    // Apply the UI state that the user (or the permalink) set before the graph existed.
+    applyEdgeToggles();
+    applyDisplay();
+    if (selectedId) highlightSelection(selectedId, false);
+    // The first layout has nothing to animate from, so it does not animate.
+    if (!positions) runLayout(layoutSel.value, { animate: false });
+  }
+
+  // layoutInWorker runs the fcose layout in a Web Worker and returns the node
+  // positions, or null when a worker cannot run it (the caller then lays out on
+  // the main thread). The worker gets the library code that the page already
+  // has: the inline source (--offline) or the CDN file fetched with its SRI hash.
+  function layoutInWorker(els, cb) {
+    if (!window.Worker || !window.Blob || !window.URL || !window.Promise) { cb(null); return; }
+    var names = ["cytoscape.min.js", "layout-base.min.js", "cose-base.min.js", "cytoscape-fcose.min.js"];
+    var parts;
+    try {
+      parts = names.map(function (name) {
+        var el = document.querySelector('script[data-okf-lib="' + name + '"]');
+        if (!el) throw new Error("missing " + name);
+        if (!el.src) return Promise.resolve(el.textContent);
+        if (!window.fetch) throw new Error("no fetch");
+        return fetch(el.src, { integrity: el.integrity || "", mode: "cors", credentials: "omit" })
+          .then(function (r) { if (!r.ok) throw new Error("status " + r.status); return r.text(); });
+      });
+    } catch (e) { cb(null); return; }
+    Promise.all(parts).then(function (srcs) {
+      var url = URL.createObjectURL(new Blob([srcs.join("\n;\n") + "\n;(" + layoutWorkerMain.toString() + ")();\n"], { type: "text/javascript" }));
+      var worker, done = false;
+      function finish(positions) {
+        if (done) return;
+        done = true;
+        try { worker.terminate(); } catch (e) { /* already gone */ }
+        URL.revokeObjectURL(url);
+        cb(positions);
+      }
+      try { worker = new Worker(url); } catch (e) { URL.revokeObjectURL(url); cb(null); return; }
+      worker.onmessage = function (ev) { finish(ev.data && ev.data.positions ? ev.data.positions : null); };
+      worker.onerror = function (ev) { if (ev && ev.preventDefault) ev.preventDefault(); finish(null); };
+      worker.postMessage({ elements: els.map(function (el) {
+        return { data: el.data.source ? { id: el.data.id, source: el.data.source, target: el.data.target } : { id: el.data.id, degree: el.data.degree } };
+      }) });
+    }, function () { cb(null); });
+  }
+
+  // layoutWorkerMain is the worker entry point. It is serialized into the worker
+  // source, so it must not use anything from the enclosing scope. Node sizes
+  // match the page style (mapData on degree), so the layout spacing is the same.
+  function layoutWorkerMain() {
+    self.onmessage = function (e) {
+      try {
+        var g = cytoscape({
+          headless: true, styleEnabled: true, elements: e.data.elements,
+          style: [{ selector: "node", style: { "width": "mapData(degree, 1, 12, 14, 44)", "height": "mapData(degree, 1, 12, 14, 44)" } }],
+        });
+        g.layout({ name: "fcose", animate: false, fit: false }).run();
+        var out = {};
+        g.nodes().forEach(function (n) { var p = n.position(); out[n.id()] = { x: p.x, y: p.y }; });
+        self.postMessage({ positions: out });
+      } catch (err) {
+        self.postMessage({ error: String(err) });
+      }
+    };
+  }
+
+  // ---- lazy layout libraries ----
+  // cola and dagre are inert <script type="text/plain"> blocks until their
+  // layout is first used; ensureLayout runs them (inline source, or a CDN
+  // <script> with the same SRI hash) and then calls cb.
+  var lazyLibs = { cola: ["cola.min.js", "cytoscape-cola.min.js"], dagre: ["dagre.min.js", "cytoscape-dagre.min.js"] };
+  var lazyDone = {}, lazyWaiters = {};
+  function ensureLayout(name, cb) {
+    var files = lazyLibs[name];
+    if (!files || lazyDone[name] === true) { cb(); return; }
+    (lazyWaiters[name] = lazyWaiters[name] || []).push(cb);
+    if (lazyDone[name] === "loading") return;
+    lazyDone[name] = "loading";
+    var i = 0;
+    (function next() {
+      if (i >= files.length) {
+        lazyDone[name] = true;
+        var waiting = lazyWaiters[name]; lazyWaiters[name] = [];
+        waiting.forEach(function (f) { f(); });
+        return;
+      }
+      var el = document.querySelector('script[data-okf-lib="' + files[i++] + '"]');
+      if (!el || el.getAttribute("type") !== "text/plain" || el.getAttribute("data-okf-run")) { next(); return; }
+      el.setAttribute("data-okf-run", "1");
+      var s = document.createElement("script");
+      var src = el.getAttribute("data-src");
+      if (src) {
+        var sri = el.getAttribute("data-integrity");
+        if (sri) { s.setAttribute("integrity", sri); s.crossOrigin = "anonymous"; }
+        s.onload = s.onerror = next;
+        s.src = src;
+        document.head.appendChild(s);
+      } else {
+        s.text = el.textContent;
+        document.head.appendChild(s); // inline code runs synchronously
+        next();
+      }
+    })();
+  }
 
   // ---- directory clustering (scale) ----
   // Collapse concepts into their directory super-nodes; tap a directory to reveal
@@ -120,10 +277,11 @@
   if (covCb) {
     covCb.addEventListener("change", function () {
       coverageOverlay = covCb.checked;
-      styleGraph(cy);
+      if (cy) styleGraph(cy);
     });
   }
   function applyClusterDisplay() {
+    if (!cy) return;
     cy.nodes('[kind="directory"], [kind="root"]').style("display", "element");
     cy.nodes('[kind="concept"]').forEach(function (cn) {
       var n = nodes.find(function (x) { return x.id === cn.id(); });
@@ -138,17 +296,20 @@
   if (erCheckbox) {
     erCheckbox.addEventListener("change", function () {
       erMode = erCheckbox.checked;
+      if (!cy) return;
       cy.json({ elements: erMode ? erElements() : baseElements() });
       styleGraph(cy);
-      runLayout(erMode ? "dagre" : document.getElementById("layout").value);
+      runLayout(erMode ? "dagre" : layoutSel.value);
     });
   }
 
-  function styleGraph(cy) {
+  function styleGraph(cy) { cy.style(graphStyle()); }
+
+  function graphStyle() {
     var structural = cssVar("--containment") || "#c2c8d2";
     var crosslink = cssVar("--crosslink") || "#c64f86";
     var text = cssVar("--text") || "#1c2430";
-    cy.style([
+    return [
       { selector: "node", style: {
         "label": "data(label)", "font-size": 9, "color": text, "text-valign": "bottom",
         "text-margin-y": 3, "width": "mapData(degree, 1, 12, 14, 44)", "height": "mapData(degree, 1, 12, 14, 44)",
@@ -182,7 +343,7 @@
         "line-color": cssVar("--rel-references") || crosslink,
         "source-arrow-shape": "tee", "source-arrow-color": cssVar("--rel-references") || crosslink,
         "target-arrow-shape": "triangle-tee", "target-arrow-color": cssVar("--rel-references") || crosslink } },
-    ].concat(relationStyles()).concat(coverageOverlay ? coverageStyles() : []).concat(diffStyles()));
+    ].concat(relationStyles()).concat(coverageOverlay ? coverageStyles() : []).concat(diffStyles());
   }
 
   // coverageStyles recolors concept nodes by enrichment state; layered over the
@@ -224,15 +385,22 @@
     return out;
   }
 
-  function runLayout(name) {
-    var opts = { name: name, animate: true, fit: true, padding: 30 };
-    if (name === "concentric") opts.concentric = function (n) { return n.data("degree"); };
-    if (name === "breadthfirst" || name === "dagre") opts.roots = "#__root__";
-    if (name === "dagre") { opts.rankDir = "TB"; }
-    try { cy.layout(opts).run(); }
-    catch (e) { cy.layout({ name: "cose", animate: true, fit: true }).run(); }
+  // runLayout runs a layout on the graph. o.animate === false skips the animation
+  // (used for the first layout). Optional libraries load on first use.
+  function runLayout(name, o) {
+    var animate = !(o && o.animate === false);
+    ensureLayout(name, function () {
+      if (!cy) return;
+      var opts = { name: name, animate: animate, fit: true, padding: 30 };
+      if (name === "concentric") opts.concentric = function (n) { return n.data("degree"); };
+      if (name === "breadthfirst" || name === "dagre") opts.roots = "#__root__";
+      if (name === "dagre") { opts.rankDir = "TB"; }
+      appliedLayout = name;
+      try { cy.layout(opts).run(); }
+      catch (e) { cy.layout({ name: "cose", animate: animate, fit: true }).run(); }
+    });
   }
-  document.getElementById("layout").addEventListener("change", function (e) { runLayout(e.target.value); });
+  layoutSel.addEventListener("change", function (e) { runLayout(e.target.value); });
 
   // edge toggles via legend checkboxes: one for structure, plus one per observed
   // relation among the crosslink edges (generic, relation-less links read as
@@ -249,15 +417,21 @@
     });
     el.innerHTML = html;
     document.getElementById("graph").appendChild(el);
-    el.querySelector("#show-cont").addEventListener("change", function (e) {
-      cy.edges('[kind="containment"]').toggleClass("hidden", !e.target.checked);
-    });
+    el.querySelector("#show-cont").addEventListener("change", applyEdgeToggles);
     el.querySelectorAll(".rel-toggle").forEach(function (cb) {
-      cb.addEventListener("change", function (ev) {
-        var r = ev.target.getAttribute("data-rel");
-        cy.edges('edge[kind="crosslink"][relation="' + r + '"]').toggleClass("hidden", !ev.target.checked);
+      cb.addEventListener("change", function () {
+        applyEdgeToggles();
         writeHash();
       });
+    });
+  }
+  // applyEdgeToggles hides the edges whose legend checkbox is clear.
+  function applyEdgeToggles() {
+    if (!cy) return;
+    var cont = document.getElementById("show-cont");
+    if (cont) cy.edges('[kind="containment"]').toggleClass("hidden", !cont.checked);
+    document.querySelectorAll(".legend .rel-toggle").forEach(function (cb) {
+      cy.edges('edge[kind="crosslink"][relation="' + (cb.getAttribute("data-rel") || "") + '"]').toggleClass("hidden", !cb.checked);
     });
   }
 
@@ -277,14 +451,22 @@
     var keep = hops > 0 ? hood : n;
     cy.nodes().not(keep.nodes()).addClass("dim");
   }
-  function select(id) {
-    selectedId = id;
+  // highlightSelection marks the selected node in the graph and dims the rest.
+  function highlightSelection(id, animate) {
+    if (!cy) return;
     cy.nodes().removeClass("selected");
     var n = cy.getElementById(id);
     if (n.nonempty()) {
       n.addClass("selected");
       applySpotlight(n);
-      cy.animate({ center: { eles: n } }, { duration: 200 });
+      if (animate) cy.animate({ center: { eles: n } }, { duration: 200 });
+      else cy.center(n);
+    }
+  }
+  function select(id) {
+    selectedId = id;
+    if (cy) {
+      highlightSelection(id, true);
     }
     document.querySelectorAll("#tree li").forEach(function (li) { li.classList.toggle("selected", li.dataset.id === id); });
     var d = docs[id]; var r = document.getElementById("reader");
@@ -478,10 +660,19 @@
   function applyFilter() {
     renderTree();
     writeHash();
+    applyDisplay();
+  }
+  // applyDisplay shows the graph nodes that pass the type filters and search.
+  function applyDisplay() {
+    if (!cy) return;
     if (clustered) { applyClusterDisplay(); return; }
-    cy.nodes('[kind="concept"]').forEach(function (cn) {
-      var n = nodes.find(function (x) { return x.id === cn.id(); });
-      cn.style("display", n && matches(n) ? "element" : "none");
+    var byId = {};
+    nodes.forEach(function (x) { byId[x.id] = x; });
+    cy.batch(function () {
+      cy.nodes('[kind="concept"]').forEach(function (cn) {
+        var n = byId[cn.id()];
+        cn.style("display", n && matches(n) ? "element" : "none");
+      });
     });
   }
 
@@ -505,10 +696,12 @@
   }
   var pngBtn = document.getElementById("export-png");
   if (pngBtn) pngBtn.addEventListener("click", function () {
+    if (!cy) return;
     try { download(cy.png({ full: true, scale: 2, bg: cssVar("--bg") || "#fff" }), "okf-graph.png"); } catch (e) { /* png unsupported */ }
   });
   var jsonBtn = document.getElementById("export-json");
   if (jsonBtn) jsonBtn.addEventListener("click", function () {
+    if (!cy) return;
     var ids = {}; cy.nodes(":visible").forEach(function (n) { ids[n.id()] = true; });
     var exp = { nodes: [], edges: [] };
     cy.nodes(":visible").forEach(function (n) { exp.nodes.push(n.data()); });
@@ -520,6 +713,7 @@
   var graphEl = document.getElementById("graph");
   graphEl.addEventListener("keydown", function (ev) {
     if (ev.key !== "ArrowRight" && ev.key !== "ArrowLeft" && ev.key !== "Enter") return;
+    if (!cy) return;
     var current = selectedId ? cy.getElementById(selectedId) : cy.nodes('[kind="concept"]').first();
     if (current.empty()) return;
     if (ev.key === "Enter") { select(current.id()); ev.preventDefault(); return; }
@@ -544,7 +738,7 @@
     var parts = [];
     if (selectedId) parts.push("n=" + encodeURIComponent(selectedId));
     if (active.size !== types.length) parts.push("f=" + encodeURIComponent(Array.from(active).sort().join(",")));
-    var lay = document.getElementById("layout").value;
+    var lay = layoutSel.value;
     if (lay) parts.push("l=" + encodeURIComponent(lay));
     var hr = hiddenRelations();
     if (hr.length) parts.push("h=" + encodeURIComponent(hr.join(",")));
@@ -585,20 +779,14 @@
       if (typeof st.h === "string") {
         var hide = new Set(st.h ? st.h.split(",") : []);
         document.querySelectorAll(".legend .rel-toggle").forEach(function (cb) {
-          var key = cb.getAttribute("data-rel") || "_generic";
-          var shouldHide = hide.has(key);
-          cb.checked = !shouldHide;
-          cy.edges('edge[kind="crosslink"][relation="' + (cb.getAttribute("data-rel") || "") + '"]').toggleClass("hidden", shouldHide);
+          cb.checked = !hide.has(cb.getAttribute("data-rel") || "_generic");
         });
+        applyEdgeToggles();
       }
       renderTree();
-      if (!clustered) {
-        cy.nodes('[kind="concept"]').forEach(function (cn) {
-          var n = nodes.find(function (x) { return x.id === cn.id(); });
-          cn.style("display", n && matches(n) ? "element" : "none");
-        });
-      }
-      if (st.l) runLayout(st.l);
+      applyDisplay();
+      // Run a layout only when it differs from the one on the graph.
+      if (st.l && cy && st.l !== appliedLayout) runLayout(st.l);
     } finally { applyingState = false; }
     if (st.n && docs[st.n]) select(st.n);
   }
@@ -608,6 +796,7 @@
   var traceBtn = document.getElementById("trace");
   if (traceBtn) {
     traceBtn.addEventListener("click", function () {
+      if (!cy) return;
       traceMode = true; traceA = null;
       traceBtn.classList.add("active");
       traceBtn.textContent = "Trace: pick A";
@@ -635,15 +824,20 @@
   // hop slider re-applies the spotlight for the current selection.
   var hopsEl = document.getElementById("hops");
   if (hopsEl) hopsEl.addEventListener("change", function () {
-    if (selectedId) { var n = cy.getElementById(selectedId); if (n.nonempty()) applySpotlight(n); }
+    if (selectedId && cy) { var n = cy.getElementById(selectedId); if (n.nonempty()) applySpotlight(n); }
   });
   // re-write the hash when the layout changes too.
-  document.getElementById("layout").addEventListener("change", writeHash);
+  layoutSel.addEventListener("change", writeHash);
 
   // ---- init ----
+  // The navigator, legend and permalink state come first; the graph follows
+  // (see startGraph). applyState skips the graph parts until the graph exists,
+  // and initGraph applies them.
+  addLegend();
   renderTree();
   window.addEventListener("hashchange", function () { applyState(readHash()); });
   applyState(readHash());
+  startGraph(layoutSel.value);
 
   function escapeHtml(s) { return String(s).replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }); }
 })();
