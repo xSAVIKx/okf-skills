@@ -16,13 +16,14 @@
 <meta name="twitter:description" content="{{html .Description}}">
 <style>{{.CSS}}</style>
 </head>
-<body>
+<body data-pane="graph">
 <header id="topbar">
   <span id="bundle-title">{{.Title}}</span>
   {{if .Author}}<span id="bundle-author">{{if .AuthorURL}}<a href="{{.AuthorURL}}" target="_blank" rel="noopener noreferrer">{{.Author}}</a>{{else}}{{.Author}}{{end}}</span>{{end}}
   {{if .HubURL}}<span id="hub-link"><a href="{{html .HubURL}}">{{.HubLabel}}</a></span>{{end}}
   {{if .ShowAttribution}}<span id="attribution">Built with <a href="https://github.com/xSAVIKx/okf-skills" target="_blank" rel="noopener noreferrer">okf-skills</a> by <a href="https://serhiichuk.dev" target="_blank" rel="noopener noreferrer">Yurii Serhiichuk</a></span>{{end}}
   <span class="spacer"></span>
+  <div id="controls">
   <input id="search" type="search" placeholder="Search concepts…" aria-label="Search">
   <select id="layout" aria-label="Graph layout">
     <option value="fcose">fcose</option>
@@ -48,7 +49,13 @@
   <button id="toggle-nav" title="Toggle navigator">☰</button>
   <button id="toggle-graph" title="Toggle graph">◉</button>
   <button id="toggle-reader" title="Toggle reader">▤</button>
+  </div>
 </header>
+<div id="pane-tabs" role="group" aria-label="Show pane">
+  <button type="button" data-pane="nav" aria-pressed="false">Navigator</button>
+  <button type="button" data-pane="graph" aria-pressed="true">Graph</button>
+  <button type="button" data-pane="reader" aria-pressed="false">Reader</button>
+</div>
 <main id="panes">
   <nav id="nav" aria-label="Concept navigator"><div id="filters" role="group" aria-label="Type filters"></div><ul id="tree" role="listbox" aria-label="Concepts"></ul></nav>
   <section id="graph" role="application" aria-label="Concept graph" tabindex="0"></section>

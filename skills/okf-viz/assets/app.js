@@ -89,6 +89,7 @@
   // library code) so the main thread stays free. If a worker is not available,
   // the layout runs on the main thread after first paint.
   var cy = null;          // created by initGraph when node positions are known
+  var graphNeedsFit = false; // true when the graph was created inside a hidden pane
   var appliedLayout = ""; // name of the layout last run on the graph
   var layoutSel = document.getElementById("layout");
   // graph-only controls stay disabled until the graph exists.
@@ -150,6 +151,7 @@
       }
       select(n.id());
     });
+    graphNeedsFit = document.getElementById("graph").clientWidth === 0;
     if (loadingNote.parentNode) loadingNote.parentNode.removeChild(loadingNote);
     setGraphControls(true);
     // Apply the UI state that the user (or the permalink) set before the graph existed.
@@ -623,7 +625,10 @@
       li.setAttribute("role", "option");
       li.setAttribute("aria-selected", n.id === selectedId ? "true" : "false");
       if (n.id === selectedId) li.classList.add("selected");
-      li.addEventListener("click", function () { select(n.id); });
+      li.addEventListener("click", function () {
+        select(n.id);
+        if (narrow && narrow.matches) showPane("reader");
+      });
       tree.appendChild(li);
     });
     kbdIndex = -1;
@@ -692,6 +697,26 @@
       document.getElementById(pane).classList.toggle("hidden");
       if (window.cy) cy.resize();
     });
+  }
+
+  // ---- pane tabs (narrow screens) ----
+  // Below 800px the CSS shows only the pane that body[data-pane] names. The tab
+  // bar sets it. Picking a concept in the navigator opens the reader.
+  var narrow = window.matchMedia ? window.matchMedia("(max-width: 799px)") : null;
+  var paneTabs = document.querySelectorAll("#pane-tabs button");
+  paneTabs.forEach(function (b) {
+    b.addEventListener("click", function () { showPane(b.getAttribute("data-pane")); });
+  });
+  function showPane(pane) {
+    document.body.setAttribute("data-pane", pane);
+    paneTabs.forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-pane") === pane ? "true" : "false");
+    });
+    if (pane === "graph" && window.cy) {
+      cy.resize();
+      // A graph that was laid out while its pane was hidden has no useful viewport.
+      if (graphNeedsFit) { graphNeedsFit = false; cy.fit(undefined, 30); }
+    }
   }
 
   // ---- export (PNG + subgraph JSON) ----
