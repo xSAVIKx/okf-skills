@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"text/template"
@@ -303,8 +304,9 @@ func Emit(m *Model, opt EmitOptions) (string, map[string]string, error) {
 		manifest := map[string]string{}
 		fragments = map[string]string{}
 		light := map[string]Doc{}
+		paths := fragmentPaths(docs)
 		for id, d := range docs {
-			frag := "_okf/" + id + ".html"
+			frag := paths[id]
 			fragments[frag] = d.BodyHTML
 			manifest[id] = frag
 			d.BodyHTML = "" // dropped from the inline payload
@@ -341,6 +343,41 @@ func Emit(m *Model, opt EmitOptions) (string, map[string]string, error) {
 		Author: opt.Author, AuthorURL: opt.AuthorURL, ShowAttribution: !opt.NoAttribution,
 	})
 	return buf.String(), fragments, err
+}
+
+// fragmentPaths maps each concept ID to the relative path of its lazy body
+// fragment ("_okf/<id>.html"). Static hosts often do not publish hidden paths:
+// actions/upload-pages-artifact drops every file or directory whose name starts
+// with ".". A concept such as ".github/workflows/ci.yml" would get a fragment
+// that is never published, so a path segment that starts with "." gets a "_"
+// prefix ("_okf/_.github/workflows/ci.yml.html"). The manifest carries the
+// mapping to the page, so no reader code depends on the scheme. IDs are
+// processed in sorted order, and a mapped path that is already in use gets a
+// numeric suffix, so the result is deterministic and free of collisions.
+func fragmentPaths(docs map[string]Doc) map[string]string {
+	ids := make([]string, 0, len(docs))
+	for id := range docs {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	used := map[string]bool{}
+	out := make(map[string]string, len(ids))
+	for _, id := range ids {
+		segs := strings.Split(id, "/")
+		for i, seg := range segs {
+			if strings.HasPrefix(seg, ".") {
+				segs[i] = "_" + seg
+			}
+		}
+		stem := "_okf/" + strings.Join(segs, "/")
+		p := stem + ".html"
+		for n := 2; used[p]; n++ {
+			p = stem + "-" + strconv.Itoa(n) + ".html"
+		}
+		used[p] = true
+		out[id] = p
+	}
+	return out
 }
 
 // vendorOrder lists the pinned vendor JS files in dependency-first load order:
