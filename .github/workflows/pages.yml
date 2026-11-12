@@ -224,6 +224,8 @@ jobs:
         run: |
           set -euo pipefail
           base="${BASE_URL%/}/"
+          # Escape the title for HTML. A title with < or & must not break the page.
+          title_html="$(printf '%s' "$CATALOG_TITLE" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g')"
           cat > "$BUNDLE/404.html" <<EOF
           <!DOCTYPE html>
           <html lang="en">
@@ -231,7 +233,7 @@ jobs:
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <meta name="robots" content="noindex">
-          <title>Page not found · ${CATALOG_TITLE}</title>
+          <title>Page not found · ${title_html}</title>
           <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M9 22 16 9l7 13z' fill='none' stroke='%23c64f86' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='9' r='5' fill='%234f86c6'/%3E%3Ccircle cx='9' cy='22' r='5' fill='%233fae6b'/%3E%3Ccircle cx='23' cy='22' r='5' fill='%23c6864f'/%3E%3C/svg%3E">
           <style>
           :root{--bg:#fff;--surface:#f6f7f9;--text:#1c2430;--muted:#5b6470;--border:#dfe3e8;--accent:#4f86c6}
@@ -244,7 +246,7 @@ jobs:
           </style>
           </head>
           <body>
-          <header><a href="${base}" style="color:inherit;text-decoration:none">${CATALOG_TITLE}</a></header>
+          <header><a href="${base}" style="color:inherit;text-decoration:none">${title_html}</a></header>
           <main>
           <h1>Page not found</h1>
           <p>This page does not exist in the catalog.</p>
