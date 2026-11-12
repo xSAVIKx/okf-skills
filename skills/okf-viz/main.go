@@ -101,6 +101,10 @@ func runRender(args []string) {
 	author := fs.String("author", "", "Catalog author name for display")
 	authorURL := fs.String("author-url", "", "Catalog author URL for backlink")
 	noAttribution := fs.Bool("no-attribution", false, "Hide the 'Built with okf-skills by Yurii Serhiichuk' attribution badge")
+	description := fs.String("description", "", "Page meta description (default: first paragraph of the bundle index.md, else a generic sentence)")
+	baseURL := fs.String("base-url", "", "Absolute URL of the directory where the catalog is published; adds canonical and og:url tags")
+	hubURL := fs.String("hub-url", "", "URL of a page that lists more projects; adds a small link next to the author")
+	hubLabel := fs.String("hub-label", DefaultHubLabel, "Text of the --hub-url link")
 	_ = fs.Parse(args)
 
 	if *bundle == "" {
@@ -145,17 +149,19 @@ func runRender(args []string) {
 	if pageTitle == "" {
 		pageTitle = m.RootTitle
 	}
+	outPath := *out
+	if outPath == "" {
+		outPath = filepath.Join(*bundle, "index.html")
+	}
 	html, fragments, err := Emit(m, EmitOptions{
 		Title: pageTitle, Theme: *theme, Offline: *offline, Lang: *lang,
 		InlineAll: *inlineAll, Threshold: *threshold,
 		Author: *author, AuthorURL: *authorURL, NoAttribution: *noAttribution,
+		Description: *description, CanonicalURL: canonicalURL(*baseURL, filepath.Base(outPath)),
+		HubURL: *hubURL, HubLabel: *hubLabel,
 	})
 	if err != nil {
 		log.Fatalf("Failed to render: %v", err)
-	}
-	outPath := *out
-	if outPath == "" {
-		outPath = filepath.Join(*bundle, "index.html")
 	}
 	if err := os.WriteFile(outPath, []byte(html), 0644); err != nil {
 		log.Fatalf("Failed to write %s: %v", outPath, err)
@@ -182,4 +188,19 @@ func runRender(args []string) {
 		mode = fmt.Sprintf("lazy (%d fragments)", len(fragments))
 	}
 	fmt.Printf("Rendered %d concepts to %s [%s]\n", len(m.concepts), outPath, mode)
+}
+
+// canonicalURL joins the published base URL and the output file name. An
+// index.html page is canonical at the directory URL with a trailing slash.
+// It returns "" when no base URL is given.
+func canonicalURL(base, file string) string {
+	base = strings.TrimSpace(base)
+	if base == "" {
+		return ""
+	}
+	base = strings.TrimRight(base, "/") + "/"
+	if file == "index.html" {
+		return base
+	}
+	return base + file
 }
