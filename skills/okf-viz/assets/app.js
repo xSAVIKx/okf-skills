@@ -286,7 +286,11 @@
       applySpotlight(n);
       cy.animate({ center: { eles: n } }, { duration: 200 });
     }
-    document.querySelectorAll("#tree li").forEach(function (li) { li.classList.toggle("selected", li.dataset.id === id); });
+    document.querySelectorAll("#tree li").forEach(function (li) {
+      var on = li.dataset.id === id;
+      li.classList.toggle("selected", on);
+      li.setAttribute("aria-selected", on ? "true" : "false");
+    });
     var d = docs[id]; var r = document.getElementById("reader");
     if (!d) { r.innerHTML = '<p class="empty">' + escapeHtml(id) + '</p>'; }
     else {
@@ -436,6 +440,10 @@
     list.forEach(function (n) {
       var li = document.createElement("li");
       li.textContent = n.id; li.dataset.id = n.id; li.title = n.description || "";
+      // The tree is a listbox, so each item is an option (not a bare list item).
+      li.setAttribute("role", "option");
+      li.setAttribute("aria-selected", n.id === selectedId ? "true" : "false");
+      if (n.id === selectedId) li.classList.add("selected");
       li.addEventListener("click", function () { select(n.id); });
       tree.appendChild(li);
     });
