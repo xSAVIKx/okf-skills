@@ -170,6 +170,11 @@ jobs:
       # Discovery files for search engines and LLM agents. The catalog renderer
       # does not emit them, so they are written here. The hub at the origin root
       # links each project's sitemap.xml and llms.txt when they exist.
+      # The sitemap lists only full pages. The files under _okf/ are fragments
+      # without a <head> that the catalog loads into its reader, so search
+      # engines must not index them. Hidden paths are skipped as well, because
+      # upload-pages-artifact may not publish them (v3 drops .git and .github,
+      # v4 drops every hidden file).
       - name: Write sitemap.xml and llms.txt
         env:
           BUNDLE: ${{ runner.temp }}/bundle
@@ -181,7 +186,7 @@ jobs:
           {
             echo '<?xml version="1.0" encoding="UTF-8"?>'
             echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
-            ( cd "$BUNDLE" && find . -name '*.html' -printf '%P\n' | LC_ALL=C sort ) | while read -r f; do
+            ( cd "$BUNDLE" && find . -name '*.html' -not -path './_okf/*' -not -path '*/.*' -printf '%P\n' | LC_ALL=C sort ) | while read -r f; do
               [ "$f" = "index.html" ] && f=""
               f="${f%/index.html}"; [ -n "$f" ] && [ -d "$BUNDLE/$f" ] && f="$f/"
               echo "  <url><loc>${base}${f}</loc><lastmod>${lastmod}</lastmod></url>"
