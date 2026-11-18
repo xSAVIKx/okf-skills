@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.Title}}</title>
+<title>{{html .Title}}</title>
 <meta name="description" content="{{html .Description}}">
 <link rel="icon" href="{{.Favicon}}">
 {{if .CanonicalURL}}<link rel="canonical" href="{{html .CanonicalURL}}">
@@ -26,7 +26,7 @@
 </head>
 <body>
 <header id="topbar">
-  <span id="bundle-title">{{.Title}}</span>
+  <span id="bundle-title">{{html .Title}}</span>
   {{if .Author}}<span id="bundle-author">{{if .AuthorURL}}<a href="{{.AuthorURL}}" target="_blank" rel="noopener noreferrer">{{.Author}}</a>{{else}}{{.Author}}{{end}}</span>{{end}}
   {{if .HubURL}}<span id="hub-link"><a href="{{html .HubURL}}">{{html .HubLabel}}</a></span>{{end}}
   {{if .ShowAttribution}}<span id="attribution">Built with <a href="https://github.com/xSAVIKx/okf-skills" target="_blank" rel="noopener noreferrer">okf-skills</a> by <a href="https://serhiichuk.dev" target="_blank" rel="noopener noreferrer">Yurii Serhiichuk</a></span>{{end}}
