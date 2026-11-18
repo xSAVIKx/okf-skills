@@ -267,6 +267,11 @@ type EmitOptions struct {
 	CanonicalURL string
 	HubURL       string // URL of a page that lists more projects ("" = no link)
 	HubLabel     string // text of the hub link (default DefaultHubLabel)
+	// Image is the social preview image (og:image, twitter:image). An empty
+	// Image.URL omits the image tags.
+	Image PageImage
+	// JSONLD holds extra schema.org nodes for the JSON-LD block of the page.
+	JSONLD []map[string]any
 }
 
 // DefaultHubLabel is the hub link text when EmitOptions.HubLabel is empty.
@@ -300,6 +305,8 @@ type pageData struct {
 	ShowAttribution                                      bool
 	Description, CanonicalURL, Favicon                   string
 	HubURL, HubLabel                                     string
+	Image                                                PageImage
+	JSONLD                                               string
 }
 
 // Emit renders the self-contained HTML for a model and, in lazy mode, the set of
@@ -371,6 +378,16 @@ func Emit(m *Model, opt EmitOptions) (string, map[string]string, error) {
 	if hubLabel == "" {
 		hubLabel = DefaultHubLabel
 	}
+	img := opt.Image
+	if img.URL != "" && img.Alt == "" {
+		img.Alt = opt.Title
+	}
+	opt.Lang, opt.Image = lang, img
+	description := pageDescription(m, opt)
+	jsonLD, err := pageJSONLD(opt, description)
+	if err != nil {
+		return "", nil, err
+	}
 	tmpl, err := template.New("page").Parse(string(tmplBytes))
 	if err != nil {
 		return "", nil, err
@@ -380,8 +397,8 @@ func Emit(m *Model, opt EmitOptions) (string, map[string]string, error) {
 		Title: opt.Title, CSS: string(css), AppJS: string(appjs),
 		LibTag: libTag, DataJSON: string(dataJSON), InitTheme: theme, Lang: lang,
 		Author: opt.Author, AuthorURL: opt.AuthorURL, ShowAttribution: !opt.NoAttribution,
-		Description: pageDescription(m, opt), CanonicalURL: opt.CanonicalURL, Favicon: faviconHref,
-		HubURL: opt.HubURL, HubLabel: hubLabel,
+		Description: description, CanonicalURL: opt.CanonicalURL, Favicon: faviconHref,
+		HubURL: opt.HubURL, HubLabel: hubLabel, Image: img, JSONLD: jsonLD,
 	})
 	return buf.String(), fragments, err
 }

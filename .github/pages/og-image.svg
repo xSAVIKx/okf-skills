@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <!-- Social preview of the okf-skills catalog. Render it to og-image.png
+       with .github/pages/render-og-image.sh. The colours come from
+       skills/okf-viz/assets/app.css (dark theme) and the favicon. -->
+  <rect width="1200" height="630" fill="#11151b"/>
+  <rect x="0" y="0" width="1200" height="8" fill="#6fa3df"/>
+  <g fill="none" stroke="#2a313c" stroke-width="2">
+    <path d="M830 170 L1010 120 L1090 300 L960 470 L800 380 Z"/>
+    <path d="M830 170 L960 470 M1010 120 L800 380"/>
+  </g>
+  <g fill="#1a2029" stroke="#2a313c" stroke-width="2">
+    <circle cx="1010" cy="120" r="14"/>
+    <circle cx="1090" cy="300" r="14"/>
+    <circle cx="800" cy="380" r="14"/>
+  </g>
+  <g transform="translate(945 300) scale(8) translate(-16 -16)">
+    <path d="M9 22 16 9l7 13z" fill="none" stroke="#e07bab" stroke-width="2.5" stroke-linejoin="round"/>
+    <circle cx="16" cy="9" r="5" fill="#6fa3df"/>
+    <circle cx="9" cy="22" r="5" fill="#5fcf8f"/>
+    <circle cx="23" cy="22" r="5" fill="#d6a06a"/>
+  </g>
+  <g font-family="Lato, 'DejaVu Sans', sans-serif">
+    <text x="80" y="250" font-size="96" font-weight="700" fill="#e6eaf0">okf-skills</text>
+    <text x="80" y="320" font-size="38" fill="#9aa4b2">Open Knowledge Format</text>
+    <text x="80" y="368" font-size="38" fill="#9aa4b2">agent skills and catalog</text>
+    <text x="80" y="540" font-size="28" fill="#6fa3df">xsavikx.github.io/okf-skills</text>
+  </g>
+</svg>

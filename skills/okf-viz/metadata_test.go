@@ -97,3 +97,18 @@ func TestEmit_HubLabelIsEscaped(t *testing.T) {
 		t.Error("hub label is not HTML-escaped")
 	}
 }
+
+func TestEmit_TitleIsEscaped(t *testing.T) {
+	m, _ := BuildModel("testdata/linked")
+	addCrossLinks(m)
+	html, _, err := Emit(m, EmitOptions{Title: `</title><script>x</script>`})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(html, "<script>x</script>") {
+		t.Error("title is emitted as raw HTML")
+	}
+	if !strings.Contains(html, `<title>&lt;/title&gt;&lt;script&gt;x&lt;/script&gt;</title>`) {
+		t.Error("title is not HTML-escaped in <title>")
+	}
+}
