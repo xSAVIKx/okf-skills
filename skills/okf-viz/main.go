@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -105,6 +106,9 @@ func runRender(args []string) {
 	baseURL := fs.String("base-url", "", "Absolute URL of the directory where the catalog is published; adds canonical and og:url tags")
 	hubURL := fs.String("hub-url", "", "URL of a page that lists more projects; adds a small link next to the author")
 	hubLabel := fs.String("hub-label", DefaultHubLabel, "Text of the --hub-url link")
+	imagePath := fs.String("image", "", "Local PNG or JPEG social preview image (1200x630 is best). It is copied next to the page and adds og:image and twitter:image tags; needs --base-url")
+	imageAlt := fs.String("image-alt", "", "Alternative text of the --image (default: the page title)")
+	jsonLDPath := fs.String("jsonld", "", "JSON file with extra schema.org nodes (an object or an array) for the JSON-LD block of the page")
 	_ = fs.Parse(args)
 
 	if *bundle == "" {
@@ -153,12 +157,33 @@ func runRender(args []string) {
 	if outPath == "" {
 		outPath = filepath.Join(*bundle, "index.html")
 	}
+	var img PageImage
+	if *imagePath != "" {
+		img, err = readPageImage(*imagePath)
+		if err != nil {
+			log.Fatalf("Failed to read image: %v", err)
+		}
+		name := filepath.Base(*imagePath)
+		img.URL, img.Alt = canonicalURL(*baseURL, url.PathEscape(name)), *imageAlt
+		if img.URL == "" {
+			log.Printf("--image needs --base-url for an absolute URL; the page has no image tags")
+		}
+		if err := copyFile(*imagePath, filepath.Join(filepath.Dir(outPath), name)); err != nil {
+			log.Fatalf("Failed to copy image: %v", err)
+		}
+	}
+	var jsonLD []map[string]any
+	if *jsonLDPath != "" {
+		if jsonLD, err = readJSONLDNodes(*jsonLDPath); err != nil {
+			log.Fatalf("Failed to read JSON-LD nodes: %v", err)
+		}
+	}
 	html, fragments, err := Emit(m, EmitOptions{
 		Title: pageTitle, Theme: *theme, Offline: *offline, Lang: *lang,
 		InlineAll: *inlineAll, Threshold: *threshold,
 		Author: *author, AuthorURL: *authorURL, NoAttribution: *noAttribution,
 		Description: *description, CanonicalURL: canonicalURL(*baseURL, filepath.Base(outPath)),
-		HubURL: *hubURL, HubLabel: *hubLabel,
+		HubURL: *hubURL, HubLabel: *hubLabel, Image: img, JSONLD: jsonLD,
 	})
 	if err != nil {
 		log.Fatalf("Failed to render: %v", err)

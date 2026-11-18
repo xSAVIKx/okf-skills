@@ -1,0 +1,33 @@
+[
+  {
+    "@id": "https://xsavikx.github.io/okf-skills/",
+    "isPartOf": { "@id": "https://xsavikx.github.io/#website" },
+    "about": { "@id": "https://xsavikx.github.io/okf-skills/#software" },
+    "author": { "@id": "https://xsavikx.github.io/#person" }
+  },
+  {
+    "@type": "WebSite",
+    "@id": "https://xsavikx.github.io/#website",
+    "url": "https://xsavikx.github.io/",
+    "name": "xsavikx.github.io",
+    "publisher": { "@id": "https://xsavikx.github.io/#person" }
+  },
+  {
+    "@type": "SoftwareSourceCode",
+    "@id": "https://xsavikx.github.io/okf-skills/#software",
+    "name": "okf-skills",
+    "description": "Agent skills for the Open Knowledge Format (OKF): CLI connectors that produce OKF bundles, guidance skills to read, enrich and author bundles, and a generic MCP server.",
+    "url": "https://xsavikx.github.io/okf-skills/",
+    "codeRepository": "https://github.com/xSAVIKx/okf-skills",
+    "programmingLanguage": "Go",
+    "license": "https://www.apache.org/licenses/LICENSE-2.0",
+    "author": { "@id": "https://xsavikx.github.io/#person" }
+  },
+  {
+    "@type": "Person",
+    "@id": "https://xsavikx.github.io/#person",
+    "name": "Yurii Serhiichuk",
+    "url": "https://serhiichuk.dev/",
+    "sameAs": ["https://github.com/xSAVIKx", "https://xsavikx.github.io/"]
+  }
+]

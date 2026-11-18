@@ -11,9 +11,17 @@
 {{end}}<meta property="og:type" content="website">
 <meta property="og:title" content="{{html .Title}}">
 <meta property="og:description" content="{{html .Description}}">
-<meta name="twitter:card" content="summary">
+<meta name="twitter:card" content="{{if .Image.URL}}summary_large_image{{else}}summary{{end}}">
 <meta name="twitter:title" content="{{html .Title}}">
 <meta name="twitter:description" content="{{html .Description}}">
+{{with .Image}}{{if .URL}}<meta property="og:image" content="{{html .URL}}">
+{{if .Type}}<meta property="og:image:type" content="{{html .Type}}">
+{{end}}{{if .Width}}<meta property="og:image:width" content="{{.Width}}">
+<meta property="og:image:height" content="{{.Height}}">
+{{end}}<meta property="og:image:alt" content="{{html .Alt}}">
+<meta name="twitter:image" content="{{html .URL}}">
+<meta name="twitter:image:alt" content="{{html .Alt}}">
+{{end}}{{end}}<script type="application/ld+json">{{.JSONLD}}</script>
 <style>{{.CSS}}</style>
 </head>
 <body>
