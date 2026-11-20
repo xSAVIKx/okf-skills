@@ -213,3 +213,13 @@ Releases are **fully automated** from [Conventional Commits](https://www.convent
 - **Never bump `require okf-go vNEW` in a feature PR** — `vNEW` doesn't exist until the release PR merges. The `sync-pins` job ([`scripts/sync-intra-deps.sh`](scripts/sync-intra-deps.sh)) re-pins every consumer and refreshes `go.sum` on the release PR; it also rewrites each `SKILL.md` → `metadata.version`.
 - **Why the `scripts/` tooling exists.** `go.work` hides stale pins and missing `go.sum` entries during normal CI (it resolves `okf-go` from the working tree). The release scripts close that gap: `sync-intra-deps.sh` syncs pins against a local tag, `ci-localize-okfgo.sh` makes the unpublished pin resolvable in workspace-mode CI, and `verify-release.sh` (the post-merge `verify-install` gate) proves every module installs **standalone** (`GOWORK=off`). See `RELEASING.md` for the full rationale.
 - **Skill version lives in one place:** `SKILL.md` → `metadata.version`. `install.sh` injects it into binaries via `-ldflags` (so `okf-<name> --version` reports it) and records it in `okf-skills-manifest.txt`.
+
+## 8. Design identity
+
+This site uses the shared identity from xSAVIKx/xSAVIKx.github.io/identity.
+- The okf-viz page has no vendored `ys-*.css` file. `skills/okf-viz/assets/app.css` holds a copy of the neutral and font values of `ys-tokens.css` 1.0.0. To update them, copy the new values from the hub.
+- The hub link (`--hub-url`, text "More projects") follows `.ys-back-link` of the shared identity 1.2.0: a touch target of at least 44 px. The rule is in `app.css` (`#topbar #hub-link a`).
+- okf-viz renders catalogs for other users too. Change only neutrals and fonts in `app.css`. Keep `--accent` and the graph, relation and coverage colours.
+- Keep this project's own brand colours, logo and illustrations.
+- Use system fonts only. Do not add a web font or serif headings.
+- New text colours must meet 4.5:1 contrast in light and dark.
