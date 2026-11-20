@@ -218,6 +218,7 @@ Releases are **fully automated** from [Conventional Commits](https://www.convent
 
 This site uses the shared identity from xSAVIKx/xSAVIKx.github.io/identity.
 - The okf-viz page has no vendored `ys-*.css` file. `skills/okf-viz/assets/app.css` holds a copy of the neutral and font values of `ys-tokens.css` 1.0.0. To update them, copy the new values from the hub.
+- The hub link (`--hub-url`, text "More projects") follows `.ys-back-link` of the shared identity 1.2.0: a touch target of at least 44 px. The rule is in `app.css` (`#topbar #hub-link a`).
 - okf-viz renders catalogs for other users too. Change only neutrals and fonts in `app.css`. Keep `--accent` and the graph, relation and coverage colours.
 - Keep this project's own brand colours, logo and illustrations.
 - Use system fonts only. Do not add a web font or serif headings.

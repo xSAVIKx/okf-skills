@@ -28,6 +28,10 @@
    rules below, so these rules win independent of the order. */
 html body{font-family:var(--font-sans)}
 #topbar span a:hover{color:var(--accent-text)}
+/* Hub link: the rule of .ys-back-link of the shared identity 1.2.0. A touch target of at least 44 px.
+   The negative margin keeps the height of the top bar. The focus ring is inside the target. */
+#topbar #hub-link a{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin:-6px 0;padding:0 8px}
+#topbar #hub-link a:focus-visible{outline:3px solid var(--text);outline-offset:-3px;border-radius:6px}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
 #topbar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface)}

@@ -30,3 +30,22 @@ func TestEmit_AccessibleMarkup(t *testing.T) {
 		}
 	}
 }
+
+// TestEmit_HubLinkTouchTarget guards the size of the hub link: a touch target of
+// at least 44 px by 44 px and a visible focus ring (shared identity 1.2.0).
+func TestEmit_HubLinkTouchTarget(t *testing.T) {
+	m, _ := BuildModel("testdata/linked")
+	html, _, err := Emit(m, EmitOptions{Title: "Shop", HubURL: "https://example.org/"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`<span id="hub-link"><a href="https://example.org/">More projects</a></span>`,
+		`#topbar #hub-link a{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;`,
+		`#topbar #hub-link a:focus-visible{outline:3px solid var(--text);`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("hub link must be a 44 px touch target with a focus ring; missing %q", want)
+		}
+	}
+}
